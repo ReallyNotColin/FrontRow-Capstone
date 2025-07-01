@@ -7,32 +7,52 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.get('/lookup', async (req, res) => {
+
+  // Step 0: Check if the barcode query parameter is provided
   const { barcode } = req.query;
   if (!barcode) return res.status(400).json({ error: 'Missing barcode' });
 
-  const clientId = process.env.FATSECRET_CLIENT_ID;
-  const clientSecret = process.env.FATSECRET_CLIENT_SECRET;
-
+  // Step 1: Get access token from FatSecret
   try {
+    // Fetch access token from FatSecret, using the client credentials that we'll provide in the .env file to the render server
     const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `grant_type=client_credentials&scope=basic&client_id=${clientId}&client_secret=${clientSecret}`,
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'basic',
+        client_id: process.env.FATSECRET_CLIENT_ID,
+        client_secret: process.env.FATSECRET_CLIENT_SECRET,
+      }),
     });
+
+    // Check if token request was successful
     const tokenData = await tokenRes.json();
 
-    const apiRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+    // If the token request failed, return an error
+    if (!tokenData.access_token) {
+      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
+    }
+
+    // Step 2: Make FatSecret request
+    const fatsecretRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `method=food.find_id_for_barcode&barcode=${barcode}&format=json`,
+      body: new URLSearchParams({
+        method: 'food.find_id_for_barcode',
+        barcode,
+        format: 'json',
+      }),
     });
 
-    const foodData = await apiRes.json();
+    const foodData = await fatsecretRes.json();
+
     res.json(foodData);
   } catch (err) {
+    console.error('Error talking to FatSecret:', err);
     res.status(500).json({ error: 'Failed to fetch from FatSecret' });
   }
 });
