@@ -12,6 +12,22 @@ import { TextInput, Button, Alert } from 'react-native';
 
 export default function HomeScreen() {
 
+  // COLIN: This function will be called when the button is pressed
+  // It will fetch data from the FatSecret API using the barcode entered in the input field and passing it to a web service
+  const callBarcodeLookup = async () => {
+    try {
+      const response = await fetch(
+        `https://frontrow-capstone.onrender.com/lookup?barcode=${inputValue}`
+      );
+      const data = await response.json();
+      console.log('FatSecret response:', data);
+      // You could update state here to show it in the UI
+    } catch (error) {
+      console.error('Error fetching barcode data:', error);
+    }
+  };
+
+
   const [inputValue, setInputValue] = useState('');
 
   return (
@@ -33,10 +49,7 @@ export default function HomeScreen() {
       />
       <Button
         title="Submit"
-        onPress={() => {
-          // COLIN: Replace this alert with the actual API call later
-          Alert.alert('Input Submitted', `You entered: ${inputValue}`);
-        }}
+        onPress={callBarcodeLookup}
       />
     </ThemedView>
 
