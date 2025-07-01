@@ -10,6 +10,10 @@ app.get('/lookup', async (req, res) => {
 
   // Step 0: Check if the barcode query parameter is provided
   const { barcode } = req.query;
+  console.log('Received request to /lookup');
+  console.log('Query parameters:', req.query);
+  logger.info('Received barcode:', barcode);
+  
   if (!barcode) return res.status(400).json({ error: 'Missing barcode' });
 
   // Step 1: Get access token from FatSecret
@@ -20,7 +24,7 @@ app.get('/lookup', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'basic',
+        scope: 'basic barcode',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
@@ -28,6 +32,7 @@ app.get('/lookup', async (req, res) => {
 
     // Check if token request was successful
     const tokenData = await tokenRes.json();
+    console.log('Token data:', tokenData);
 
     // If the token request failed, return an error
     if (!tokenData.access_token) {
