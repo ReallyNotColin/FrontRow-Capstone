@@ -12,7 +12,6 @@ app.get('/lookup', async (req, res) => {
   const { barcode } = req.query;
   console.log('Received request to /lookup');
   console.log('Query parameters:', req.query);
-  logger.info('Received barcode:', barcode);
   
   if (!barcode) return res.status(400).json({ error: 'Missing barcode' });
 
