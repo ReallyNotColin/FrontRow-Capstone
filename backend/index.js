@@ -53,7 +53,13 @@ app.get('/lookup', async (req, res) => {
       }),
     });
 
+    if (!fatsecretRes.ok) {
+      const text = await fatsecretRes.text();
+      console.error('Unexpected response:', text);
+      throw new Error(`HTTP ${fatsecretRes.status}: ${fatsecretRes.statusText}`);
+    }
     const foodData = await fatsecretRes.json();
+    console.log('FatSecret response:', foodData);
 
     res.json(foodData);
   } catch (err) {
