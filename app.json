@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "NibbleWise",
-    "slug": "NibbleWise",
+    "slug": "nibblewise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -41,8 +41,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "af1bc031-d9a2-43c9-ba97-3e3b79950ca5"
+        "projectId": "f28cce3f-2ecc-4350-bcca-20112757317b"
       }
-    }
+    },
+    "owner": "reallynotcolin"
   }
 }
