@@ -75,7 +75,8 @@ app.get('/food-details', async (req, res) => {
   }
 
   try {
-    const tokenRes2 = await fetch('https://oauth.fatsecret.com/connect/token', {
+    // Step 1: Get access token using allowed scopes
+    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -86,26 +87,42 @@ app.get('/food-details', async (req, res) => {
       }),
     });
 
-    const tokenData2 = await tokenRes2.json();
-    const accessToken = tokenData2.access_token;
-
-    if (!accessToken) {
-      return res.status(500).json({ error: 'Failed to get access token', details: tokenData2 });
+    const tokenText = await tokenRes.text();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch (parseError) {
+      console.error('OAuth token parse error. Raw response:', tokenText);
+      return res.status(502).json({ error: 'Invalid token response from FatSecret', raw: tokenText });
     }
 
+    const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      return res.status(500).json({ error: 'Token missing from FatSecret', details: tokenData });
+    }
+
+    // Step 2: Request food.get (no premium-only flags)
     const foodRes = await fetch(`https://platform.fatsecret.com/rest/v4/food.get?${new URLSearchParams({
       food_id,
-
     })}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
-    const foodData = await foodRes.json();
+    let foodData;
+    try {
+      foodData = await foodRes.json();
+    } catch (parseError) {
+      const raw = await foodRes.text();
+      console.error('FatSecret food.get returned non-JSON:', raw);
+      return res.status(502).json({ error: 'Invalid response from FatSecret', raw });
+    }
+
     res.json(foodData);
+
   } catch (err) {
-    console.error('Error fetching food details:', err);
+    console.error('Error in /food-details:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
