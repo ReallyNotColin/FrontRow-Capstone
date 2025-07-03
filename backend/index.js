@@ -80,7 +80,7 @@ app.get('/food-details', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'premier',
+        scope: 'food',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
@@ -95,9 +95,7 @@ app.get('/food-details', async (req, res) => {
 
     const foodRes = await fetch(`https://platform.fatsecret.com/rest/v4/food.get?${new URLSearchParams({
       food_id,
-      include_sub_categories: 'true',
-      include_food_image: 'true',
-      include_food_attributes: 'true',
+
     })}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
