@@ -90,7 +90,7 @@ app.get('/food-details', async (req, res) => {
     const accessToken = tokenData2.access_token;
 
     if (!accessToken) {
-      return res.status(500).json({ error: 'Failed to get access token', details: tokenData });
+      return res.status(500).json({ error: 'Failed to get access token', details: tokenData2 });
     }
 
     const foodRes = await fetch(`https://platform.fatsecret.com/rest/v4/food.get?${new URLSearchParams({
