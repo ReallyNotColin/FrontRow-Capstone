@@ -39,7 +39,7 @@ app.get('/lookup-food-id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
     }
 
-    // Step 2: Make FatSecret request
+    // Step 2: Make FatSecret request for food ID using the barcode
     const fatsecretRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
       method: 'POST',
       headers: {
@@ -67,7 +67,7 @@ app.get('/lookup-food-id', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch from FatSecret' });
   }
 });
-
+/*================================================================================================================ */
 app.get('/food-details', async (req, res) => {
   const { food_id } = req.query;
   if (!food_id) {
@@ -81,44 +81,51 @@ app.get('/food-details', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'basic food',
+        scope: 'basic',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
     });
 
-    const tokenText = await tokenRes2.text();
-    let tokenData2;
-    try {
-      tokenData2 = JSON.parse(tokenText);
-    } catch (parseError) {
-      console.error('OAuth token parse error. Raw response:', tokenText);
-      return res.status(502).json({ error: 'Invalid token response from FatSecret', raw: tokenText });
-    }
+    const tokenData2 = await tokenRes2.json();
+    console.log('Token2 data:', tokenData2);
 
-    const accessToken = tokenData2.access_token;
-    if (!accessToken) {
-      return res.status(500).json({ error: 'Token missing from FatSecret', details: tokenData2 });
+    // If the token request failed, return an error
+    if (!tokenData2.access_token) {
+      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
     }
-
-    // Step 2: Request food.get (no premium-only flags)
-    const foodRes = await fetch(`https://platform.fatsecret.com/rest/v4/food.get?${new URLSearchParams({
+    // Step 2: Make FatSecret request for food details using the food_id
+    const foodDataRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenData2.access_token}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      method: 'food.get.v4',
       food_id,
-    })}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      format: 'json',
+    }),
     });
 
-    let foodData;
-    try {
-      foodData = await foodRes.json();
-    } catch (parseError) {
-      const raw = await foodRes.text();
-      console.error('FatSecret food.get returned non-JSON:', raw);
-      return res.status(502).json({ error: 'Invalid response from FatSecret', raw });
-    }
+    // // Step 2: Request food.get (no premium-only flags)
+    // const foodRes = await fetch(`https://platform.fatsecret.com/rest/v4/food.get?${new URLSearchParams({
+    //   food_id,
+    // })}`, {
+    //   headers: {
+    //     Authorization: `Bearer ${accessToken}`,
+    //   },
+    // });
 
+    // let foodData;
+    // try {
+    //   foodData = await foodRes.json();
+    // } catch (parseError) {
+    //   const raw = await foodRes.text();
+    //   console.error('FatSecret food.get returned non-JSON:', raw);
+    //   return res.status(502).json({ error: 'Invalid response from FatSecret', raw });
+    // }
+    const foodData = await foodDataRes.json()
     res.json(foodData);
 
   } catch (err) {
