@@ -76,7 +76,7 @@ app.get('/food-details', async (req, res) => {
 
   try {
     // Step 1: Get access token using allowed scopes
-    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
+    const tokenRes2 = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -87,18 +87,18 @@ app.get('/food-details', async (req, res) => {
       }),
     });
 
-    const tokenText = await tokenRes.text();
-    let tokenData;
+    const tokenText = await tokenRes2.text();
+    let tokenData2;
     try {
-      tokenData = JSON.parse(tokenText);
+      tokenData2 = JSON.parse(tokenText);
     } catch (parseError) {
       console.error('OAuth token parse error. Raw response:', tokenText);
       return res.status(502).json({ error: 'Invalid token response from FatSecret', raw: tokenText });
     }
 
-    const accessToken = tokenData.access_token;
+    const accessToken = tokenData2.access_token;
     if (!accessToken) {
-      return res.status(500).json({ error: 'Token missing from FatSecret', details: tokenData });
+      return res.status(500).json({ error: 'Token missing from FatSecret', details: tokenData2 });
     }
 
     // Step 2: Request food.get (no premium-only flags)
