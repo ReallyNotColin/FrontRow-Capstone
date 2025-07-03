@@ -10,22 +10,36 @@ import { ThemedView } from '@/components/ThemedView';
 import React, { useState } from 'react';
 import { TextInput, Button, Alert } from 'react-native';
 
+const [inputValue, setInputValue] = useState('');
+const [foodData, setFoodData] = useState<any>(null);
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState('');
+
+
 export default function HomeScreen() {
 
-  // COLIN: This function will be called when the button is pressed
-  // It will fetch data from the FatSecret API using the barcode entered in the input field and passing it to a web service
   const callBarcodeLookup = async () => {
-    try {
-      const response = await fetch(
-        `https://frontrow-capstone.onrender.com/lookup?barcode=${inputValue}`
-      );
-      const data = await response.json();
-      console.log('FatSecret response:', data);
-      // You could update state here to show it in the UI
-    } catch (error) {
-      console.error('Error fetching barcode data:', error);
+  setLoading(true);
+  setError('');
+  setFoodData(null);
+
+  try {
+    const response = await fetch(`https://frontrow-capstone.onrender.com/lookup-food_id?barcode=${inputValue}`);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Unexpected response:', text);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
-  };
+    const data = await response.json();
+    setFoodData(data.food); // API should return { food: {...} }
+  } catch (err) {
+    setError('Failed to fetch food details. Try another barcode.');
+    console.error('Error fetching barcode:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
 
   const [inputValue, setInputValue] = useState('');
@@ -51,6 +65,32 @@ export default function HomeScreen() {
         title="Submit"
         onPress={callBarcodeLookup}
       />
+
+
+
+      {loading && <Text>Loading...</Text>}
+
+      {error.length > 0 && (
+        <Text style={{ color: 'red', marginTop: 8 }}>{error}</Text>
+      )}
+
+      {foodData && (
+        <View style={{ marginTop: 20, padding: 12, borderWidth: 1, borderRadius: 8 }}>
+          {foodData.food_image && (
+            <Image
+              source={{ uri: foodData.food_image }}
+              style={{ width: '100%', height: 200, resizeMode: 'contain', marginBottom: 12 }}
+            />
+          )}
+          <Text style={{ fontSize: 18, fontWeight: 'bold' }}>{foodData.food_name}</Text>
+          <Text style={{ fontStyle: 'italic', marginVertical: 4 }}>
+            {foodData.food_type} {foodData.brand_name ? `— ${foodData.brand_name}` : ''}
+          </Text>
+          <ScrollView style={{ maxHeight: 200, marginTop: 8 }}>
+            <Text>{JSON.stringify(foodData, null, 2)}</Text>
+          </ScrollView>
+        </View>
+      )}
     </ThemedView>
 
     </ParallaxScrollView>
