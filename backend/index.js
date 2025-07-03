@@ -6,7 +6,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.get('/lookup', async (req, res) => {
+app.get('/lookup-food-id', async (req, res) => {
 
   // Step 0: Check if the barcode query parameter is provided
   const { barcode } = req.query;
