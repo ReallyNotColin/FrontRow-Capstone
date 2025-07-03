@@ -75,7 +75,7 @@ app.get('/food-details', async (req, res) => {
   }
 
   try {
-    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
+    const tokenRes2 = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -86,7 +86,7 @@ app.get('/food-details', async (req, res) => {
       }),
     });
 
-    const tokenData2 = await tokenRes.json();
+    const tokenData2 = await tokenRes2.json();
     const accessToken = tokenData2.access_token;
 
     if (!accessToken) {
