@@ -16,7 +16,7 @@ app.get('/lookup-food-id', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'basic barcode',
+        scope: 'basic barcode food',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
