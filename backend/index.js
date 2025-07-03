@@ -58,10 +58,10 @@ app.get('/lookup-food-id', async (req, res) => {
       console.error('Unexpected response:', text);
       throw new Error(`HTTP ${fatsecretRes.status}: ${fatsecretRes.statusText}`);
     }
-    const foodData = await fatsecretRes.json();
-    console.log('FatSecret response:', foodData);
+    const foodID = await fatsecretRes.json();
+    console.log('FatSecret response:', foodID);
 
-    res.json(foodData);
+    res.json(foodID);
   } catch (err) {
     console.error('Error talking to FatSecret:', err);
     res.status(500).json({ error: 'Failed to fetch from FatSecret' });
@@ -81,14 +81,15 @@ app.get('/food-details', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'basic',
+        scope: 'premier',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
     });
 
+    // NOTE: constants should be function scoped, so we potentially don't need to redefine them as "token2" or something like that. need to check
     const tokenData2 = await tokenRes2.json();
-    console.log('Token2 data:', tokenData2);
+    //console.log('Token2 data:', tokenData2);
 
     // If the token request failed, return an error
     if (!tokenData2.access_token) {
@@ -104,28 +105,15 @@ app.get('/food-details', async (req, res) => {
     body: new URLSearchParams({
       method: 'food.get.v4',
       food_id,
+      include_sub_categories: 'true', // get names of all sub categories associated with the food
+      include_food_attributes: 'true', // get allergens 
       format: 'json',
     }),
     });
 
-    // // Step 2: Request food.get (no premium-only flags)
-    // const foodRes = await fetch(`https://platform.fatsecret.com/rest/v4/food.get?${new URLSearchParams({
-    //   food_id,
-    // })}`, {
-    //   headers: {
-    //     Authorization: `Bearer ${accessToken}`,
-    //   },
-    // });
 
-    // let foodData;
-    // try {
-    //   foodData = await foodRes.json();
-    // } catch (parseError) {
-    //   const raw = await foodRes.text();
-    //   console.error('FatSecret food.get returned non-JSON:', raw);
-    //   return res.status(502).json({ error: 'Invalid response from FatSecret', raw });
-    // }
     const foodData = await foodDataRes.json()
+    console.log('Food details response:', foodData);
     res.json(foodData);
 
   } catch (err) {
