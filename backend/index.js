@@ -86,8 +86,8 @@ app.get('/food-details', async (req, res) => {
       }),
     });
 
-    const tokenData = await tokenRes.json();
-    const accessToken = tokenData.access_token;
+    const tokenData2 = await tokenRes.json();
+    const accessToken = tokenData2.access_token;
 
     if (!accessToken) {
       return res.status(500).json({ error: 'Failed to get access token', details: tokenData });
