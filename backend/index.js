@@ -6,6 +6,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Get Food ID from barcode endpoint
 app.get('/lookup-food-id', async (req, res) => {
 
   // Step 0: Check if the barcode query parameter is provided
@@ -66,9 +67,11 @@ app.get('/lookup-food-id', async (req, res) => {
     console.error('Error talking to FatSecret:', err);
     res.status(500).json({ error: 'Failed to fetch from FatSecret' });
   }
-});
-/*================================================================================================================ */
+}); // End of Get Food ID from barcode endpoint
+
+// Food details endpoint
 app.get('/food-details', async (req, res) => {
+  // Step 0: Check if the food_id query parameter is provided
   const { food_id } = req.query;
   if (!food_id) {
     return res.status(400).json({ error: 'Missing food_id' });
@@ -91,11 +94,11 @@ app.get('/food-details', async (req, res) => {
     const tokenData2 = await tokenRes2.json();
     //console.log('Token2 data:', tokenData2);
 
-    // If the token request failed, return an error
     if (!tokenData2.access_token) {
-      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
+      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData2 });
     }
     // Step 2: Make FatSecret request for food details using the food_id
+    // NOTE: fatsecret recommends using a URL method instead of a POST method for this request, but this works fine for now
     const foodDataRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
     method: 'POST',
     headers: {
@@ -120,7 +123,56 @@ app.get('/food-details', async (req, res) => {
     console.error('Error in /food-details:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+}); // End of Food details endpoint
+
+/*========================================================================================= */
+
+// Autocomplete endpoint
+app.get('/autocomplete', async (req, res) => {
+  // Step 0: Check if the expression query parameter is provided
+  const { expression } = req.query;
+  if (!expression) {
+    return res.status(400).json({ error: 'Missing search expression' });
+  }
+
+  // Step 1: Get access token using allowed scopes
+  try {
+    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'premier', 
+        client_id: process.env.FATSECRET_CLIENT_ID,
+        client_secret: process.env.FATSECRET_CLIENT_SECRET,
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    
+    // Step 2: Call fatsecret API for autocomplete suggestions
+    // NOTE: fatsecret recommends using a URL method instead of a POST method for this request, but this works fine for now
+    const autocompleteRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      method: 'foods.autocomplete.v2',
+      expression,
+      format: 'json',
+      //max_results: '10', // Limit results to 10 for performance 
+    }),
+    });
+
+    const data = await autocompleteRes.json();
+    res.json(data);
+  } catch (err) {
+    console.error('Autocomplete error:', err);
+    res.status(500).json({ error: 'Failed to fetch autocomplete suggestions' });
+  }
+}); // End of Autocomplete endpoint
 
 
 app.listen(port, () => {
