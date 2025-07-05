@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, TextInput, Text, FlatList, StyleSheet } from 'react-native';
+import { View, TextInput, Text, ScrollView, StyleSheet } from 'react-native';
 
 const debounce = (func, delay) => {
   let timeout;
@@ -14,12 +14,13 @@ export default function AutocompleteScreen() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
   const fetchSuggestions = async (text: string) => {
-    if (text.length < 2) return; // don't spam with short queries
+    if (text.length < 2) return;
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`);
       const data = await res.json();
       console.log('Frontend Autocomplete data:', data);
-      setSuggestions(data?.foods?.food || []);
+      setSuggestions(data?.suggestions?.suggestion || []);
+      console.log(suggestions);
     } catch (err) {
       console.error('Autocomplete fetch error:', err);
     }
@@ -33,7 +34,7 @@ export default function AutocompleteScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>Search for food</Text>
       <TextInput
         placeholder="Start typing a food name..."
@@ -41,28 +42,27 @@ export default function AutocompleteScreen() {
         onChangeText={handleInputChange}
         style={styles.input}
       />
-      <FlatList
-        data={suggestions}
-        keyExtractor={(item, index) => `${item.food_id || index}`}
-        renderItem={({ item }) => (
-          <View style={styles.suggestionItem}>
-            <Text>{item.food_name}</Text>
-          </View>
-        )}
-        style={{ marginTop: 20 }}
-      />
-    </View>
+
+      <View style={styles.card}>
+        <Text style={styles.subheading}>Raw JSON:</Text>
+        <ScrollView style={styles.jsonScroll}>
+          <Text selectable style={styles.jsonText}>
+            {JSON.stringify(suggestions, null, 2)}
+          </Text>
+        </ScrollView>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 20,
+    gap: 20,
   },
   heading: {
     fontWeight: 'bold',
     fontSize: 16,
-    marginBottom: 10,
   },
   input: {
     borderWidth: 1,
@@ -70,9 +70,23 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
   },
-  suggestionItem: {
-    padding: 10,
-    borderBottomColor: '#ccc',
-    borderBottomWidth: 1,
+  card: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  subheading: {
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  jsonScroll: {
+    maxHeight: 300,
+  },
+  jsonText: {
+    fontSize: 12,
+    color: '#333',
   },
 });
