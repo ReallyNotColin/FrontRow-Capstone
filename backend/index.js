@@ -178,6 +178,65 @@ app.get('/autocomplete', async (req, res) => {
 }); // End of Autocomplete endpoint
 
 
+
+app.get('/search-food-entry', async (req, res) => {
+  const { name } = req.query;
+  if (!name) {
+    return res.status(400).json({ error: 'Missing food name' });
+  }
+
+  try {
+    // Step 1: Get access token
+    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'basic',
+        client_id: process.env.FATSECRET_CLIENT_ID,
+        client_secret: process.env.FATSECRET_CLIENT_SECRET,
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
+    }
+
+    // Step 2: Search for the food entry
+    const searchRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        method: 'foods.search',
+        search_expression: name,
+        format: 'json',
+      }),
+    });
+
+    const searchData = await searchRes.json();
+    // Right now just grab the first food entry from the search results
+    // If we are using the food product's exact entry name, I thiiiink we can assume the first entry is the most relevant one
+    const firstFood = searchData?.foods?.food?.[0];
+
+    if (!firstFood?.food_id) {
+      return res.status(404).json({ error: 'No matching food found' });
+    }
+
+    // Step 3: Get food details using existing endpoint
+    const detailsRes = await fetch(`https://frontrow-capstone.onrender.com/food-details?food_id=${firstFood.food_id}`);
+    const detailsData = await detailsRes.json();
+
+    res.json(detailsData);
+  } catch (err) {
+    console.error('Error in /search-food-entry:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

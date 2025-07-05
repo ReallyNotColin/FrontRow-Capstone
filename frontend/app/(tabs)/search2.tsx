@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, TextInput, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, TextInput, Text, Button, FlatList, StyleSheet } from 'react-native';
 
 const debounce = (func, delay) => {
   let timeout;
@@ -11,7 +11,7 @@ const debounce = (func, delay) => {
 
 export default function AutocompleteScreen() {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const fetchSuggestions = async (text: string) => {
     if (text.length < 2) return;
@@ -20,7 +20,6 @@ export default function AutocompleteScreen() {
       const data = await res.json();
       console.log('Frontend Autocomplete data:', data);
       setSuggestions(data?.suggestions?.suggestion || []);
-      console.log(suggestions);
     } catch (err) {
       console.error('Autocomplete fetch error:', err);
     }
@@ -33,8 +32,13 @@ export default function AutocompleteScreen() {
     debouncedFetch(text);
   };
 
+  const handleView = (item: string) => {
+    console.log(`View clicked for: ${item}`);
+    // You can hook this up to a new endpoint here in the future
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <View style={styles.wrapper}>
       <Text style={styles.heading}>Search for food</Text>
       <TextInput
         placeholder="Start typing a food name..."
@@ -43,50 +47,51 @@ export default function AutocompleteScreen() {
         style={styles.input}
       />
 
-      <View style={styles.card}>
-        <Text style={styles.subheading}>Raw JSON:</Text>
-        <ScrollView style={styles.jsonScroll}>
-          <Text selectable style={styles.jsonText}>
-            {JSON.stringify(suggestions, null, 2)}
-          </Text>
-        </ScrollView>
-      </View>
-    </ScrollView>
+      <FlatList
+        data={suggestions}
+        keyExtractor={(item, index) => `${item}-${index}`}
+        renderItem={({ item }) => (
+          <View style={styles.suggestionBox}>
+            <Text style={styles.suggestionText}>{item}</Text>
+            <Button title="View" onPress={() => handleView(item)} />
+          </View>
+        )}
+        contentContainerStyle={styles.listContent}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
+    flex: 1,
     padding: 20,
-    gap: 20,
   },
   heading: {
     fontWeight: 'bold',
     fontSize: 16,
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
     borderColor: '#888',
     padding: 8,
     borderRadius: 6,
+    marginBottom: 16,
   },
-  card: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: '#f0f0f0',
+  listContent: {
+    paddingBottom: 100,
+  },
+  suggestionBox: {
+    padding: 12,
+    backgroundColor: '#f2f2f2',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ccc',
+    marginBottom: 12,
   },
-  subheading: {
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  jsonScroll: {
-    maxHeight: 300,
-  },
-  jsonText: {
-    fontSize: 12,
-    color: '#333',
+  suggestionText: {
+    fontSize: 16,
+    marginBottom: 8,
   },
 });
