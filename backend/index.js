@@ -149,7 +149,8 @@ app.get('/autocomplete', async (req, res) => {
     });
 
     const tokenData = await tokenRes.json();
-    
+    console.log('Autocomplete token data:', tokenData);
+
     // Step 2: Call fatsecret API for autocomplete suggestions
     // NOTE: fatsecret recommends using a URL method instead of a POST method for this request, but this works fine for now
     const autocompleteRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
@@ -167,6 +168,8 @@ app.get('/autocomplete', async (req, res) => {
     });
 
     const data = await autocompleteRes.json();
+
+    console.log('Backend: Autocomplete response:', data);
     res.json(data);
   } catch (err) {
     console.error('Autocomplete error:', err);

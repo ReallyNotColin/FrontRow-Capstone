@@ -18,6 +18,7 @@ export default function AutocompleteScreen() {
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`);
       const data = await res.json();
+      console.log('Frontend Autocomplete data:', data);
       setSuggestions(data?.foods?.food || []);
     } catch (err) {
       console.error('Autocomplete fetch error:', err);
