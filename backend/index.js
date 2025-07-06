@@ -189,8 +189,8 @@ async function fetchFoodDetails(food_id, accessToken) {
     body: new URLSearchParams({
       method: 'food.get.v4',
       food_id,
-      include_sub_categories: 'true',
-      include_food_attributes: 'true',
+      include_sub_categories: 'true', // get names of all sub categories associated with the food
+      include_food_attributes: 'true', // get allergens 
       format: 'json',
     }),
   });
