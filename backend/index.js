@@ -218,10 +218,10 @@ app.get('/search-food-entry', async (req, res) => {
     });
 
     const searchData = await searchRes.json();
+    console.log('Search response:', searchData);
     // Right now just grab the first food entry from the search results
     // If we are using the food product's exact entry name, I thiiiink we can assume the first entry is the most relevant one
     const firstFood = searchData?.foods?.food?.[0];
-
     if (!firstFood?.food_id) {
       return res.status(404).json({ error: 'No matching food found' });
     }
@@ -229,7 +229,7 @@ app.get('/search-food-entry', async (req, res) => {
     // Step 3: Get food details using existing endpoint
     const detailsRes = await fetch(`https://frontrow-capstone.onrender.com/food-details?food_id=${firstFood.food_id}`);
     const detailsData = await detailsRes.json();
-
+    console.log('Food details response:', detailsData);
     res.json(detailsData);
   } catch (err) {
     console.error('Error in /search-food-entry:', err);
