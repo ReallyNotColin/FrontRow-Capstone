@@ -179,35 +179,68 @@ app.get('/autocomplete', async (req, res) => {
 
 
 
+// Helper function to fetch food details using food_id
+async function fetchFoodDetails(food_id, accessToken) {
+  const foodDataRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      method: 'food.get.v4',
+      food_id,
+      include_sub_categories: 'true',
+      include_food_attributes: 'true',
+      format: 'json',
+    }),
+  });
+
+  if (!foodDataRes.ok) {
+    const errorText = await foodDataRes.text();
+    throw new Error(`FatSecret food.get.v4 failed: ${errorText}`);
+  }
+
+  const data = await foodDataRes.json();
+  return data;
+}
+
+// Revised /search-food-entry endpoint
 app.get('/search-food-entry', async (req, res) => {
   const { name } = req.query;
+
+  console.log('Received request to /search-food-entry');
+  console.log('Query parameters:', req.query);
+
   if (!name) {
     return res.status(400).json({ error: 'Missing food name' });
   }
 
   try {
-    // Step 1: Get access token
-    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
+    // Step 1: Get access token for search and details
+    const tokenRes3 = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'basic',
+        scope: 'premier',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
     });
 
-    const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) {
-      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
+    const tokenData3 = await tokenRes3.json();
+    if (!tokenData3.access_token) {
+      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData3 });
     }
+
+    console.log('Access token for food.search:', tokenData3.access_token);
 
     // Step 2: Search for the food entry
     const searchRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${tokenData.access_token}`,
+        Authorization: `Bearer ${tokenData3.access_token}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
@@ -218,24 +251,25 @@ app.get('/search-food-entry', async (req, res) => {
     });
 
     const searchData = await searchRes.json();
-    console.log('Search response:', searchData);
-    // Right now just grab the first food entry from the search results
-    // If we are using the food product's exact entry name, I thiiiink we can assume the first entry is the most relevant one
+    console.log('food.search response:', searchData);
+
     const firstFood = searchData?.foods?.food?.[0];
+    console.log('Food.Search: First food entry:', firstFood);
+
     if (!firstFood?.food_id) {
       return res.status(404).json({ error: 'No matching food found' });
     }
 
-    // Step 3: Get food details using existing endpoint
-    const detailsRes = await fetch(`https://frontrow-capstone.onrender.com/food-details?food_id=${firstFood.food_id}`);
-    const detailsData = await detailsRes.json();
-    console.log('Food details response:', detailsData);
-    res.json(detailsData);
+    // Step 3: Get food details directly
+    const foodDetails = await fetchFoodDetails(firstFood.food_id, tokenData3.access_token);
+    res.json(foodDetails);
+
   } catch (err) {
     console.error('Error in /search-food-entry:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
