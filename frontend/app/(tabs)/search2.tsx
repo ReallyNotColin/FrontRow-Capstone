@@ -34,7 +34,7 @@ export default function AutocompleteScreen() {
 
   const handleViewPress = async (foodText) => {
     try {
-      const res = await fetch(`https://frontrow-capstone.onrender.com/search-by-name?expression=${encodeURIComponent(foodText)}`);
+      const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
       setSelectedFoodDetails(data);
     } catch (err) {
