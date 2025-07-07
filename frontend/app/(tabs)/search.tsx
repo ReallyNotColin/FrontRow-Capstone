@@ -22,6 +22,8 @@ export default function AutocompleteScreen() {
   const [suggestions, setSuggestions] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
+  const [allergenMatches, setAllergenMatches] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
@@ -48,9 +50,6 @@ export default function AutocompleteScreen() {
       //console.log('Full API response:', JSON.stringify(data, null, 2));
       // Get allergen names
       // Filter to only show present allergens
-      //<Text selectable style={styles.detailsText}>
-      //        {JSON.stringify(selectedFoodDetails, null, 2)}
-      //      </Text>
       const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
       // Testing
       console.log('Allergens:', allergens);
@@ -63,8 +62,15 @@ export default function AutocompleteScreen() {
   };
 
   const renderSuggestion = ({ item, index }) => {
-    const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen
-      ?.filter(a => a.value !== "0");
+    const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0");
+
+    const profile = ['Milk', 'Egg', 'Peanuts'];
+
+    const handleCompareAllergens = () => {
+      const matched = allergens.filter(a => profile.includes(a.name));
+      setAllergenMatches(matched.map(a => a.name));
+      setModalVisible(true);
+    };
 
     return (
       <View style={styles.suggestionCard}>
@@ -89,11 +95,15 @@ export default function AutocompleteScreen() {
                 </View>
               )}
               {(!allergens || allergens.length === 0) && (
-                <Text style={styles.detailsText}>No allergens found 🎉</Text>
+                <Text style={styles.detailsText}>No allergens found</Text>
               )}
             </ScrollView>
             <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
               <Text style={styles.buttonText}>Collapse</Text>
+            </Pressable>
+
+            <Pressable style={styles.compareButton} onPress={handleCompareAllergens}>
+                    <Text style={styles.buttonText}>Compare with My Allergens</Text>
             </Pressable>
           </View>
         )}
@@ -117,6 +127,23 @@ export default function AutocompleteScreen() {
         keyExtractor={(item, index) => `${item}-${index}`}
         style={styles.list}
       />
+      {modalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
+            {allergenMatches.length > 0 ? (
+              allergenMatches.map((name, index) => (
+                <Text key={index} style={styles.modalText}>• {name}</Text>
+              ))
+            ) : (
+              <Text style={styles.modalText}>No matches found 🎉</Text>
+            )}
+            <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+              <Text style={styles.buttonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -170,6 +197,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderColor: '#ddd',
     borderWidth: 1,
+    position: 'relative',
   },
   detailsScroll: {
     maxHeight: 200,
@@ -205,5 +233,56 @@ const styles = StyleSheet.create({
   allergenText: {
     color: 'white',
     fontSize: 12,
+  },
+  compareButton: {
+    position : 'absolute',
+    bottom: 10,
+    left: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#FF7F50',
+    borderRadius: 6,
+  },
+  
+  matchText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#B00020',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  modalBox: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    width: '80%',
+    elevation: 10,
+    alignItems: 'center',
+  },
+  modalHeading: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 14,
+    marginVertical: 2,
+    color: '#333',
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    backgroundColor: '#444',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderRadius: 6,
   },
 });
