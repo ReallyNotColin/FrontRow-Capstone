@@ -25,6 +25,8 @@ export default function AutocompleteScreen() {
   const [suggestions, setSuggestions] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
+  const [allergenMatches, setAllergenMatches] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
@@ -48,6 +50,13 @@ export default function AutocompleteScreen() {
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
+      //console.log('Full API response:', JSON.stringify(data, null, 2));
+      // Get allergen names
+      // Filter to only show present allergens
+      const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
+      // Testing
+      console.log('Allergens:', allergens);
+
       setSelectedFoodDetails(data);
       setExpandedIndex(index);
     } catch (err) {
@@ -55,27 +64,55 @@ export default function AutocompleteScreen() {
     }
   };
 
-  const renderSuggestion = ({ item, index }) => (
-    <View style={styles.suggestionCard}>
-      <Text style={styles.suggestionText}>{item}</Text>
-      <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
-        <Text style={styles.buttonText}>View</Text>
-      </Pressable>
+  const renderSuggestion = ({ item, index }) => {
+    const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0");
 
-      {expandedIndex === index && selectedFoodDetails && (
-        <View style={styles.detailsBox}>
-          <ScrollView style={styles.detailsScroll}>
-            <Text selectable style={styles.detailsText}>
-              {JSON.stringify(selectedFoodDetails, null, 2)}
-            </Text>
-          </ScrollView>
-          <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
-            <Text style={styles.buttonText}>Collapse</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
-  );
+    const profile = ['Milk', 'Egg', 'Peanuts'];
+
+    const handleCompareAllergens = () => {
+      const matched = allergens.filter(a => profile.includes(a.name));
+      setAllergenMatches(matched.map(a => a.name));
+      setModalVisible(true);
+    };
+
+    return (
+      <View style={styles.suggestionCard}>
+        <Text style={styles.suggestionText}>{item}</Text>
+        <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
+          <Text style={styles.buttonText}>View</Text>
+        </Pressable>
+
+        {expandedIndex === index && selectedFoodDetails && (
+          <View style={styles.detailsBox}>
+            <ScrollView style={styles.detailsScroll}>
+              {allergens?.length > 0 && (
+                <View style={styles.allergenContainer}>
+                  <Text style={styles.detailsText}>Allergens:</Text>
+                  <View style={styles.allergenBlockWrapper}>
+                    {allergens.map((a, i) => (
+                      <View key={i} style={styles.allergenBlock}>
+                        <Text style={styles.allergenText}>{a.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              {(!allergens || allergens.length === 0) && (
+                <Text style={styles.detailsText}>No allergens found</Text>
+              )}
+            </ScrollView>
+            <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
+              <Text style={styles.buttonText}>Collapse</Text>
+            </Pressable>
+
+            <Pressable style={styles.compareButton} onPress={handleCompareAllergens}>
+                    <Text style={styles.buttonText}>Compare with My Allergens</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -165,6 +202,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderColor: '#ddd',
     borderWidth: 1,
+    position: 'relative',
   },
   detailsScroll: {
     maxHeight: 200,
@@ -180,6 +218,77 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 4,
+  },
+  allergenContainer: {
+    marginTop: 10,
+  },
+  allergenBlockWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+  },
+  allergenBlock: {
+    backgroundColor: '#FF4D4D',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  allergenText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  compareButton: {
+    position : 'absolute',
+    bottom: 10,
+    left: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#FF7F50',
+    borderRadius: 6,
+  },
+  
+  matchText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#B00020',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  modalBox: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    width: '80%',
+    elevation: 10,
+    alignItems: 'center',
+  },
+  modalHeading: {
+    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 14,
+    marginVertical: 2,
+    color: '#333',
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    backgroundColor: '#444',
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderRadius: 6,
   },
 });
 
