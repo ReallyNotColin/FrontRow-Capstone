@@ -55,14 +55,6 @@ export default function AutocompleteScreen() {
       // Testing
       console.log('Allergens:', allergens);
 
-      {allergens?.length > 0 && (
-        <>
-          <Text style={styles.detailsText}>Allergens:</Text>
-          {allergens.map((a, i) => (
-            <Text key={i} style={styles.detailsText}>• {a.name}</Text>
-          ))}
-        </>
-      )}
       setSelectedFoodDetails(data);
       setExpandedIndex(index);
     } catch (err) {
@@ -70,35 +62,44 @@ export default function AutocompleteScreen() {
     }
   };
 
-  const renderSuggestion = ({ item, index }) => (
-    <View style={styles.suggestionCard}>
-      <Text style={styles.suggestionText}>{item}</Text>
-      <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
-        <Text style={styles.buttonText}>View</Text>
-      </Pressable>
-      {expandedIndex === index && selectedFoodDetails && (
-        <View style={styles.detailsBox}>
-          
-          
-          <ScrollView style={styles.detailsScroll}>
-            <View> 
-              <Text style={styles.detailsText}>Allergens:</Text>
-              {selectedFoodDetails?.food?.food_attributes?.allergens?.allergen
-                ?.filter(a => a.value !== "0")
-                ?.map((a, i) => (
-                  <Text key={i} style={styles.detailsText}>• {a.name}</Text>
-              )) || <Text style={styles.detailsText}>None</Text>}
-            </View>
-          
-          
-          </ScrollView>
-          <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
-            <Text style={styles.buttonText}>Collapse</Text>
-          </Pressable>
-        </View>
-      )}
-    </View>
-  );
+  const renderSuggestion = ({ item, index }) => {
+    const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen
+      ?.filter(a => a.value !== "0");
+
+    return (
+      <View style={styles.suggestionCard}>
+        <Text style={styles.suggestionText}>{item}</Text>
+        <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
+          <Text style={styles.buttonText}>View</Text>
+        </Pressable>
+
+        {expandedIndex === index && selectedFoodDetails && (
+          <View style={styles.detailsBox}>
+            <ScrollView style={styles.detailsScroll}>
+              {allergens?.length > 0 && (
+                <View style={styles.allergenContainer}>
+                  <Text style={styles.detailsText}>Allergens:</Text>
+                  <View style={styles.allergenBlockWrapper}>
+                    {allergens.map((a, i) => (
+                      <View key={i} style={styles.allergenBlock}>
+                        <Text style={styles.allergenText}>{a.name}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+              {(!allergens || allergens.length === 0) && (
+                <Text style={styles.detailsText}>No allergens found 🎉</Text>
+              )}
+            </ScrollView>
+            <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
+              <Text style={styles.buttonText}>Collapse</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -184,5 +185,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 4,
+  },
+  allergenContainer: {
+    marginTop: 10,
+  },
+  allergenBlockWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+  },
+  allergenBlock: {
+    backgroundColor: '#FF4D4D',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  allergenText: {
+    color: 'white',
+    fontSize: 12,
   },
 });
