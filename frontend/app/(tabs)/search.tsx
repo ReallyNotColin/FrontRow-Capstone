@@ -9,6 +9,9 @@ import {
   ScrollView,
 } from 'react-native';
 
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -75,43 +78,62 @@ export default function AutocompleteScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Search for Food</Text>
-      <TextInput
-        placeholder="Start typing a food name..."
-        value={query}
-        onChangeText={handleInputChange}
-        style={styles.input}
-      />
+    <ScrollView style={styles.container}>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">Search</ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.divider} />
 
-      <FlatList
-        data={suggestions}
-        renderItem={renderSuggestion}
-        keyExtractor={(item, index) => `${item}-${index}`}
-        style={styles.list}
-      />
-    </View>
+      <ThemedView style={styles.innerContainer}>
+        <TextInput
+          placeholder="Start typing a food name..."
+          value={query}
+          onChangeText={handleInputChange}
+          style={styles.input}
+        />
+
+        <FlatList
+          data={suggestions}
+          renderItem={renderSuggestion}
+          keyExtractor={(item, index) => `${item}-${index}`}
+          style={styles.list}
+          scrollEnabled={false} 
+        />
+      </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
     flex: 1,
+    backgroundColor: 'transparent',
   },
-  heading: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 12,
+  titleContainer: {
+    paddingTop: 60,
+    paddingBottom: 10,
+    paddingHorizontal: 24,
+  },
+  divider: {
+    height: 2,
+    backgroundColor: '#E5E5EA',
+    marginBottom: 16,
+    width: '100%',
+  },
+  innerContainer: {
+    paddingHorizontal: 24,
+    backgroundColor: 'transparent',
   },
   input: {
     borderWidth: 1,
     borderColor: '#888',
     padding: 8,
     borderRadius: 6,
+    backgroundColor: 'transparent',
   },
   list: {
     marginTop: 20,
+    backgroundColor: 'transparent',
   },
   suggestionCard: {
     flexDirection: 'column',
@@ -120,7 +142,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 10,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'transparent',
   },
   suggestionText: {
     fontSize: 16,
@@ -160,3 +182,4 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 });
+
