@@ -1,29 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getHistory } from '@/db/history';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function Screen() {
   const [harmful, setHarmful] = useState([]);
   const [notHarmful, setNotHarmful] = useState([]);
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const data = await getHistory();
-        const harmfulEntries = data.filter(item => item.match && item.match.trim() !== '');
-        const safeEntries = data.filter(item => !item.match || item.match.trim() === '');
-        setHarmful(harmfulEntries);
-        setNotHarmful(safeEntries);
-      } catch (error) {
-        console.error('[History] Failed to load history:', error);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      const loadHistory = async () => {
+        try {
+          const data = await getHistory();
+          const harmfulEntries = data.filter(item => item.match && item.match.trim() !== '');
+          const safeEntries = data.filter(item => !item.match || item.match.trim() === '');
+          setHarmful(harmfulEntries);
+          setNotHarmful(safeEntries);
+        } catch (error) {
+          console.error('[History] Failed to load history:', error);
+        }
+      };
 
-    loadHistory();
-  }, []);
+      loadHistory();
+    }, [])
+  );
 
   const renderEntry = (item) => (
     <View key={item.id} style={styles.entry}>

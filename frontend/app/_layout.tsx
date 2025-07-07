@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { initDB } from '@/db/history';
+import { initDB, clearHistory } from '@/db/history';
 import {useEffect} from 'react';
 
 export default function RootLayout() {
@@ -15,11 +15,11 @@ export default function RootLayout() {
   });
 
 useEffect(() => {
-    initDB(); // Ensure the table is created at app start
+    initDB();
+
   }, []);
 
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 
