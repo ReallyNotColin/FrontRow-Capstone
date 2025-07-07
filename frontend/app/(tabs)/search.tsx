@@ -11,6 +11,7 @@ import {
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { saveToHistory } from '@/db/history';
 
 const debounce = (func, delay) => {
   let timeout;
@@ -50,7 +51,7 @@ export default function AutocompleteScreen() {
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
-      //console.log('Full API response:', JSON.stringify(data, null, 2));
+      // console.log('Full API response:', JSON.stringify(data, null, 2));
       // Get allergen names
       // Filter to only show present allergens
       const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
@@ -59,6 +60,20 @@ export default function AutocompleteScreen() {
 
       setSelectedFoodDetails(data);
       setExpandedIndex(index);
+
+      const allergensString = allergens.join(', ');
+      const profile = ['Milk', 'Egg', 'Peanuts'];
+      const matchedAllergens = allergens.filter(a => profile.includes(a));
+      const matchedString = matchedAllergens.join(', ');
+
+      // Fixed: Make sure to await the database operation
+      try {
+        await saveToHistory(foodText, allergensString, matchedString);
+        console.log('Successfully saved to history');
+      } catch (saveError) {
+        console.error('Error saving to history:', saveError);
+      }
+
     } catch (err) {
       console.error('Search by name error:', err);
     }
@@ -291,4 +306,3 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
 });
-

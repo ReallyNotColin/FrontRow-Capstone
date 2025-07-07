@@ -19,8 +19,7 @@ const MAPPING = {
   'people.fill': 'people',
   'gearshape.fill': 'settings',
   'camera.fill': 'camera-alt',
-} as IconMapping;
-
+} as any;
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
  * This ensures a consistent look across platforms, and optimal resource usage.

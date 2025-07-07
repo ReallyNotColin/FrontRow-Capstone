@@ -5,12 +5,18 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { initDB } from '@/db/history';
+import {useEffect} from 'react';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+
+useEffect(() => {
+    initDB(); // Ensure the table is created at app start
+  }, []);
 
   if (!loaded) {
     // Async font loading only occurs in development.
