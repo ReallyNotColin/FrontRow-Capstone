@@ -45,6 +45,24 @@ export default function AutocompleteScreen() {
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
+      //console.log('Full API response:', JSON.stringify(data, null, 2));
+      // Get allergen names
+      // Filter to only show present allergens
+      //<Text selectable style={styles.detailsText}>
+      //        {JSON.stringify(selectedFoodDetails, null, 2)}
+      //      </Text>
+      const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
+      // Testing
+      console.log('Allergens:', allergens);
+
+      {allergens?.length > 0 && (
+        <>
+          <Text style={styles.detailsText}>Allergens:</Text>
+          {allergens.map((a, i) => (
+            <Text key={i} style={styles.detailsText}>• {a.name}</Text>
+          ))}
+        </>
+      )}
       setSelectedFoodDetails(data);
       setExpandedIndex(index);
     } catch (err) {
@@ -58,13 +76,21 @@ export default function AutocompleteScreen() {
       <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
         <Text style={styles.buttonText}>View</Text>
       </Pressable>
-
       {expandedIndex === index && selectedFoodDetails && (
         <View style={styles.detailsBox}>
+          
+          
           <ScrollView style={styles.detailsScroll}>
-            <Text selectable style={styles.detailsText}>
-              {JSON.stringify(selectedFoodDetails, null, 2)}
-            </Text>
+            <View> 
+              <Text style={styles.detailsText}>Allergens:</Text>
+              {selectedFoodDetails?.food?.food_attributes?.allergens?.allergen
+                ?.filter(a => a.value !== "0")
+                ?.map((a, i) => (
+                  <Text key={i} style={styles.detailsText}>• {a.name}</Text>
+              )) || <Text style={styles.detailsText}>None</Text>}
+            </View>
+          
+          
           </ScrollView>
           <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
             <Text style={styles.buttonText}>Collapse</Text>
