@@ -14,11 +14,11 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
-  'search.fill': 'search',
-  'bookmark.fill': 'history',
-  'people.fill': 'people',
-  'gearshape.fill': 'settings',
-  'camera.fill': 'camera-alt',
+  'magnifyingglass': 'search',
+  'clock': 'history',
+  'person.2': 'people',
+  'gearshape': 'settings',
+  'camera': 'camera-alt',
 } as any;
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
