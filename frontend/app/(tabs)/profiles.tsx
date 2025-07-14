@@ -1,10 +1,13 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Pressable, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, ScrollView, StyleSheet, Pressable, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function Screen() {
+  const [profiles, setProfiles] = useState([]);
+  const [groupProfiles, setGroupProfiles] = useState([]);
+
   return (
     <View style={styles.container}>
       <ScrollView>
@@ -12,14 +15,28 @@ export default function Screen() {
           <ThemedText type="title">Profiles</ThemedText>
         </ThemedView>
         <ThemedView style={styles.divider} />
-        <ThemedView style={styles.text}>
-          <ThemedText>This screen is under construction.</ThemedText>
-        </ThemedView>
+        <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Profiles</Text>
+        {/* Replace this with a FlatList or mapped components */}
+        <View style={styles.card}><Text>John Doe</Text></View>
+        <View style={styles.card}><Text>Jane Smith</Text></View>
+      </View>
+
+      {/* Group Profiles Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Group Profiles</Text>
+        {/* Replace this with your group data */}
+        <View style={styles.card}><Text>Family Group</Text></View>
+        <View style={styles.card}><Text>Work Team</Text></View>
+      </View>
       </ScrollView>
 
-      <Pressable style={styles.floatingButton} onPress={() => console.log('Button pressed')}>
-        <Text style={styles.buttonText}>+</Text>
-      </Pressable>
+      {/* Button at the bottom end of flex layout */}
+      <View style={styles.buttonContainer}>
+        <Pressable style={styles.button} onPress={() => console.log('Pressed')}>
+          <Text style={styles.buttonText}>+</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -43,26 +60,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: 24,
   },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    zIndex: 999,
+    buttonContainer: {
+    padding: 16,
+    alignItems: 'flex-end', // align to right
+    paddingBottom: Platform.OS === 'ios' ? 95 : 16,
+  },
+  button: {
     backgroundColor: '#007AFF',
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-    elevation: 5,
   },
   buttonText: {
     color: '#fff',
     fontSize: 28,
-    lineHeight: 32,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  card: {
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginBottom: 8,
   },
 });
