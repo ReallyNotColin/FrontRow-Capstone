@@ -4,9 +4,9 @@ import { ThemedView } from '@/components/ThemedView';
 import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet,} from 'react-native';
 
 export default function Profile() {
-  const [mainVisible, setMainVisible] = useState(false);
+  const [profileName, setprofileName] = useState(false);
   const [nestedVisible, setNestedVisible] = useState(false);
-  const [mainInput, setMainInput] = useState('');
+  const [nameInput, setnameInput] = useState('');
   const [nestedInput, setNestedInput] = useState('');
   const [items, setItems] = useState<string[]>([]);
 
@@ -43,20 +43,20 @@ export default function Profile() {
 
       {/* Button at the bottom end of flex layout */}
       <View style={styles.buttonContainer}>
-        <Pressable onPress={() => setMainVisible(true)} style={styles.button}>
-        <Text style={styles.buttonText}>+</Text>
+        <Pressable onPress={() => setprofileName(true)} style={styles.button}>
+        <Text style={styles.continueButtonText}>+</Text>
       </Pressable>
       </View>
     </View>
-      <Modal transparent visible={mainVisible} animationType="slide">
+      <Modal transparent visible={profileName} animationType="slide">
         <View style={styles.modalBackground}>
           <View style={styles.modalView}>
-            <Text>Main Input:</Text>
+            <Text style={styles.nameText}>What is their name?</Text>
             <TextInput
               style={styles.input}
-              value={mainInput}
-              onChangeText={setMainInput}
-              placeholder="Main value"
+              value={nameInput}
+              onChangeText={setnameInput}
+              placeholder="Name"
             />
             <Text style={styles.label}>Items:</Text>
             <FlatList
@@ -67,10 +67,10 @@ export default function Profile() {
               style={{ maxHeight: 100 }}
             />
             <Pressable onPress={() => setNestedVisible(true)} style={styles.secondaryButton}>
-              <Text style={styles.buttonText}>Add Item</Text>
+              <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
-            <Pressable onPress={() => setMainVisible(false)} style={styles.closeButton}>
-              <Text style={styles.buttonText}>Done</Text>
+            <Pressable onPress={() => setprofileName(false)} style={styles.closeButton}>
+              <Text style={styles.continueButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -87,10 +87,10 @@ export default function Profile() {
               placeholder="Add item"
             />
             <Pressable onPress={handleAddItem} style={styles.secondaryButton}>
-              <Text style={styles.buttonText}>Add</Text>
+              <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
             <Pressable onPress={() => setNestedVisible(false)} style={styles.closeButton}>
-              <Text style={styles.buttonText}>Done</Text>
+              <Text style={styles.continueButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#fff',
+  continueButtonText: {
+    color: 'black',
     fontSize: 28,
   },
   section: {
@@ -151,13 +151,14 @@ const styles = StyleSheet.create({
   },
   openButton: { 
     backgroundColor: '#007AFF', 
-    padding: 12, borderRadius: 8 
+    padding: 12,
+    borderRadius: 20 
   },
   secondaryButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: '#ffffffff',
     padding: 10,
     marginTop: 10,
-    borderRadius: 8,
+    borderRadius: 40,
     alignItems: 'center',
   },
   closeButton: {
@@ -167,23 +168,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
-  buttonText: { color: 'white', fontWeight: 'bold' },
+
   modalBackground: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
   },
   modalView: {
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
     padding: 20,
     borderRadius: 12,
     width: 300,
   },
   input: {
     borderBottomWidth: 1,
+    backgroundColor : 'white',
     borderColor: '#ccc',
+    borderRadius: 20,
     paddingVertical: 6,
+    paddingLeft: 12,
+    fontSize : 24,
     marginBottom: 10,
   },
   label: {
@@ -197,4 +202,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: '#999',
   },
+  nameText: {
+    justifyContent: 'center',
+    alignItems : 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+  }
 });
