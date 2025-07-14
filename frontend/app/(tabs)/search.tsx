@@ -151,6 +151,23 @@ export default function AutocompleteScreen() {
           style={styles.list}
           scrollEnabled={false} 
         />
+        {modalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
+            {allergenMatches.length > 0 ? (
+              allergenMatches.map((name, index) => (
+                <Text key={index} style={styles.modalText}>• {name}</Text>
+              ))
+            ) : (
+              <Text style={styles.modalText}>No matches found 🎉</Text>
+            )}
+            <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+              <Text style={styles.buttonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
       </ThemedView>
     </ScrollView>
   );
