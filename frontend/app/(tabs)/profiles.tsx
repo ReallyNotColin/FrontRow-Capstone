@@ -1,23 +1,33 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Pressable, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 export default function Screen() {
   return (
-    <ScrollView>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Profiles</ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.divider} />
-      <ThemedView style={styles.text}>
-        <ThemedText>This screen is under construction.</ThemedText>
-      </ThemedView>
-    </ScrollView>
+    <View style={styles.container}>
+      <ScrollView>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">Profiles</ThemedText>
+        </ThemedView>
+        <ThemedView style={styles.divider} />
+        <ThemedView style={styles.text}>
+          <ThemedText>This screen is under construction.</ThemedText>
+        </ThemedView>
+      </ScrollView>
+
+      <Pressable style={styles.floatingButton} onPress={() => console.log('Button pressed')}>
+        <Text style={styles.buttonText}>+</Text>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   titleContainer: {
     paddingTop: 60,
     paddingBottom: 10,
@@ -33,11 +43,26 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: 24,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  floatingButton: {
     position: 'absolute',
+    bottom: 20,
+    right: 20,
+    zIndex: 999,
+    backgroundColor: '#007AFF',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 28,
+    lineHeight: 32,
   },
 });
