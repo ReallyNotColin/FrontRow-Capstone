@@ -15,10 +15,10 @@ type IconSymbolName = keyof typeof MAPPING;
  */
 const MAPPING = {
   'magnifyingglass': 'search',
-  'bookmark.fill': 'history',
-  'person.2.fill': 'people',
-  'gearshape.fill': 'settings',
-  'camera.fill': 'camera-alt',
+  'clock': 'history',
+  'person.2': 'people',
+  'gearshape': 'settings',
+  'camera': 'camera-alt',
 } as any;
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.

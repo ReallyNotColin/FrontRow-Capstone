@@ -30,35 +30,35 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          tabBarIcon: ({ color }) =>  <IconSymbol size={Platform.OS === 'ios' ? 28 : 28} name="gearshape" color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: 'Search',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 28 : 28} name="magnifyingglass" color={color} />,
         }}
       />
       <Tabs.Screen
         name="scan"
         options={{
           title: 'Scan',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="camera.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 35 : 28} name="camera" color={color} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bookmark.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 28 : 28} name="clock" color={color} />,
         }}
       />
       <Tabs.Screen
         name="profiles"
         options={{
           title: 'Profiles',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 38 : 28} name="person.2" color={color} />,
         }}
       />
     </Tabs>
