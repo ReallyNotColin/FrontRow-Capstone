@@ -16,7 +16,6 @@ export default function RootLayout() {
 
 useEffect(() => {
     initDB();
-    
 
   }, []);
 

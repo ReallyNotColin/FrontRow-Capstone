@@ -1,8 +1,10 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
 import { Platform, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
 
-export default function App() {
+export default function ScanScreen() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -13,9 +15,19 @@ export default function App() {
   if (!permission.granted) {
      // Camera permissions are not granted yet.
     return (
-      <View style={styles.container}>
-        <Text style={styles.message}>We need your permission to show the camera</Text>
-        <Button onPress={requestPermission} title="Grant permission" />
+      <View style={styles.permissionContainer}>
+        <ThemedView style={styles.titleContainer}>
+          <ThemedText type="title">Scan</ThemedText>
+        </ThemedView>
+        <ThemedView style={styles.divider} />
+        <ThemedView style={styles.textContainer}>
+          <ThemedText>
+            We need your permission to access the camera in order to scan barcodes.
+          </ThemedText>
+          <View style={styles.buttonWrapper}>
+            <Button onPress={requestPermission} title="Grant Permission" />
+          </View>
+        </ThemedView>
       </View>
     );
   }
@@ -40,9 +52,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  message: {
-    textAlign: 'center',
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  titleContainer: {
+    paddingTop: 60,
     paddingBottom: 10,
+    paddingHorizontal: 24,
+  },
+  divider: {
+    height: 2,
+    backgroundColor: '#E5E5EA',
+    marginBottom: 16,
+    width: '100%',
+  },
+  textContainer: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 24,
+  },
+  buttonWrapper: {
+    marginTop: 16,
   },
   buttonContainer: {
     position: 'absolute',
