@@ -32,18 +32,18 @@ export default function ScanScreen() {
     );
   }
 
-  function toggleCameraFacing() {
-    setFacing(current => (current === 'back' ? 'front' : 'back'));
-  }
-
   return (
     <View style={styles.container}>
-      <CameraView style={StyleSheet.absoluteFill} facing={facing} />
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={toggleCameraFacing}>
-          <Text style={styles.text}>Flip Camera</Text>
-        </TouchableOpacity>
-      </View>
+      <CameraView 
+      style={StyleSheet.absoluteFill} 
+      facing={'back'}
+      onBarcodeScanned={({ data }) => {
+        console.log("data", data);
+      }}
+      barcodeScannerSettings={{
+        barcodeTypes: ['upc_a', 'upc_e', 'ean13', 'ean8', 'qr'], 
+      }}
+      />
     </View>
   );
 }
