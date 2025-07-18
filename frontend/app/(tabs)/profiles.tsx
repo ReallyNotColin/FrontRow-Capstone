@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet,} from 'react-native';
+import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity} from 'react-native';
 
 export default function Profile() {
   const [profileName, setprofileName] = useState(false);
@@ -79,13 +79,21 @@ export default function Profile() {
       <Modal transparent visible={nestedVisible} animationType="fade">
         <View style={styles.modalBackground}>
           <View style={styles.modalView}>
-            <Text>Nested Input:</Text>
-            <TextInput
-              style={styles.input}
-              value={nestedInput}
-              onChangeText={setNestedInput}
-              placeholder="Add item"
-            />
+            <Text style={styles.nameText}>What is {nameInput}'s dietary restrictions?</Text>
+            <View style={styles.secondaryButton}>
+              <Text style={styles.continueButtonText}>Select a tag</Text>
+            </View>
+            <View style={styles.tagContainer}>
+              <TouchableOpacity style={styles.tagButton}>
+                <Text style={styles.tagText}>Allergens</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tagButton}>
+                <Text style={styles.tagText}>Intolerances</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.tagButton}>
+                <Text style={styles.tagText}>Dietary</Text>
+              </TouchableOpacity>
+            </View>
             <Pressable onPress={handleAddItem} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
@@ -210,5 +218,24 @@ const styles = StyleSheet.create({
     color: 'white',
     paddingVertical: 18,
     paddingHorizontal: 12,
-  }
+  },
+  tagContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  tagButton: {
+    backgroundColor: '#767676ff', // soft gray background
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginHorizontal: 4,
+  },
+  tagText: {
+    color: '#000', // dark text
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });
