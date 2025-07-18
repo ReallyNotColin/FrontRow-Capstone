@@ -149,15 +149,14 @@ export default function AutocompleteScreen() {
           scrollEnabled={false}
         />
 
-        {/* ✅ Step 3: Create Custom Entry Button */}
-        {hasSearched && (
-          <Pressable
-            style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-            onPress={() => navigation.navigate('create-custom-entry')}
-          >
-            <Text style={styles.buttonText}>Create Custom Entry</Text>
-          </Pressable>
-        )}
+        
+        <Pressable
+          style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+          onPress={() => navigation.navigate('create-custom-entry')}
+        >
+          <Text style={styles.buttonText}>Create Custom Entry</Text>
+        </Pressable>
+        
 
         {modalVisible && (
           <View style={styles.modalOverlay}>
