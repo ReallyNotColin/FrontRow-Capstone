@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 
+import { useNavigation } from '@react-navigation/native'; 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { saveToHistory } from '@/db/history';
@@ -22,13 +23,14 @@ const debounce = (func, delay) => {
 };
 
 export default function AutocompleteScreen() {
+  const navigation = useNavigation(); 
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
   const [allergenMatches, setAllergenMatches] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-
+  const [hasSearched, setHasSearched] = useState(false); 
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
     try {
@@ -44,6 +46,7 @@ export default function AutocompleteScreen() {
 
   const handleInputChange = (text) => {
     setQuery(text);
+    setHasSearched(text.length > 1);
     debouncedFetch(text);
   };
 
@@ -51,11 +54,8 @@ export default function AutocompleteScreen() {
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
-      // console.log('Full API response:', JSON.stringify(data, null, 2));
-      // Get allergen names
-      // Filter to only show present allergens
+
       const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
-      // Testing
       console.log('Allergens:', allergens);
 
       setSelectedFoodDetails(data);
@@ -66,7 +66,6 @@ export default function AutocompleteScreen() {
       const matchedAllergens = allergens.filter(a => profile.includes(a));
       const matchedString = matchedAllergens.join(', ');
 
-      // Fixed: Make sure to await the database operation
       try {
         await saveToHistory(foodText, allergensString, matchedString);
         console.log('Successfully saved to history');
@@ -81,7 +80,6 @@ export default function AutocompleteScreen() {
 
   const renderSuggestion = ({ item, index }) => {
     const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0");
-
     const profile = ['Milk', 'Egg', 'Peanuts'];
 
     const handleCompareAllergens = () => {
@@ -100,7 +98,7 @@ export default function AutocompleteScreen() {
         {expandedIndex === index && selectedFoodDetails && (
           <View style={styles.detailsBox}>
             <ScrollView style={styles.detailsScroll}>
-              {allergens?.length > 0 && (
+              {allergens?.length > 0 ? (
                 <View style={styles.allergenContainer}>
                   <Text style={styles.detailsText}>Allergens:</Text>
                   <View style={styles.allergenBlockWrapper}>
@@ -111,8 +109,7 @@ export default function AutocompleteScreen() {
                     ))}
                   </View>
                 </View>
-              )}
-              {(!allergens || allergens.length === 0) && (
+              ) : (
                 <Text style={styles.detailsText}>No allergens found</Text>
               )}
             </ScrollView>
@@ -121,7 +118,7 @@ export default function AutocompleteScreen() {
             </Pressable>
 
             <Pressable style={styles.compareButton} onPress={handleCompareAllergens}>
-                    <Text style={styles.buttonText}>Compare with My Allergens</Text>
+              <Text style={styles.buttonText}>Compare with My Allergens</Text>
             </Pressable>
           </View>
         )}
@@ -149,29 +146,41 @@ export default function AutocompleteScreen() {
           renderItem={renderSuggestion}
           keyExtractor={(item, index) => `${item}-${index}`}
           style={styles.list}
-          scrollEnabled={false} 
+          scrollEnabled={false}
         />
+
+        {/* ✅ Step 3: Create Custom Entry Button */}
+        {hasSearched && (
+          <Pressable
+            style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+            onPress={() => navigation.navigate('create-custom-entry')}
+          >
+            <Text style={styles.buttonText}>Create Custom Entry</Text>
+          </Pressable>
+        )}
+
         {modalVisible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
-            {allergenMatches.length > 0 ? (
-              allergenMatches.map((name, index) => (
-                <Text key={index} style={styles.modalText}>• {name}</Text>
-              ))
-            ) : (
-              <Text style={styles.modalText}>No matches found 🎉</Text>
-            )}
-            <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.buttonText}>Close</Text>
-            </Pressable>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
+              {allergenMatches.length > 0 ? (
+                allergenMatches.map((name, index) => (
+                  <Text key={index} style={styles.modalText}>• {name}</Text>
+                ))
+              ) : (
+                <Text style={styles.modalText}>No matches found 🎉</Text>
+              )}
+              <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+                <Text style={styles.buttonText}>Close</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      )}
+        )}
       </ThemedView>
     </ScrollView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -272,7 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   compareButton: {
-    position : 'absolute',
+    position: 'absolute',
     bottom: 10,
     left: 10,
     paddingVertical: 6,
@@ -280,7 +289,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF7F50',
     borderRadius: 6,
   },
-  
   matchText: {
     marginTop: 8,
     fontSize: 12,
