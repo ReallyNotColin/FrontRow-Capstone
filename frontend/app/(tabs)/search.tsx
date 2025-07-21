@@ -9,10 +9,11 @@ import {
   ScrollView,
 } from 'react-native';
 
-import { useNavigation } from '@react-navigation/native'; 
+import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { saveToHistory } from '@/db/history';
+import { searchCustomEntries } from '@/db/customFoods';
 
 const debounce = (func, delay) => {
   let timeout;
@@ -23,22 +24,42 @@ const debounce = (func, delay) => {
 };
 
 export default function AutocompleteScreen() {
-  const navigation = useNavigation(); 
+  const navigation = useNavigation();
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [combinedSuggestions, setCombinedSuggestions] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
   const [allergenMatches, setAllergenMatches] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false); 
+  const [hasSearched, setHasSearched] = useState(false);
+
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
     try {
-      const res = await fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`);
-      const data = await res.json();
-      setSuggestions(data?.suggestions?.suggestion || []);
+      const [fatsecretRes, customResults] = await Promise.all([
+        fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`),
+        searchCustomEntries(text)
+      ]);
+
+      const fatsecretData = await fatsecretRes.json();
+      const fatsecretSuggestions = fatsecretData?.suggestions?.suggestion || [];
+
+      const fatsecretFormatted = fatsecretSuggestions.map(name => ({
+        name,
+        source: 'fatsecret',
+      }));
+
+      const customFormatted = customResults.map(entry => ({
+        name: entry.food_name,
+        barcode: entry.barcode,
+        allergens: entry.allergens,
+        source: 'custom',
+      }));
+      console.log('Custom DB results:', customResults);
+      console.log('FatSecret suggestions:', fatsecretSuggestions);
+      setCombinedSuggestions([...customFormatted, ...fatsecretFormatted]);
     } catch (err) {
-      console.error('Autocomplete fetch error:', err);
+      console.error('Unified fetch error:', err);
     }
   };
 
@@ -51,12 +72,33 @@ export default function AutocompleteScreen() {
   };
 
   const handleViewPress = async (foodText, index) => {
+    const item = combinedSuggestions[index];
+
+    if (item.source === 'custom') {
+      const allergensArray = item.allergens
+        ? item.allergens.split(',').map(name => ({ name: name.trim(), value: '1' }))
+        : [];
+
+      setSelectedFoodDetails({
+        food: {
+          food_attributes: {
+            allergens: {
+              allergen: allergensArray,
+            },
+          },
+        },
+      });
+
+      setExpandedIndex(index);
+      return;
+    }
+
+    // FatSecret item
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
 
       const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
-      console.log('Allergens:', allergens);
 
       setSelectedFoodDetails(data);
       setExpandedIndex(index);
@@ -90,8 +132,10 @@ export default function AutocompleteScreen() {
 
     return (
       <View style={styles.suggestionCard}>
-        <Text style={styles.suggestionText}>{item}</Text>
-        <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
+        <Text style={styles.suggestionText}>
+          {item.name} {item.source === 'custom' && '(Custom)'}
+        </Text>
+        <Pressable style={styles.viewButton} onPress={() => handleViewPress(item.name, index)}>
           <Text style={styles.buttonText}>View</Text>
         </Pressable>
 
@@ -113,6 +157,7 @@ export default function AutocompleteScreen() {
                 <Text style={styles.detailsText}>No allergens found</Text>
               )}
             </ScrollView>
+
             <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
               <Text style={styles.buttonText}>Collapse</Text>
             </Pressable>
@@ -142,21 +187,19 @@ export default function AutocompleteScreen() {
         />
 
         <FlatList
-          data={suggestions}
+          data={combinedSuggestions}
           renderItem={renderSuggestion}
-          keyExtractor={(item, index) => `${item}-${index}`}
+          keyExtractor={(item, index) => `${item.name}-${item.source}-${index}`}
           style={styles.list}
           scrollEnabled={false}
         />
 
-        
         <Pressable
           style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
           onPress={() => navigation.navigate('create-custom-entry')}
         >
           <Text style={styles.buttonText}>Create Custom Entry</Text>
         </Pressable>
-        
 
         {modalVisible && (
           <View style={styles.modalOverlay}>
@@ -179,6 +222,7 @@ export default function AutocompleteScreen() {
     </ScrollView>
   );
 }
+
 
 
 const styles = StyleSheet.create({
