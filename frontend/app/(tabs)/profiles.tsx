@@ -3,6 +3,10 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity, Animated} from 'react-native';
 import { useNavigation } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { saveProfile, getProfiles, deleteProfile } from '@/db/Profiles';
+
+
 
 export default function Profile() {
   const [profileName, setprofileName] = useState(false);
@@ -39,7 +43,7 @@ export default function Profile() {
     setTagSelected(true);
     Animated.sequence([
       Animated.timing(moveMenu, {
-        toValue: -160,
+        toValue: -10,
         duration: 300,
         useNativeDriver: true,
     }),
@@ -50,6 +54,16 @@ export default function Profile() {
     }),
   ]).start();
   }
+
+const saveProfile = async () => {
+  try {
+    await AsyncStorage.setItem('selectedAllergens', JSON.stringify(selectedAllergens));
+    console.log('Profile saved');
+  } catch (error) {
+    console.error('Failed to save options', error);
+  }
+};
+
 
   return (
     <View style={styles.container}>
@@ -92,19 +106,8 @@ export default function Profile() {
               onChangeText={setnameInput}
               placeholder="Name"
             />
-            <Text style={styles.label}>Items:</Text>
-            <FlatList
-              data={items}
-              keyExtractor={(_, i) => i.toString()}
-              renderItem={({ item }) => <Text style={styles.listItem}>• {item}</Text>}
-              ListEmptyComponent={<Text style={styles.emptyText}>No items yet</Text>}
-              style={{ maxHeight: 100 }}
-            />
-            <Pressable onPress={() => setNestedVisible(true)} style={styles.secondaryButton}>
+            <Pressable onPress={() => {setNestedVisible(true); setprofileName(false);}} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
-            </Pressable>
-            <Pressable onPress={() => setprofileName(false)} style={styles.closeButton}>
-              <Text style={styles.continueButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -154,7 +157,7 @@ export default function Profile() {
               </Animated.View>
             )}
 
-            <Pressable onPress={() => setNestedVisible(false)} style={styles.secondaryButton}>
+            <Pressable onPress={() => {setNestedVisible(false); saveProfile();}} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
           </View>
@@ -331,7 +334,7 @@ checkboxChecked: {
 
 checkboxLabel: {
   fontSize: 16,
-  color: '#fff',
+  color: 'black',
 },
 
 });
