@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity, Animated} from 'react-native';
@@ -12,12 +12,13 @@ export default function Profile() {
   const [profileName, setprofileName] = useState(false);
   const [nestedVisible, setNestedVisible] = useState(false);
   const [nameInput, setnameInput] = useState('');
-  const [profileInput, setprofileInput] = useState('');
-  const [items, setItems] = useState<string[]>([]);
+//  const [profileInput, setprofileInput] = useState('');
+//  const [items, setItems] = useState<string[]>([]);
   const [moveMenu] = useState(new Animated.Value(0));
   const [allergensMenu] = useState(new Animated.Value(0));
   const [tagSelected, setTagSelected] = useState(false);
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+  const [savedProfiles, setSavedProfiles] = useState<{ name: string; allergens: string[] }[]>([]);
 
   const allergenCheckboxes = [
     'Milk',
@@ -32,12 +33,12 @@ export default function Profile() {
     'Sesame',
   ];
 
-  const handleAddItem = () => {
-    if (profileInput.trim()) {
-      setItems([...items, profileInput.trim()]);
-      setprofileInput('');
-    }
-  };
+//  const handleAddItem = () => {
+//    if (profileInput.trim()) {
+//      setItems([...items, profileInput.trim()]);
+//      setprofileInput('');
+//    }
+//  };
 
   const handleTagPress = () => {
     setTagSelected(true);
@@ -57,12 +58,45 @@ export default function Profile() {
 
 const saveProfile = async () => {
   try {
-    await AsyncStorage.setItem('selectedAllergens', JSON.stringify(selectedAllergens));
-    console.log('Profile saved');
+    const existing = await AsyncStorage.getItem('profiles');
+    const profiles = existing ? JSON.parse(existing) : [];
+
+    const newProfile = {
+      name: nameInput,
+      allergens: selectedAllergens,
+    };
+
+    profiles.push(newProfile);
+    await AsyncStorage.setItem('profiles', JSON.stringify(profiles));
+
+    console.log('Profile saved:', newProfile);
+
+    // Reset states and close modal
+    setNestedVisible(false);
+    setnameInput('');
+    setSelectedAllergens([]);
+    loadProfiles(); // refresh UI
   } catch (error) {
-    console.error('Failed to save options', error);
+    console.error('Failed to save profile', error);
   }
 };
+
+const loadProfiles = async () => {
+  try {
+    const stored = await AsyncStorage.getItem('profiles');
+    if (stored) {
+      setSavedProfiles(JSON.parse(stored));
+    } else {
+      setSavedProfiles([]);
+    }
+  } catch (e) {
+    console.error('Failed to load profiles', e);
+  }
+};
+
+useEffect(() => {
+  loadProfiles();
+}, []);
 
 
   return (
@@ -74,10 +108,24 @@ const saveProfile = async () => {
         </ThemedView>
         <ThemedView style={styles.divider} />
         <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Profiles</Text>
-        {/* Replace this with a FlatList or mapped components */}
-        <View style={styles.card}><Text>John Doe</Text></View>
-        <View style={styles.card}><Text>Jane Smith</Text></View>
+          
+          <Text style={styles.sectionTitle}>Profiles</Text>
+            {savedProfiles.length === 0 ? (
+              <Text style={{ fontStyle: 'italic', marginLeft: 12 }}>No profiles saved yet.</Text>
+            ) : (
+              savedProfiles.map((profile, index) => (
+                <View key={index} style={styles.card}>
+                  <Text style={{ fontWeight: 'bold' }}>{profile.name}</Text>
+                  {profile.allergens.length > 0 ? (
+                    <Text style={{ marginTop: 4, fontSize: 14 }}>
+                      Allergens: {profile.allergens.join(', ')}
+                    </Text>
+                  ) : (
+          <Text style={{ fontStyle: 'italic', fontSize: 14 }}>No allergens selected</Text>
+        )}
+      </View>
+    ))
+  )}
       </View>
 
       {/* Group Profiles Section */}

@@ -1,72 +1,75 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/**
- * Builds the storage key for a given profile.
- */
-const getKey = (profileName: string) => `options_${profileName}`;
-
-/**
- * Save the full list of options for a profile.
- */
-export const saveProfile = async (profileName: string, options: string[]): Promise<void> => {
-  try {
-    await AsyncStorage.setItem(getKey(profileName), JSON.stringify(options));
-  } catch (error) {
-    console.error(`Failed to save options for ${profileName}`, error);
-  }
+export type Profile = {
+  name: string;
+  allergens: string[];
 };
 
+const PROFILES_KEY = 'profiles';
+
 /**
- * Retrieve the saved options for a profile.
+ * Load all saved profiles.
  */
-export const getProfiles = async (profileName: string): Promise<string[]> => {
+export const getProfiles = async (): Promise<Profile[]> => {
   try {
-    const data = await AsyncStorage.getItem(getKey(profileName));
-    return data ? JSON.parse(data) : [];
+    const json = await AsyncStorage.getItem(PROFILES_KEY);
+    return json ? JSON.parse(json) : [];
   } catch (error) {
-    console.error(`Failed to load options for ${profileName}`, error);
+    console.error('Failed to load profiles', error);
     return [];
   }
 };
 
 /**
- * Add a new option to the profile's list.
+ * Save the full list of profiles.
  */
-export const addProfile = async (profileName: string, newOption: string): Promise<void> => {
-  const currentOptions = await getProfiles(profileName);
-  const updated = [...currentOptions, newOption];
-  await saveProfile(profileName, updated);
+export const saveAllProfiles = async (profiles: Profile[]): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+  } catch (error) {
+    console.error('Failed to save profiles', error);
+  }
 };
 
 /**
- * Update an existing option with a new value.
+ * Add a new profile.
+ */
+export const addProfile = async (newProfile: Profile): Promise<void> => {
+  const profiles = await getProfiles();
+  profiles.push(newProfile);
+  await saveAllProfiles(profiles);
+};
+
+/**
+ * Update a profile by name.
  */
 export const updateProfile = async (
-  profileName: string,
-  oldOption: string,
-  newOption: string
+  name: string,
+  updatedData: Partial<Profile>
 ): Promise<void> => {
-  const currentOptions = await getProfiles(profileName);
-  const updated = currentOptions.map(opt => (opt === oldOption ? newOption : opt));
-  await saveProfile(profileName, updated);
+  const profiles = await getProfiles();
+  const updatedProfiles = profiles.map(p =>
+    p.name === name ? { ...p, ...updatedData } : p
+  );
+  await saveAllProfiles(updatedProfiles);
 };
 
 /**
- * Delete an option from the profile's list.
+ * Delete a profile by name.
  */
-export const deleteProfile = async (profileName: string, optionToDelete: string): Promise<void> => {
-  const currentOptions = await getProfiles(profileName);
-  const updated = currentOptions.filter(opt => opt !== optionToDelete);
-  await saveProfile(profileName, updated);
+export const deleteProfile = async (name: string): Promise<void> => {
+  const profiles = await getProfiles();
+  const updated = profiles.filter(p => p.name !== name);
+  await saveAllProfiles(updated);
 };
 
 /**
- * Clear all saved options for a profile.
+ * Clear all saved profiles.
  */
-export const clearProfile = async (profileName: string): Promise<void> => {
+export const clearAllProfiles = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(getKey(profileName));
+    await AsyncStorage.removeItem(PROFILES_KEY);
   } catch (error) {
-    console.error(`Failed to clear options for ${profileName}`, error);
+    console.error('Failed to clear all profiles', error);
   }
 };
