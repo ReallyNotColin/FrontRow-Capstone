@@ -1,21 +1,55 @@
 import React, { useState } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity} from 'react-native';
+import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity, Animated} from 'react-native';
+import { useNavigation } from 'expo-router';
 
 export default function Profile() {
   const [profileName, setprofileName] = useState(false);
   const [nestedVisible, setNestedVisible] = useState(false);
   const [nameInput, setnameInput] = useState('');
-  const [nestedInput, setNestedInput] = useState('');
+  const [profileInput, setprofileInput] = useState('');
   const [items, setItems] = useState<string[]>([]);
+  const [moveMenu] = useState(new Animated.Value(0));
+  const [allergensMenu] = useState(new Animated.Value(0));
+  const [tagSelected, setTagSelected] = useState(false);
+  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+
+  const allergenCheckboxes = [
+    'Milk',
+    'Lactose',
+    'Egg',
+    'Fish',
+    'Gluten',
+    'Nuts',
+    'Peanuts',
+    'Shellfish',
+    'Soy',
+    'Sesame',
+  ];
 
   const handleAddItem = () => {
-    if (nestedInput.trim()) {
-      setItems([...items, nestedInput.trim()]);
-      setNestedInput('');
+    if (profileInput.trim()) {
+      setItems([...items, profileInput.trim()]);
+      setprofileInput('');
     }
   };
+
+  const handleTagPress = () => {
+    setTagSelected(true);
+    Animated.sequence([
+      Animated.timing(moveMenu, {
+        toValue: -160,
+        duration: 300,
+        useNativeDriver: true,
+    }),
+    Animated.timing(allergensMenu, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }),
+  ]).start();
+  }
 
   return (
     <View style={styles.container}>
@@ -79,12 +113,14 @@ export default function Profile() {
       <Modal transparent visible={nestedVisible} animationType="fade">
         <View style={styles.modalBackground}>
           <View style={styles.modalView}>
-            <Text style={styles.nameText}>What is {nameInput}'s dietary restrictions?</Text>
-            <View style={styles.secondaryButton}>
+            <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
+              <Text style={styles.nameText}>What is {nameInput}'s dietary restrictions?</Text>
+            </Animated.View>
+            <Animated.View style={[styles.secondaryButton, { transform: [{ translateY: moveMenu }] }]}>
               <Text style={styles.continueButtonText}>Select a tag</Text>
-            </View>
-            <View style={styles.tagContainer}>
-              <TouchableOpacity style={styles.tagButton}>
+            </Animated.View>
+            <Animated.View style={[styles.tagContainer, { transform: [{ translateY: moveMenu }] }]}>
+              <TouchableOpacity style={styles.tagButton} onPress={handleTagPress}>
                 <Text style={styles.tagText}>Allergens</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.tagButton}>
@@ -93,12 +129,33 @@ export default function Profile() {
               <TouchableOpacity style={styles.tagButton}>
                 <Text style={styles.tagText}>Dietary</Text>
               </TouchableOpacity>
-            </View>
-            <Pressable onPress={handleAddItem} style={styles.secondaryButton}>
+            </Animated.View>
+
+            {tagSelected && (
+              <Animated.View style={[styles.allergensMenuContainer, {opacity: allergensMenu }]}>
+                {allergenCheckboxes.map((option) =>{
+                  const isChecked = selectedAllergens.includes(option);
+                  return(
+                    <TouchableOpacity
+                    key={option}
+                    onPress={() =>{
+                      setSelectedAllergens((prev) =>
+                        isChecked
+                          ? prev.filter((item) => item !== option)
+                          : [...prev, option]
+                    );
+                    }}
+                    style={styles.checkboxRow}>
+                      <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+                      <Text style={styles.checkboxLabel}>{option}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </Animated.View>
+            )}
+
+            <Pressable onPress={() => setNestedVisible(false)} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
-            </Pressable>
-            <Pressable onPress={() => setNestedVisible(false)} style={styles.closeButton}>
-              <Text style={styles.continueButtonText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -238,4 +295,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  allergensMenuContainer: {
+  marginTop: 12,
+  padding: 10,
+  backgroundColor: '#ffffff',
+  borderRadius: 8,
+  shadowColor: '#000',
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+  elevation: 3,
+},
+  allergensMenuTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginVertical: 6,
+},
+
+checkboxBox: {
+  width: 20,
+  height: 20,
+  borderWidth: 1,
+  borderColor: '#555',
+  borderRadius: 4,
+  marginRight: 10,
+  backgroundColor: '#fff',
+},
+
+checkboxChecked: {
+  backgroundColor: '#007AFF',
+},
+
+checkboxLabel: {
+  fontSize: 16,
+  color: '#fff',
+},
+
 });
