@@ -20,26 +20,28 @@ function convertUPCEtoUPCA(upce: string): string {
   const numberSystem = upce[0];
   const manufacturer = upce.slice(1, 7);
   const lastDigit = manufacturer[5];
-  let upca = '';
+  let upcaWithoutCheckDigit = '';
 
   switch (lastDigit) {
     case '0':
     case '1':
     case '2':
-      upca = manufacturer.slice(0, 2) + lastDigit + '0000' + manufacturer.slice(2, 5);
+      upcaWithoutCheckDigit = manufacturer.slice(0, 2) + lastDigit + '0000' + manufacturer.slice(2, 5);
       break;
     case '3':
-      upca = manufacturer.slice(0, 3) + '00000' + manufacturer.slice(3, 5);
+      upcaWithoutCheckDigit = manufacturer.slice(0, 3) + '00000' + manufacturer.slice(3, 5);
       break;
     case '4':
-      upca = manufacturer.slice(0, 4) + '00000' + manufacturer[4];
+      upcaWithoutCheckDigit = manufacturer.slice(0, 4) + '00000' + manufacturer[4];
       break;
     default:
-      upca = manufacturer.slice(0, 5) + '0000' + lastDigit;
+      upcaWithoutCheckDigit = manufacturer.slice(0, 5) + '0000' + lastDigit;
   }
 
-  const fullUPC = numberSystem + upca;
-  return fullUPC + calculateCheckDigit(fullUPC);
+  const upca11 = numberSystem + upcaWithoutCheckDigit; // 11 digits without check digit
+  const checkDigit = calculateCheckDigit(upca11); // calculate check digit for UPC-A
+
+  return upca11 + checkDigit; // return full 12-digit UPC-A
 }
 
 export default function ScanScreen() {
