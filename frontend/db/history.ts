@@ -6,10 +6,11 @@ export const initDB = async () => {
   db = await SQLite.openDatabaseAsync('history');
 
   try {
+    await db.execAsync('DROP TABLE IF EXISTS history;');
     await db.execAsync(
       `CREATE TABLE IF NOT EXISTS history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        food_name TEXT,
+        food_name TEXT UNIQUE,
         allergens TEXT,
         match TEXT,
         timestamp INTEGER
@@ -38,9 +39,12 @@ export const saveToHistory = async (
       [foodName, allergens, match, timestamp]
     );
     console.log('[Save] Insert successful');
-  } catch (error) {
-    console.error('[Save] Error inserting into history:', error);
-  }
+  } catch (error:any) {
+      if (error.message && error.message.includes('UNIQUE constraint failed')) {
+        console.log('[Save] Duplicate entry detected, skipping insert');
+    } else {
+      console.error('[Save] Error inserting into history:', error);
+  }}
 };
 
 export const getHistory = async () => {

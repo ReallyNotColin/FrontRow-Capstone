@@ -4,6 +4,7 @@ import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView,
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
+import { saveToHistory } from '@/db/history';
 
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
@@ -66,7 +67,7 @@ export default function ScanScreen() {
 
       // Handle the correct response structure
       const foodId = idData.food_id?.value;
-      
+
       if (!foodId) {
         console.warn('No food_id found for barcode. Response:', idData);
         setFoodDetails(null);
@@ -77,8 +78,25 @@ export default function ScanScreen() {
       const detailsRes = await fetch(`https://frontrow-capstone.onrender.com/food-details?food_id=${foodId}`);
       const detailsData = await detailsRes.json();
 
-      console.log('Food details:', detailsData);
       setFoodDetails(detailsData);
+
+      const foodName = detailsData.food?.food_name || 'Unknown food';
+      const allergensArray = detailsData.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0") || [];
+      const allergensString = allergensArray.map((a: any) => a.name).join(', ');
+
+      const userAllergenProfile = ['Milk', 'Egg', 'Peanuts'];
+      const matchedAllergens = allergensArray
+        .map((a: any) => a.name)
+        .filter(name => userAllergenProfile.includes(name));
+      const matchedString = matchedAllergens.join(', ');
+
+
+    try {
+      await saveToHistory(foodName, allergensString, matchedString);
+      console.log('Successfully saved to history');
+    } catch (saveError) {
+      console.error('Error saving to history:', saveError);
+    }
       
       if (detailsData.food) {
         setModalVisible(true);
@@ -146,6 +164,7 @@ export default function ScanScreen() {
   const matchedAllergens = allergens
     .map((a: any) => a.name)
     .filter(name => userAllergenProfile.includes(name));
+  const matchedString = matchedAllergens.join(', ');
 
 
   return (
