@@ -204,73 +204,80 @@ async function fetchFoodDetails(food_id, accessToken) {
   return data;
 }
 
-// Revised /search-food-entry endpoint
-app.get('/search-food-entry', async (req, res) => {
-  const { name } = req.query;
-
-  console.log('Received request to /search-food-entry');
-  console.log('Query parameters:', req.query);
-
-  if (!name) {
-    return res.status(400).json({ error: 'Missing food name' });
+// Unified food lookup: accepts either a barcode or food name
+app.get('/unified-food-lookup', async (req, res) => {
+  const { input } = req.query;
+  if (!input) {
+    return res.status(400).json({ error: 'Missing input' });
   }
 
+  const isBarcode = /^\d{12,13}$/.test(input);
+  const formattedBarcode = input.padStart(13, '0');
+
   try {
-    // Step 1: Get access token for search and details
-    const tokenRes3 = await fetch('https://oauth.fatsecret.com/connect/token', {
+    // Step 1: Get token
+    const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        scope: 'premier',
+        scope: 'premier barcode',
         client_id: process.env.FATSECRET_CLIENT_ID,
         client_secret: process.env.FATSECRET_CLIENT_SECRET,
       }),
     });
 
-    const tokenData3 = await tokenRes3.json();
-    if (!tokenData3.access_token) {
-      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData3 });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      return res.status(500).json({ error: 'Failed to retrieve access token', tokenData });
     }
 
-    console.log('Access token for food.search:', tokenData3.access_token);
+    // Step 2: Barcode or Name lookup
+    let foodId = null;
 
-    // Step 2: Search for the food entry
-    const searchRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${tokenData3.access_token}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        method: 'foods.search',
-        search_expression: name,
-        format: 'json',
-      }),
-    });
+    if (isBarcode) {
+      const fatsecretRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          method: 'food.find_id_for_barcode',
+          barcode: formattedBarcode,
+          format: 'json',
+        }),
+      });
 
-    const searchData = await searchRes.json();
-    console.log('food.search response:', searchData);
+      const data = await fatsecretRes.json();
+      foodId = data?.food_id;
+    } else {
+      const searchRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          method: 'foods.search',
+          search_expression: input,
+          format: 'json',
+        }),
+      });
 
-    const firstFood = searchData?.foods?.food?.[0];
-    console.log('Food.Search: First food entry:', firstFood);
-
-    if (!firstFood?.food_id) {
-      return res.status(404).json({ error: 'No matching food found' });
+      const searchData = await searchRes.json();
+      foodId = searchData?.foods?.food?.[0]?.food_id;
     }
 
-    // Step 3: Get food details directly
-    const foodDetails = await fetchFoodDetails(firstFood.food_id, tokenData3.access_token);
+    if (!foodId) {
+      return res.status(404).json({ error: 'No food found for input' });
+    }
+
+    // Step 3: Get food details
+    const foodDetails = await fetchFoodDetails(foodId, tokenData.access_token);
     res.json(foodDetails);
-
   } catch (err) {
-    console.error('Error in /search-food-entry:', err);
+    console.error('Unified lookup error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
-
