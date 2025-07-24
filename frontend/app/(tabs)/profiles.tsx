@@ -215,7 +215,6 @@ useEffect(() => {
                   <Text style={{ color: 'red' }}>Delete</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.groupTitle}>{groupName}</Text>
               {Array.isArray(members) && members.length > 0 ? (
                 members.map((memberName, index) => (
                   <Text key={`${groupName}-${index}`} style={styles.groupMemberText}>
