@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import SectionedMultiSelect from 'react-native-sectioned-multi-select';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as SQLite from 'expo-sqlite';
-
 import { saveToHistory } from '@/db/history';
+import { initCustomDb, getCustomDb } from '@/db/customFoods';
 
-// --- Allergen Dropdown Options ---
 // NOTE: Extend this list, OR look up an API to an existing database of allergens
 const allergenOptions = [
   { id: 'Milk', name: 'Milk' },
@@ -25,41 +24,36 @@ const allergenOptions = [
   { id: 'MSG', name: 'MSG' },
 ];
 
-// --- SQLite Setup for Custom Entries ---
-// NOTE: We'll later display these in their own tab for Custom Entries 
-// NOTE: Searching by shared sequential characters or strings is a possible approach
-let customDb: SQLite.SQLiteDatabase;
 
-const initCustomDb = async () => {
-  customDb = await SQLite.openDatabaseAsync('customFoods');
-  try {
-    await customDb.execAsync(`
-      CREATE TABLE IF NOT EXISTS custom_entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        food_name TEXT NOT NULL,
-        barcode TEXT NOT NULL,
-        allergens TEXT,
-        created_at INTEGER
-      );
-    `);
-    console.log('[CustomDB] Table created');
-  } catch (err) {
-    console.error('[CustomDB] Error creating table:', err);
-  }
-};
 
 export default function CreateCustomEntryScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const editingEntry = route.params?.entry;
+
   const [foodName, setFoodName] = useState('');
   const [barcode, setBarcode] = useState('');
   const [selectedAllergens, setSelectedAllergens] = useState([]);
 
   useEffect(() => {
-    initCustomDb();
+    const init = async () => {
+      await initCustomDb();
+    };
+    init();
   }, []);
 
 
-  // --- Save To History & Custom DB's ---
+  // Populate fields when editing
+  useEffect(() => {
+    if (editingEntry) {
+      setFoodName(editingEntry.food_name || '');
+      setBarcode(editingEntry.barcode || '');
+      setSelectedAllergens(
+        editingEntry.allergens?.split(',').map(a => a.trim()) || []
+      );
+    }
+  }, [editingEntry]);
+
   const handleSave = async () => {
     if (!foodName.trim() || barcode.length !== 13) {
       Alert.alert('Validation Error', 'Please enter a food name and a valid 13-digit barcode.');
@@ -70,21 +64,35 @@ export default function CreateCustomEntryScreen() {
     const timestamp = Date.now();
 
     try {
-      // Save to user-visible history
       await saveToHistory(foodName, allergenString, allergenString);
 
-      // Save to custom_entries table
+      const customDb = getCustomDb();
       if (!customDb) {
         console.warn('[CustomDB] Not initialized');
+        return;
+      }
+
+
+      if (editingEntry?.id) {
+        // Update existing
+        await customDb.runAsync(
+          `UPDATE custom_entries 
+           SET food_name = ?, barcode = ?, allergens = ? 
+           WHERE id = ?`,
+          [foodName, barcode, allergenString, editingEntry.id]
+        );
+        console.log('[CustomDB] Entry updated');
+        Alert.alert('Updated', 'Custom entry updated!');
       } else {
+        // Insert new
         await customDb.runAsync(
           'INSERT INTO custom_entries (food_name, barcode, allergens, created_at) VALUES (?, ?, ?, ?)',
           [foodName, barcode, allergenString, timestamp]
         );
-        console.log('[CustomDB] Custom entry saved');
+        console.log('[CustomDB] New entry saved');
+        Alert.alert('Saved', 'Custom entry saved!');
       }
 
-      Alert.alert('Success', 'Custom entry saved!');
       navigation.goBack();
     } catch (error) {
       console.error(error);
@@ -94,7 +102,7 @@ export default function CreateCustomEntryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Custom Entry</Text>
+      <Text style={styles.title}>{editingEntry ? 'Edit' : 'Create'} Custom Entry</Text>
 
       <TextInput
         placeholder="Food name"
@@ -125,7 +133,7 @@ export default function CreateCustomEntryScreen() {
       />
 
       <Pressable style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.buttonText}>Save Entry</Text>
+        <Text style={styles.buttonText}>{editingEntry ? 'Update Entry' : 'Save Entry'}</Text>
       </Pressable>
     </View>
   );
