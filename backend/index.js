@@ -41,11 +41,17 @@ app.get('/lookup-food-id', async (req, res) => {
     }
 
     // Step 2: Make FatSecret request for food ID using the barcode
-      const fatsecretRes = await fetch(`https://platform.fatsecret.com/rest/food/barcode/find-by-id/v1?barcode=${encodeURIComponent(barcode)}`, {
-      method: 'GET',
+    const fatsecretRes = await fetch('https://platform.fatsecret.com/rest/server.api', {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
+      body: new URLSearchParams({
+        method: 'food.find_id_for_barcode',
+        barcode,
+        format: 'json',
+      }),
     });
 
     if (!fatsecretRes.ok) {
