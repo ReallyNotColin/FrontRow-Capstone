@@ -1,18 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import {
-  View,
-  TextInput,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  ScrollView,
-} from 'react-native';
-
+import { View, TextInput, Text, StyleSheet, Pressable, FlatList, ScrollView} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { saveToHistory } from '@/db/history';
+import { searchCustomEntries } from '@/db/customFoods';
 
+// Debounce function to limit the rate of API calls
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -21,42 +15,91 @@ const debounce = (func, delay) => {
   };
 };
 
+// Search Funtion
 export default function AutocompleteScreen() {
+  const navigation = useNavigation();
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
+  const [combinedSuggestions, setCombinedSuggestions] = useState([]);
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
   const [allergenMatches, setAllergenMatches] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
+  // Called when the user starts typing in the search input
+  // Fetches suggestions from both FatSecret and custom database
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
     try {
-      const res = await fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`);
-      const data = await res.json();
-      setSuggestions(data?.suggestions?.suggestion || []);
+
+      // Call both APIs concurrently
+      const [fatsecretRes, customResults] = await Promise.all([
+        fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`),
+        searchCustomEntries(text)
+      ]);
+
+      // FatSecret API response handling
+      const fatsecretData = await fatsecretRes.json();
+      const fatsecretSuggestions = fatsecretData?.suggestions?.suggestion || [];
+      const fatsecretFormatted = fatsecretSuggestions.map(name => ({
+        name,
+        source: 'fatsecret',
+      }));
+      // Custom database response handling
+      const customFormatted = customResults.map(entry => ({
+        name: entry.food_name,
+        barcode: entry.barcode,
+        allergens: entry.allergens,
+        source: 'custom',
+      }));
+
+      // Display both suggestions
+      console.log('Custom DB results:', customResults);
+      console.log('FatSecret suggestions:', fatsecretSuggestions);
+      setCombinedSuggestions([...customFormatted, ...fatsecretFormatted]);
     } catch (err) {
-      console.error('Autocomplete fetch error:', err);
+      console.error('Unified fetch error:', err);
     }
   };
 
   const debouncedFetch = useMemo(() => debounce(fetchSuggestions, 400), []);
 
+  // Handle input changes and trigger debounced fetch
   const handleInputChange = (text) => {
     setQuery(text);
+    setHasSearched(text.length > 1);
     debouncedFetch(text);
   };
 
+  // Handle view press for both custom and FatSecret entries
   const handleViewPress = async (foodText, index) => {
+    const item = combinedSuggestions[index];
+
+    if (item.source === 'custom') {
+      const allergensArray = item.allergens
+        ? item.allergens.split(',').map(name => ({ name: name.trim(), value: '1' }))
+        : [];
+
+      setSelectedFoodDetails({
+        food: {
+          food_attributes: {
+            allergens: {
+              allergen: allergensArray,
+            },
+          },
+        },
+      });
+
+      setExpandedIndex(index);
+      return;
+    }
+
+    // FatSecret item
     try {
       const res = await fetch(`https://frontrow-capstone.onrender.com/search-food-entry?name=${encodeURIComponent(foodText)}`);
       const data = await res.json();
-      // console.log('Full API response:', JSON.stringify(data, null, 2));
-      // Get allergen names
-      // Filter to only show present allergens
+
       const allergens = data?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0")?.map(a => a.name) || [];
-      // Testing
-      console.log('Allergens:', allergens);
 
       setSelectedFoodDetails(data);
       setExpandedIndex(index);
@@ -66,7 +109,6 @@ export default function AutocompleteScreen() {
       const matchedAllergens = allergens.filter(a => profile.includes(a));
       const matchedString = matchedAllergens.join(', ');
 
-      // Fixed: Make sure to await the database operation
       try {
         await saveToHistory(foodText, allergensString, matchedString);
         console.log('Successfully saved to history');
@@ -79,9 +121,9 @@ export default function AutocompleteScreen() {
     }
   };
 
+  // Render each suggestion item
   const renderSuggestion = ({ item, index }) => {
     const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0");
-
     const profile = ['Milk', 'Egg', 'Peanuts'];
 
     const handleCompareAllergens = () => {
@@ -92,15 +134,17 @@ export default function AutocompleteScreen() {
 
     return (
       <View style={styles.suggestionCard}>
-        <Text style={styles.suggestionText}>{item}</Text>
-        <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
+        <Text style={styles.suggestionText}>
+          {item.name} {item.source === 'custom' && '(Custom)'}
+        </Text>
+        <Pressable style={styles.viewButton} onPress={() => handleViewPress(item.name, index)}>
           <Text style={styles.buttonText}>View</Text>
         </Pressable>
 
         {expandedIndex === index && selectedFoodDetails && (
           <View style={styles.detailsBox}>
             <ScrollView style={styles.detailsScroll}>
-              {allergens?.length > 0 && (
+              {allergens?.length > 0 ? (
                 <View style={styles.allergenContainer}>
                   <Text style={styles.detailsText}>Allergens:</Text>
                   <View style={styles.allergenBlockWrapper}>
@@ -111,17 +155,17 @@ export default function AutocompleteScreen() {
                     ))}
                   </View>
                 </View>
-              )}
-              {(!allergens || allergens.length === 0) && (
+              ) : (
                 <Text style={styles.detailsText}>No allergens found</Text>
               )}
             </ScrollView>
+
             <Pressable onPress={() => setExpandedIndex(null)} style={styles.collapseButton}>
               <Text style={styles.buttonText}>Collapse</Text>
             </Pressable>
 
             <Pressable style={styles.compareButton} onPress={handleCompareAllergens}>
-                    <Text style={styles.buttonText}>Compare with My Allergens</Text>
+              <Text style={styles.buttonText}>Compare with My Allergens</Text>
             </Pressable>
           </View>
         )}
@@ -145,33 +189,50 @@ export default function AutocompleteScreen() {
         />
 
         <FlatList
-          data={suggestions}
+          data={combinedSuggestions}
           renderItem={renderSuggestion}
-          keyExtractor={(item, index) => `${item}-${index}`}
+          keyExtractor={(item, index) => `${item.name}-${item.source}-${index}`}
           style={styles.list}
-          scrollEnabled={false} 
+          scrollEnabled={false}
         />
+
+        <Pressable
+          style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+          onPress={() => navigation.navigate('create-custom-entry')}
+        >
+          <Text style={styles.buttonText}>Create Custom Entry</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+          onPress={() => navigation.navigate('custom-entries-list')}
+        >
+          <Text style={styles.buttonText}>View Custom Entries</Text>
+        </Pressable>
+
         {modalVisible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
-            {allergenMatches.length > 0 ? (
-              allergenMatches.map((name, index) => (
-                <Text key={index} style={styles.modalText}>• {name}</Text>
-              ))
-            ) : (
-              <Text style={styles.modalText}>No matches found 🎉</Text>
-            )}
-            <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.buttonText}>Close</Text>
-            </Pressable>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
+              {allergenMatches.length > 0 ? (
+                allergenMatches.map((name, index) => (
+                  <Text key={index} style={styles.modalText}>• {name}</Text>
+                ))
+              ) : (
+                <Text style={styles.modalText}>No matches found 🎉</Text>
+              )}
+              <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
+                <Text style={styles.buttonText}>Close</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
-      )}
+        )}
       </ThemedView>
     </ScrollView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -272,7 +333,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   compareButton: {
-    position : 'absolute',
+    position: 'absolute',
     bottom: 10,
     left: 10,
     paddingVertical: 6,
@@ -280,7 +341,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF7F50',
     borderRadius: 6,
   },
-  
   matchText: {
     marginTop: 8,
     fontSize: 12,
