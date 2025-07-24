@@ -26,8 +26,6 @@ export default function Profile() {
   const [tagSelected, setTagSelected] = useState(false);
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
   const [savedProfiles, setSavedProfiles] = useState<{ name: string; allergens: string[] }[]>([]);
-  const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
-  const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
 
   const allergenCheckboxes = [
     'Milk',
@@ -61,7 +59,10 @@ export default function Profile() {
 const saveProfile = async () => {
   try {
     const existing = await AsyncStorage.getItem('profiles');
-    const profiles = existing ? JSON.parse(existing) : [];
+    let profiles = existing ? JSON.parse(existing) : [];
+
+    // Remove profile with same name if it exists (edit case)
+    profiles = profiles.filter((p: any) => p.name !== profileName);
 
     const newProfile = {
       name: profileName,
@@ -73,11 +74,10 @@ const saveProfile = async () => {
 
     console.log('Profile saved:', newProfile);
 
-    // Reset states and close modal
     setprofileprofileTypeModalVisible(false);
     setprofileName('');
     setSelectedAllergens([]);
-    loadProfiles(); // refresh UI
+    loadProfiles();
   } catch (error) {
     console.error('Failed to save profile', error);
   }
@@ -111,13 +111,6 @@ const loadGroupProfiles = async () => {
     console.error('Failed to load group profiles:', error);
   }
 };
-useEffect(() => {
-  const fetchProfiles = async () => {
-    const names = await getAllProfileNames();
-    setAvailableProfiles(names);
-  };
-  fetchProfiles();
-}, []);
 
 useEffect(() => {
   const fetchProfiles = async () => {
@@ -135,6 +128,34 @@ const handleSaveGroup = async () => {
   setGroupMembers([]);
   setgProfileModalVisible(false);
   await loadGroupProfiles();
+};
+
+const handleDeleteGroup = async (groupName: string) => {
+  try {
+    await AsyncStorage.removeItem(`groups_${groupName}`);
+    await loadGroupProfiles();
+  } catch (error) {
+    console.error('Failed to delete group', error);
+  }
+};
+
+const handleDeleteProfile = async (name: string) => {
+  try {
+    const existing = await AsyncStorage.getItem('profiles');
+    const profiles = existing ? JSON.parse(existing) : [];
+
+    const filtered = profiles.filter((p: any) => p.name !== name);
+    await AsyncStorage.setItem('profiles', JSON.stringify(filtered));
+    loadProfiles();
+  } catch (error) {
+    console.error('Failed to delete profile', error);
+  }
+};
+
+const handleEditProfile = (profile: { name: string; allergens: string[] }) => {
+  setprofileName(profile.name);
+  setSelectedAllergens(profile.allergens);
+  setprofileprofileTypeModalVisible(true);
 };
 
 useEffect(() => {
@@ -159,7 +180,15 @@ useEffect(() => {
             ) : (
               savedProfiles.map((profile, index) => (
                 <View key={index} style={styles.card}>
-                  <Text style={{ fontWeight: 'bold' }}>{profile.name}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontWeight: 'bold', flex: 1 }}>{profile.name}</Text>
+                    <TouchableOpacity onPress={() => handleDeleteProfile(profile.name)} style={{ marginRight: 10 }}>
+                      <Text style={{ color: 'red' }}>Delete</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleEditProfile(profile)} >
+                      <Text style={{ color: '#007AFF' }}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
                   {profile.allergens.length > 0 ? (
                     <Text style={{ marginTop: 4, fontSize: 14 }}>
                       Allergens: {profile.allergens.join(', ')}
@@ -180,6 +209,12 @@ useEffect(() => {
         ) : (
           Object.entries(groupProfiles).map(([groupName, members]) => (
             <View key={groupName} style={styles.groupContainer}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.groupTitle}>{groupName}</Text>
+                <TouchableOpacity onPress={() => handleDeleteGroup(groupName)}>
+                  <Text style={{ color: 'red' }}>Delete</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.groupTitle}>{groupName}</Text>
               {Array.isArray(members) && members.length > 0 ? (
                 members.map((memberName, index) => (
