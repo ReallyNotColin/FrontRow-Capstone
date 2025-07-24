@@ -2,7 +2,11 @@ import * as SQLite from 'expo-sqlite';
 
 let customDb: SQLite.SQLiteDatabase;
 
+export const getCustomDb = () => customDb;
+
 export const initCustomDb = async () => {
+  if (customDb) return;
+
   customDb = await SQLite.openDatabaseAsync('customFoods');
   await customDb.execAsync(`
     CREATE TABLE IF NOT EXISTS custom_entries (
@@ -15,6 +19,8 @@ export const initCustomDb = async () => {
   `);
 };
 
+
+// Import custom made utility function for string normalization
 import { normalizeString } from '@/utils/normalize';
 
 export const searchCustomEntries = async (query: string) => {
@@ -40,3 +46,13 @@ export const searchCustomEntries = async (query: string) => {
   }
 };
 
+export const deleteCustomEntry = async (id: number) => {
+  if (!customDb) await initCustomDb();
+
+  try {
+    await customDb.runAsync('DELETE FROM custom_entries WHERE id = ?', [id]);
+    console.log(`Deleted custom entry with ID ${id}`);
+  } catch (error) {
+    console.error('[CustomDB] Failed to delete entry:', error);
+  }
+};
