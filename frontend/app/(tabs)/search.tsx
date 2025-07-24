@@ -1,20 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import {
-  View,
-  TextInput,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  ScrollView,
-} from 'react-native';
-
+import { View, TextInput, Text, StyleSheet, Pressable, FlatList, ScrollView} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { saveToHistory } from '@/db/history';
 import { searchCustomEntries } from '@/db/customFoods';
 
+// Debounce function to limit the rate of API calls
 const debounce = (func, delay) => {
   let timeout;
   return (...args) => {
@@ -23,6 +15,7 @@ const debounce = (func, delay) => {
   };
 };
 
+// Search Funtion
 export default function AutocompleteScreen() {
   const navigation = useNavigation();
   const [query, setQuery] = useState('');
@@ -33,28 +26,34 @@ export default function AutocompleteScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Called when the user starts typing in the search input
+  // Fetches suggestions from both FatSecret and custom database
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
     try {
+
+      // Call both APIs concurrently
       const [fatsecretRes, customResults] = await Promise.all([
         fetch(`https://frontrow-capstone.onrender.com/autocomplete?expression=${encodeURIComponent(text)}`),
         searchCustomEntries(text)
       ]);
 
+      // FatSecret API response handling
       const fatsecretData = await fatsecretRes.json();
       const fatsecretSuggestions = fatsecretData?.suggestions?.suggestion || [];
-
       const fatsecretFormatted = fatsecretSuggestions.map(name => ({
         name,
         source: 'fatsecret',
       }));
-
+      // Custom database response handling
       const customFormatted = customResults.map(entry => ({
         name: entry.food_name,
         barcode: entry.barcode,
         allergens: entry.allergens,
         source: 'custom',
       }));
+
+      // Display both suggestions
       console.log('Custom DB results:', customResults);
       console.log('FatSecret suggestions:', fatsecretSuggestions);
       setCombinedSuggestions([...customFormatted, ...fatsecretFormatted]);
@@ -65,12 +64,14 @@ export default function AutocompleteScreen() {
 
   const debouncedFetch = useMemo(() => debounce(fetchSuggestions, 400), []);
 
+  // Handle input changes and trigger debounced fetch
   const handleInputChange = (text) => {
     setQuery(text);
     setHasSearched(text.length > 1);
     debouncedFetch(text);
   };
 
+  // Handle view press for both custom and FatSecret entries
   const handleViewPress = async (foodText, index) => {
     const item = combinedSuggestions[index];
 
@@ -120,6 +121,7 @@ export default function AutocompleteScreen() {
     }
   };
 
+  // Render each suggestion item
   const renderSuggestion = ({ item, index }) => {
     const allergens = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0");
     const profile = ['Milk', 'Egg', 'Peanuts'];
@@ -199,6 +201,13 @@ export default function AutocompleteScreen() {
           onPress={() => navigation.navigate('create-custom-entry')}
         >
           <Text style={styles.buttonText}>Create Custom Entry</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+          onPress={() => navigation.navigate('custom-entries-list')}
+        >
+          <Text style={styles.buttonText}>View Custom Entries</Text>
         </Pressable>
 
         {modalVisible && (
