@@ -1,24 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity, Animated} from 'react-native';
+import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity, Animated, Button } from 'react-native';
 import { useNavigation } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { saveProfile, getProfiles, deleteProfile } from '@/db/Profiles';
+import { saveProfile, getProfiles, deleteProfile, getAllProfileNames, saveGroupProfile, getGroupMembers, getAllGroupProfileNames } from '@/db/Profiles';
 
 
 
 export default function Profile() {
-  const [profileName, setprofileName] = useState(false);
-  const [nestedVisible, setNestedVisible] = useState(false);
-  const [nameInput, setnameInput] = useState('');
-//  const [profileInput, setprofileInput] = useState('');
-//  const [items, setItems] = useState<string[]>([]);
+  const [profileNameModalVisible, setprofileNameModalVisible] = useState(false);
+  const [profileprofileTypeModalVisible, setprofileprofileTypeModalVisible] = useState(false);
+  const [profileTypeModalVisible, setprofileTypeModalVisible] = useState(false);
+  const [gProfileModalVisible, setgProfileModalVisible] = useState(false);
+  
+  const [profileName, setprofileName] = useState('');
+  const [groupName, setgroupName] = useState('');
+  const [groupMembers, setGroupMembers] = useState<string[]>([]);
+
+  const [individualProfiles, setIndividualProfiles] = useState<string[]>([]);
+  const [groupProfiles, setGroupProfiles] = useState<Record<string, string[]>>({});
+  
   const [moveMenu] = useState(new Animated.Value(0));
   const [allergensMenu] = useState(new Animated.Value(0));
   const [tagSelected, setTagSelected] = useState(false);
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
   const [savedProfiles, setSavedProfiles] = useState<{ name: string; allergens: string[] }[]>([]);
+  const [availableProfiles, setAvailableProfiles] = useState<string[]>([]);
+  const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
 
   const allergenCheckboxes = [
     'Milk',
@@ -32,13 +41,6 @@ export default function Profile() {
     'Soy',
     'Sesame',
   ];
-
-//  const handleAddItem = () => {
-//    if (profileInput.trim()) {
-//      setItems([...items, profileInput.trim()]);
-//      setprofileInput('');
-//    }
-//  };
 
   const handleTagPress = () => {
     setTagSelected(true);
@@ -62,7 +64,7 @@ const saveProfile = async () => {
     const profiles = existing ? JSON.parse(existing) : [];
 
     const newProfile = {
-      name: nameInput,
+      name: profileName,
       allergens: selectedAllergens,
     };
 
@@ -72,8 +74,8 @@ const saveProfile = async () => {
     console.log('Profile saved:', newProfile);
 
     // Reset states and close modal
-    setNestedVisible(false);
-    setnameInput('');
+    setprofileprofileTypeModalVisible(false);
+    setprofileName('');
     setSelectedAllergens([]);
     loadProfiles(); // refresh UI
   } catch (error) {
@@ -90,12 +92,54 @@ const loadProfiles = async () => {
       setSavedProfiles([]);
     }
   } catch (e) {
-    console.error('Failed to load profiles', e);
+    console.error('Failed to load profiles', e);  
   }
+};
+
+const loadGroupProfiles = async () => {
+  try {
+    const names = await getAllGroupProfileNames();
+    const profileMap: Record<string, string[]> = {};
+
+    for (const name of names) {
+      const members = await getGroupMembers(name);
+      profileMap[name] = members;
+    }
+
+    setGroupProfiles(profileMap);
+  } catch (error) {
+    console.error('Failed to load group profiles:', error);
+  }
+};
+useEffect(() => {
+  const fetchProfiles = async () => {
+    const names = await getAllProfileNames();
+    setAvailableProfiles(names);
+  };
+  fetchProfiles();
+}, []);
+
+useEffect(() => {
+  const fetchProfiles = async () => {
+    const individuals = await getAllProfileNames();
+    const groups = await getAllGroupProfileNames();
+    setIndividualProfiles(individuals);
+    setGroupProfiles(groups);
+  };
+  fetchProfiles();
+}, []);
+
+const handleSaveGroup = async () => {
+  await saveGroupProfile(groupName, groupMembers);
+  setgroupName('');
+  setGroupMembers([]);
+  setgProfileModalVisible(false);
+  await loadGroupProfiles();
 };
 
 useEffect(() => {
   loadProfiles();
+  loadGroupProfiles();
 }, []);
 
 
@@ -121,8 +165,8 @@ useEffect(() => {
                       Allergens: {profile.allergens.join(', ')}
                     </Text>
                   ) : (
-          <Text style={{ fontStyle: 'italic', fontSize: 14 }}>No allergens selected</Text>
-        )}
+                <Text style={{ fontStyle: 'italic', fontSize: 14 }}>No allergens selected</Text>
+              )}
       </View>
     ))
   )}
@@ -131,41 +175,128 @@ useEffect(() => {
       {/* Group Profiles Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Group Profiles</Text>
-        {/* Replace this with your group data */}
-        <View style={styles.card}><Text>Family Group</Text></View>
-        <View style={styles.card}><Text>Work Team</Text></View>
+        {Object.keys(groupProfiles).length === 0 ? (
+          <Text style={{ fontStyle: 'italic' }}>No group profiles saved.</Text>
+        ) : (
+          Object.entries(groupProfiles).map(([groupName, members]) => (
+            <View key={groupName} style={styles.groupContainer}>
+              <Text style={styles.groupTitle}>{groupName}</Text>
+              {Array.isArray(members) && members.length > 0 ? (
+                members.map((memberName, index) => (
+                  <Text key={`${groupName}-${index}`} style={styles.groupMemberText}>
+                    • {memberName}
+                  </Text>
+                ))
+              ) : (
+                <Text style={{ marginLeft: 10, fontStyle: 'italic' }}>No members</Text>
+              )}
+            </View>
+          ))
+        )}
       </View>
       </ScrollView>
 
       {/* Button at the bottom end of flex layout */}
       <View style={styles.buttonContainer}>
-        <Pressable onPress={() => setprofileName(true)} style={styles.button}>
+        <Pressable onPress ={() => {setprofileTypeModalVisible(true)}} style={styles.button}>
         <Text style={styles.continueButtonText}>+</Text>
       </Pressable>
       </View>
     </View>
-      <Modal transparent visible={profileName} animationType="slide">
+    
+    <Modal transparent animationType="fade" visible={profileTypeModalVisible} onRequestClose={() => setprofileTypeModalVisible(false)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Create New</Text>
+          <Pressable
+            style={styles.optionButton}
+            onPress={() => {
+              setprofileNameModalVisible(true);
+              setprofileTypeModalVisible(false);
+            }}
+          >
+            <Text>Individual Profile</Text>
+          </Pressable>
+          <Pressable
+            style={styles.optionButton}
+            onPress={() => {
+              setgProfileModalVisible(true);
+              setprofileTypeModalVisible(false);
+            }}
+          >
+            <Text>Group Profile</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+      
+      <Modal visible={gProfileModalVisible} transparent animationType="slide" onRequestClose={() => setgProfileModalVisible(false)}>
+        <View style={styles.overlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.title}>Create Group Profile</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Group Name"
+                value={groupName}
+                onChangeText={setgroupName}
+              />
+              <Text style={styles.modalSubtitle}>Select Profiles to Include</Text>
+                <ScrollView style={{ maxHeight: 200 }}>
+                  {individualProfiles.map((profile) => {
+                    const isSelected = groupMembers.includes(profile);
+                    return (
+                      <TouchableOpacity
+                        key={profile}
+                        style={styles.checkboxRow}
+                        onPress={() => {
+                          setGroupMembers((prev) =>
+                            isSelected
+                              ? prev.filter((p) => p !== profile)
+                              : [...prev, profile]
+                          );
+                        }}
+                      >
+                        <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
+                        <Text style={styles.checkboxLabel}>{profile}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity style={styles.saveButton} onPress={handleSaveGroup}>
+                    <Text style={{ color: 'white' }}>Save Group</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cancelButton} onPress={() => setgProfileModalVisible(false)}>
+                    <Text style={{ color: 'black' }}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+      </Modal>
+
+      <Modal transparent visible={profileNameModalVisible} animationType="slide">
         <View style={styles.modalBackground}>
           <View style={styles.modalView}>
             <Text style={styles.nameText}>What is their name?</Text>
             <TextInput
               style={styles.input}
-              value={nameInput}
-              onChangeText={setnameInput}
+              value={profileName}
+              onChangeText={setprofileName}
               placeholder="Name"
             />
-            <Pressable onPress={() => {setNestedVisible(true); setprofileName(false);}} style={styles.secondaryButton}>
+            <Pressable onPress={() => {setprofileprofileTypeModalVisible(true); setprofileNameModalVisible(false);}} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
           </View>
         </View>
       </Modal>
 
-      <Modal transparent visible={nestedVisible} animationType="fade">
+      <Modal transparent visible={profileprofileTypeModalVisible} animationType="fade">
         <View style={styles.modalBackground}>
           <View style={styles.modalView}>
             <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
-              <Text style={styles.nameText}>What is {nameInput}'s dietary restrictions?</Text>
+              <Text style={styles.nameText}>What is {profileName}'s dietary restrictions?</Text>
             </Animated.View>
             <Animated.View style={[styles.secondaryButton, { transform: [{ translateY: moveMenu }] }]}>
               <Text style={styles.continueButtonText}>Select a tag</Text>
@@ -205,7 +336,7 @@ useEffect(() => {
               </Animated.View>
             )}
 
-            <Pressable onPress={() => {setNestedVisible(false); saveProfile();}} style={styles.secondaryButton}>
+            <Pressable onPress={() => {setprofileprofileTypeModalVisible(false); saveProfile();}} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
           </View>
@@ -384,5 +515,100 @@ checkboxLabel: {
   fontSize: 16,
   color: 'black',
 },
+groupModalContainer: {
+  backgroundColor: 'white',
+  padding: 20,
+  borderRadius: 10,
+  width: '90%',
+  maxHeight: '80%',
+},
+gInput: {
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 6,
+  padding: 10,
+  marginBottom: 10,
+},
+modalSubtitle: {
+  fontWeight: 'bold',
+  marginVertical: 10,
+},
+profileOption: {
+  padding: 10,
+  borderBottomWidth: 1,
+  borderColor: '#eee',
+},
+profileOptionSelected: {
+  backgroundColor: '#d0ebff',
+},
+modalActions: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 20,
+},
+saveButton: {
+  backgroundColor: '#4CAF50',
+  padding: 10,
+  borderRadius: 6,
+},
+cancelButton: {
+  padding: 10,
+}, 
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.4)',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+modalContainer: {
+  backgroundColor: '#fff',
+  padding: 20,
+  borderRadius: 12,
+  width: 300,
+  alignItems: 'center',
+},
+modalTitle: {
+  fontSize: 18,
+  marginBottom: 20,
+},
+optionButton: {
+  backgroundColor: '#f0f0f0',
+  padding: 12,
+  borderRadius: 8,
+  width: '100%',
+  marginTop: 10,
+  alignItems: 'center',
+},
+  overlay: {
+    flex: 1,
+    backgroundColor: '#00000099',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '90%',
 
+}, 
+groupContainer: {
+  marginTop: 10,
+  padding: 10,
+  borderWidth: 1,
+  borderColor: '#ccc',
+  borderRadius: 8,
+  backgroundColor: '#f9f9f9',
+},
+
+groupTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  marginBottom: 4,
+},
+
+groupMemberText: {
+  fontSize: 14,
+  marginLeft: 10,
+},
 });
