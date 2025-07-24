@@ -205,7 +205,7 @@ useEffect(() => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Group Profiles</Text>
         {Object.keys(groupProfiles).length === 0 ? (
-          <Text style={{ fontStyle: 'italic' }}>No group profiles saved.</Text>
+          <Text style={{ fontStyle: 'italic', marginLeft: 12 }}>No group profiles saved.</Text>
         ) : (
           Object.entries(groupProfiles).map(([groupName, members]) => (
             <View key={groupName} style={styles.groupContainer}>
