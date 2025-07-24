@@ -1,8 +1,9 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
-import { Platform, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { BlurView } from 'expo-blur';
 
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
@@ -49,8 +50,52 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
+  const [foodDetails, setFoodDetails] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const handleBarcodeScanned = ({ data, type }: { data: string, type: string }) => {
+  const fetchFoodDetailsByBarcode = async (barcode: string) => {
+    setLoadingDetails(true);
+    console.log('Fetching food details for barcode:', barcode);
+
+    try {
+      // Step 1: Get food_id from barcode
+      const idRes = await fetch(`https://frontrow-capstone.onrender.com/lookup-food-id?barcode=${encodeURIComponent(barcode)}`);
+      const idData = await idRes.json();
+
+
+      // Handle the correct response structure
+      const foodId = idData.food_id?.value;
+      
+      if (!foodId) {
+        console.warn('No food_id found for barcode. Response:', idData);
+        setFoodDetails(null);
+        return;
+      }
+
+      // Step 2: Get food details using food_id
+      const detailsRes = await fetch(`https://frontrow-capstone.onrender.com/food-details?food_id=${foodId}`);
+      const detailsData = await detailsRes.json();
+
+      console.log('Food details:', detailsData);
+      setFoodDetails(detailsData);
+      
+      if (detailsData.food) {
+        setModalVisible(true);
+      }
+    } catch (err) {
+      console.error('Error fetching food details:', err);
+      setFoodDetails(null);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const toGTIN13 = (barcode: string): string => {
+    return barcode.padStart(13, '0');
+  };
+
+  const handleBarcodeScanned = async ({ data, type }: { data: string; type: string }) => {
     setScanned(true);
 
     let finalData = data;
@@ -58,16 +103,24 @@ export default function ScanScreen() {
       finalData = convertUPCEtoUPCA(data);
     }
 
-    setScannedData(finalData);
-    console.log('Scanned:', finalData);
+    const gtin13 = toGTIN13(finalData);
+    setScannedData(gtin13);
+    await fetchFoodDetailsByBarcode(gtin13);
   };
 
-  if (!permission) 
+  const resetScanner = () => {
+    setScanned(false);
+    setScannedData(null);
+    setFoodDetails(null);
+    setModalVisible(false);
+  };
+
+  if (!permission)
     // Camera permissions are still loading.
     return <View />;
 
   if (!permission.granted) {
-     // Camera permissions are not granted yet.
+    // Camera permissions are not granted yet.
     return (
       <View style={styles.permissionContainer}>
         <ThemedView style={styles.titleContainer}>
@@ -86,6 +139,15 @@ export default function ScanScreen() {
     );
   }
 
+  const allergens =
+    foodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0") || [];
+
+  const userAllergenProfile = ['Milk', 'Egg', 'Peanuts'];
+  const matchedAllergens = allergens
+    .map((a: any) => a.name)
+    .filter(name => userAllergenProfile.includes(name));
+
+
   return (
     <View style={styles.container}>
       <CameraView
@@ -101,23 +163,69 @@ export default function ScanScreen() {
         <View style={styles.scanBox} />
         <Text style={styles.text}> </Text>
         <Text style={styles.text}>Place barcode here</Text>
-        {scannedData && (
-          <Text style={[styles.text, { marginTop: 20 }]}>
-            Scanned: {scannedData}
-          </Text>
+
+        {loadingDetails && (
+          <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>
         )}
       </View>
 
-      {scanned && (
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={() => {
-            setScanned(false);
-            setScannedData(null);
-          }}>
-            <Text style={styles.text}>Tap to Scan Again</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Results</Text>
+            </View>
+
+            <ScrollView style={styles.modalScroll}>
+              {foodDetails?.food ? (
+                <>
+                  <Text style={styles.productName}>
+                    {foodDetails.food.food_name}
+                  </Text>
+                  
+                  {foodDetails.food.brand_name && (
+                    <Text style={styles.brandName}>
+                      by {foodDetails.food.brand_name}
+                    </Text>
+                  )}
+
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Allergens</Text>
+                    {allergens.length > 0 ? (
+                      <View style={styles.allergenContainer}>
+                        {allergens.map((a: any, i: number) => (
+                          <View key={i} style={styles.allergenTag}>
+                            <Text style={styles.allergenText}>{a.name}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={styles.sectionText}>No allergens found</Text>
+                    )}
+                  </View>
+                </>
+              ) : (
+                <Text style={styles.errorText}>No food data found for this barcode.</Text>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={resetScanner}
+              >
+                <Text style={styles.actionButtonText}>Scan Another</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </BlurView>
+      </Modal>
+
     </View>
   );
 }
@@ -180,5 +288,119 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: 'transparent',
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  modalScroll: {
+    padding: 20,
+  },
+  productName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  brandName: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+    fontStyle: 'italic',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  sectionText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  allergenContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+  },
+  allergenTag: {
+    backgroundColor: '#FF4D4D',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  allergenText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  modalActions: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  actionButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
-
