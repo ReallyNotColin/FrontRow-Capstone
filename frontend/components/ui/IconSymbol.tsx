@@ -19,6 +19,8 @@ const MAPPING = {
   'person.2': 'people',
   'gearshape': 'settings',
   'camera': 'camera-alt',
+  'moon.fill': 'dark-mode',          
+  'textformat.size': 'text-fields', 
 } as any;
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
