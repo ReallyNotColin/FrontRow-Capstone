@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import Dropdown from 'react-native-input-select';
-import { StretchOutX } from 'react-native-reanimated';
+
+import { useThemedColor } from '@/components/ThemedColor';
 
 export default function Screen() {
-  const [textSize, setTextSize] = useState<string>('medium'); 
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode, setIsDarkMode, textSize, setTextSize, colors } = useThemedColor();
+
+  const activeColors = isDarkMode ? colors.dark : colors.light;
 
   const textSizeOptions = [
     { label: 'Small', value: 'small' },
@@ -18,27 +20,34 @@ export default function Screen() {
   ];
 
   return (
-    <ScrollView>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Settings</ThemedText>
+    <ScrollView style={{ backgroundColor: activeColors.background }}>
+      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+        <ThemedText type="title" style={{ color: activeColors.text }}>Settings</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: activeColors.divider }]} />
 
       <ThemedView style={styles.text}>
+        {/* Dark Mode toggle */}
         <View style={styles.settingRow}>
           <View style={styles.iconLabel}>
-            <IconSymbol name="moon.fill" color="#000" size={24} />
-            <ThemedText style={styles.labelText}>Dark Mode</ThemedText>
+            <IconSymbol name="moon.fill" color={activeColors.icon} size={24} />
+            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Dark Mode</ThemedText>
           </View>
-          <Switch value={isDarkMode} onValueChange={setIsDarkMode} />
+          <Switch
+            value={isDarkMode}
+            onValueChange={setIsDarkMode}
+            trackColor={{ false: activeColors.switchTrack, true: activeColors.switchTrack }}
+            thumbColor={isDarkMode ? activeColors.switchThumb : activeColors.switchThumb}
+          />
         </View>
 
-        <View style={styles.dividerThin} />
+        <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
 
+        {/* Text Size dropdown */}
         <View style={styles.settingRow}>
           <View style={styles.iconLabel}>
-            <IconSymbol name="textformat.size" color="#000" size={24} />
-            <ThemedText style={styles.labelText}>Text Size</ThemedText>
+            <IconSymbol name="textformat.size" color={activeColors.icon} size={24} />
+            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Text Size</ThemedText>
           </View>
           <View style={styles.dropdownContainer}>
             <Dropdown
@@ -48,24 +57,27 @@ export default function Screen() {
               selectedValue={textSize}
               onValueChange={(selected) => {
                 if (Array.isArray(selected)) {
-                  setTextSize(selected[0] as string);
+                  setTextSize(selected[0] as 'small' | 'medium' | 'large');
                 } else if (typeof selected === 'string') {
-                  setTextSize(selected);
+                  setTextSize(selected as 'small' | 'medium' | 'large');
                 }
               }}
-              primaryColor={'#000'}
-              dropdownStyle={styles.dropdown}
+              primaryColor={activeColors.primary}
+              dropdownStyle={{
+                ...styles.dropdown,
+                backgroundColor: activeColors.background,
+                borderColor: activeColors.divider,
+              }}
+              dropdownTextStyle={{
+                color: activeColors.text,
+              }}
+              selectedItemStyle={{
+                color: activeColors.text,
+              }}
               dropdownIconStyle={styles.hiddenIcon}
             />
           </View>
         </View>
-
-        <View style={styles.dividerThin} />
-
-        <ThemedText style={{ marginTop: 20 }}>
-          Dark mode is {isDarkMode ? 'enabled' : 'disabled'}{'\n'}
-          Selected text size: {textSize}
-        </ThemedText>
       </ThemedView>
     </ScrollView>
   );
@@ -79,17 +91,15 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    backgroundColor: '#E5E5EA',
     marginBottom: 16,
     width: '100%',
   },
   dividerThin: {
     height: 1,
     width: '150%',
-    backgroundColor: '#ccc',
     marginBottom: 15,
     marginTop: 15,
-    alignSelf: 'center'
+    alignSelf: 'center',
   },
   text: {
     backgroundColor: 'transparent',
@@ -119,8 +129,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   dropdown: {
-    width: 95,
+    width: 91,
     minHeight: 40,
+    alignItems: 'center',
+    borderWidth: 1,
   },
   hiddenIcon: {
     display: 'none',

@@ -1,20 +1,21 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { initDB, clearHistory } from '@/db/history';
-import {useEffect} from 'react';
+import { initDB } from '@/db/history';
+import { useEffect } from 'react';
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+import { ThemedColorProvider, useThemedColor } from '@/components/ThemedColor';
+
+function NavigationWrapper() {
+  const { isDarkMode, colors } = useThemedColor();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-useEffect(() => {
+  useEffect(() => {
     initDB();
 
   }, []);
@@ -23,13 +24,38 @@ useEffect(() => {
     return null;
   }
 
+  // Extend the stock navigation themes with your ThemedColor palette
+  const CustomDarkTheme = {
+    ...NavigationDarkTheme,
+    colors: {
+      ...NavigationDarkTheme.colors,
+      ...colors.dark, // <-- from ThemedColor.tsx
+    },
+  };
+
+  const CustomLightTheme = {
+    ...NavigationDefaultTheme,
+    colors: {
+      ...NavigationDefaultTheme.colors,
+      ...colors.light, // <-- from ThemedColor.tsx
+    },
+  };
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <NavigationThemeProvider value={isDarkMode ? CustomDarkTheme : CustomLightTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+    </NavigationThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemedColorProvider>
+      <NavigationWrapper />
+    </ThemedColorProvider>
   );
 }

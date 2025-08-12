@@ -4,63 +4,79 @@ import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemedColor } from '@/components/ThemedColor';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { activeColors } = useThemedColor();
+
+  const activeTintColor = activeColors.primary;
+  const inactiveTintColor = activeColors.secondaryText;
+  const backgroundColor = activeColors.background;
+  const backgroundTitleColor = activeColors.backgroundTitle;
+  const borderTopColor = activeColors.divider;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: activeTintColor,
+        tabBarInactiveTintColor: inactiveTintColor,
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
-            // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
+            backgroundColor: backgroundTitleColor,
+            borderTopColor: borderTopColor,
+            borderTopWidth: 1,
           },
-          default: {},
+          default: {
+            backgroundColor: backgroundTitleColor,
+            borderTopColor: borderTopColor,
+            borderTopWidth: 1,
+          },
         }),
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) =>  <IconSymbol size={Platform.OS === 'ios' ? 28 : 28} name="gearshape" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape" color={color} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: 'Search',
-          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 28 : 28} name="magnifyingglass" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
         }}
       />
       <Tabs.Screen
         name="scan"
         options={{
           title: 'Scan',
-          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 35 : 28} name="camera" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={Platform.OS === 'ios' ? 35 : 28} name="camera" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 28 : 28} name="clock" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock" color={color} />,
         }}
       />
       <Tabs.Screen
         name="profiles"
         options={{
           title: 'Profiles',
-          tabBarIcon: ({ color }) => <IconSymbol size={Platform.OS === 'ios' ? 38 : 28} name="person.2" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={Platform.OS === 'ios' ? 38 : 28} name="person.2" color={color} />
+          ),
         }}
       />
     </Tabs>
   );
 }
+
