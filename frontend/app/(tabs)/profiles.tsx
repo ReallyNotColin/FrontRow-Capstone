@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Platform, ScrollView, View, Text, Modal, TextInput, Pressable, FlatList, StyleSheet, TouchableOpacity, Animated, Button } from 'react-native';
 import { useNavigation } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { saveProfile, getProfiles, deleteProfile, getAllProfileNames, saveGroupProfile, getGroupMembers, getAllGroupProfileNames } from '@/db/Profiles';
+import { getAllProfileNames, saveGroupProfile, getGroupMembers, getAllGroupProfileNames } from '@/db/Profiles';
 
 
 
@@ -56,7 +57,7 @@ export default function Profile() {
   ]).start();
   }
 
-const saveProfile = async () => {
+const handleSaveProfile = async () => {
   try {
     const existing = await AsyncStorage.getItem('profiles');
     let profiles = existing ? JSON.parse(existing) : [];
@@ -77,7 +78,7 @@ const saveProfile = async () => {
     setprofileprofileTypeModalVisible(false);
     setprofileName('');
     setSelectedAllergens([]);
-    loadProfiles();
+    await refreshAll();
   } catch (error) {
     console.error('Failed to save profile', error);
   }
@@ -94,6 +95,13 @@ const loadProfiles = async () => {
   } catch (e) {
     console.error('Failed to load profiles', e);  
   }
+};
+
+const refreshAll = async () => {
+  await loadProfiles();        
+  const names = await getAllProfileNames();+   
+  setIndividualProfiles(names);+   
+  await loadGroupProfiles();   
 };
 
 const loadGroupProfiles = async () => {
@@ -120,14 +128,21 @@ useEffect(() => {
     setGroupProfiles(groups);
   };
   fetchProfiles();
+  refreshAll();
 }, []);
+
+useFocusEffect(
+  useCallback(() => {
+    refreshAll();  // runs every time the screen gains focus
+  }, [])
+);
 
 const handleSaveGroup = async () => {
   await saveGroupProfile(groupName, groupMembers);
   setgroupName('');
   setGroupMembers([]);
   setgProfileModalVisible(false);
-  await loadGroupProfiles();
+  await refreshAll();
 };
 
 const handleDeleteGroup = async (groupName: string) => {
@@ -146,7 +161,7 @@ const handleDeleteProfile = async (name: string) => {
 
     const filtered = profiles.filter((p: any) => p.name !== name);
     await AsyncStorage.setItem('profiles', JSON.stringify(filtered));
-    loadProfiles();
+    await refreshAll();
   } catch (error) {
     console.error('Failed to delete profile', error);
   }
@@ -370,7 +385,7 @@ useEffect(() => {
               </Animated.View>
             )}
 
-            <Pressable onPress={() => {setprofileprofileTypeModalVisible(false); saveProfile();}} style={styles.secondaryButton}>
+            <Pressable onPress={() => {setprofileprofileTypeModalVisible(false); handleSaveProfile();}} style={styles.secondaryButton}>
               <Text style={styles.continueButtonText}>Continue</Text>
             </Pressable>
           </View>
