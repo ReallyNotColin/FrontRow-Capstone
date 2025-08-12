@@ -6,6 +6,11 @@ import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
 import { saveToHistory } from '@/db/history';
 
+// 🔁 Firestore
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { ensureAnonAuth, db } from '@/db/firebaseConfig';
+
+// --- helpers (unchanged) ---
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
   for (let i = 0; i < upc.length; i++) {
@@ -46,6 +51,29 @@ function convertUPCEtoUPCA(upce: string): string {
   return upca11 + checkDigit; // return full 12-digit UPC-A
 }
 
+// Parse comma-separated warning string to FatSecret-like structure
+const parseWarning = (warning?: string) => {
+  if (!warning) return [];
+  return warning
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(name => ({ name, value: '1' }));
+};
+
+// Build a FatSecret-shaped data object from Firestore doc for UI compatibility
+const toFoodDetailsShape = (docData: any) => ({
+  food: {
+    food_name: docData.food_name || 'Unknown food',
+    brand_name: docData.brand_name || '',
+    food_attributes: {
+      allergens: {
+        allergen: parseWarning(docData.warning), // reuse UI allergen rendering
+      },
+    },
+  },
+});
+
 export default function ScanScreen() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
@@ -55,55 +83,63 @@ export default function ScanScreen() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Try multiple barcode normalizations to improve hit rate
+  const findByBarcode = async (barcode: string) => {
+    // Primary: exact match (your CSV import likely used 13-digit strings)
+    let tries = [barcode];
+
+    // Also try without a leading zero & last 12 digits (UPC-A vs EAN-13 quirks)
+    if (barcode.startsWith('0')) tries.push(barcode.slice(1));
+    if (barcode.length === 13) tries.push(barcode.slice(1)); // last 12 as UPC-A
+
+    for (const b of tries) {
+      const qRef = query(collection(db, 'Products'), where('barcode', '==', b));
+      const snap = await getDocs(qRef);
+      if (!snap.empty) return snap.docs[0].data();
+    }
+    return null;
+  };
+
   const fetchFoodDetailsByBarcode = async (barcode: string) => {
     setLoadingDetails(true);
-    console.log('Fetching food details for barcode:', barcode);
-
     try {
-      // Step 1: Get food_id from barcode
-      const idRes = await fetch(`https://frontrow-capstone.onrender.com/lookup-food-id?barcode=${encodeURIComponent(barcode)}`);
-      const idData = await idRes.json();
+      await ensureAnonAuth(); // ✅ required for rules
 
-
-      // Handle the correct response structure
-      const foodId = idData.food_id?.value;
-
-      if (!foodId) {
-        console.warn('No food_id found for barcode. Response:', idData);
+      const docData = await findByBarcode(barcode);
+      if (!docData) {
+        console.warn('No Firestore document found for barcode:', barcode);
         setFoodDetails(null);
+        setModalVisible(true);
         return;
       }
 
-      // Step 2: Get food details using food_id
-      const detailsRes = await fetch(`https://frontrow-capstone.onrender.com/food-details?food_id=${foodId}`);
-      const detailsData = await detailsRes.json();
+      const details = toFoodDetailsShape(docData);
+      setFoodDetails(details);
 
-      setFoodDetails(detailsData);
-
-      const foodName = detailsData.food?.food_name || 'Unknown food';
-      const allergensArray = detailsData.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0") || [];
+      // Build history payload
+      const foodName = details.food?.food_name || 'Unknown food';
+      const allergensArray =
+        details.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== '0') || [];
       const allergensString = allergensArray.map((a: any) => a.name).join(', ');
 
       const userAllergenProfile = ['Milk', 'Egg', 'Peanuts'];
       const matchedAllergens = allergensArray
         .map((a: any) => a.name)
-        .filter(name => userAllergenProfile.includes(name));
+        .filter((name: string) => userAllergenProfile.includes(name));
       const matchedString = matchedAllergens.join(', ');
 
-
-    try {
-      await saveToHistory(foodName, allergensString, matchedString);
-      console.log('Successfully saved to history');
-    } catch (saveError) {
-      console.error('Error saving to history:', saveError);
-    }
-      
-      if (detailsData.food) {
-        setModalVisible(true);
+      try {
+        await saveToHistory(foodName, allergensString, matchedString);
+        console.log('Successfully saved to history');
+      } catch (saveError) {
+        console.error('Error saving to history:', saveError);
       }
+
+      setModalVisible(true);
     } catch (err) {
       console.error('Error fetching food details:', err);
       setFoodDetails(null);
+      setModalVisible(true);
     } finally {
       setLoadingDetails(false);
     }
@@ -133,12 +169,9 @@ export default function ScanScreen() {
     setModalVisible(false);
   };
 
-  if (!permission)
-    // Camera permissions are still loading.
-    return <View />;
+  if (!permission) return <View />;
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet.
     return (
       <View style={styles.permissionContainer}>
         <ThemedView style={styles.titleContainer}>
@@ -158,14 +191,13 @@ export default function ScanScreen() {
   }
 
   const allergens =
-    foodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0") || [];
+    foodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== '0') || [];
 
   const userAllergenProfile = ['Milk', 'Egg', 'Peanuts'];
   const matchedAllergens = allergens
     .map((a: any) => a.name)
-    .filter(name => userAllergenProfile.includes(name));
+    .filter((name: string) => userAllergenProfile.includes(name));
   const matchedString = matchedAllergens.join(', ');
-
 
   return (
     <View style={styles.container}>
@@ -206,7 +238,7 @@ export default function ScanScreen() {
                   <Text style={styles.productName}>
                     {foodDetails.food.food_name}
                   </Text>
-                  
+
                   {foodDetails.food.brand_name && (
                     <Text style={styles.brandName}>
                       by {foodDetails.food.brand_name}
@@ -214,7 +246,7 @@ export default function ScanScreen() {
                   )}
 
                   <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Allergens</Text>
+                    <Text style={styles.sectionTitle}>Warnings</Text>
                     {allergens.length > 0 ? (
                       <View style={styles.allergenContainer}>
                         {allergens.map((a: any, i: number) => (
@@ -224,7 +256,7 @@ export default function ScanScreen() {
                         ))}
                       </View>
                     ) : (
-                      <Text style={styles.sectionText}>No allergens found</Text>
+                      <Text style={styles.sectionText}>No warnings found</Text>
                     )}
                   </View>
                 </>
