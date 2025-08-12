@@ -6,11 +6,9 @@ import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
 import { saveToHistory } from '@/db/history';
 
-// 🔁 Firestore
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { ensureAnonAuth, db } from '@/db/firebaseConfig';
 
-// --- helpers (unchanged) ---
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
   for (let i = 0; i < upc.length; i++) {

@@ -8,7 +8,7 @@ import { searchCustomEntries } from '@/db/customFoods';
 
 // Firestore
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { ensureAnonAuth, db } from "@/db/firebaseConfig"; // ⬅️ make sure path matches your project
+import { ensureAnonAuth, db } from "@/db/firebaseConfig"; 
 
 // Debounce
 const debounce = (func, delay) => {
@@ -19,7 +19,7 @@ const debounce = (func, delay) => {
   };
 };
 
-// Turn a comma-separated warning string into [{ name, value: '1' }]
+
 const parseWarning = (warning) => {
   if (!warning) return [];
   return warning
@@ -38,15 +38,14 @@ export default function AutocompleteScreen() {
   const [allergenMatches, setAllergenMatches] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Firestore + custom DB suggestions
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
     try {
-      await ensureAnonAuth(); // ✅ make sure we’re authenticated before querying
+      await ensureAnonAuth(); 
 
       const searchText = text.toLowerCase();
       const firestoreQuery = query(
-        collection(db, "Products"),        // change to your collection name
+        collection(db, "Products"),     
         where("name_lower", ">=", searchText),
         where("name_lower", "<=", searchText + "\uf8ff")
       );
@@ -55,10 +54,10 @@ export default function AutocompleteScreen() {
       const firestoreResults = firestoreSnapshot.docs.map(doc => {
         const d = doc.data();
         return {
-          name: d.food_name,        // display name
+          name: d.food_name,     
           barcode: d.barcode,
-          brand_name: d.brand_name, // optional, nice to display later
-          warning: d.warning,       // ⬅️ use 'warning' from Firestore
+          brand_name: d.brand_name,
+          warning: d.warning,    
           source: 'firebase',
         };
       });
@@ -68,7 +67,7 @@ export default function AutocompleteScreen() {
         name: entry.food_name,
         barcode: entry.barcode,
         brand_name: entry.brand_name,
-        warning: entry.warning,     // ⬅️ ensure your custom entries expose 'warning'
+        warning: entry.warning,   
         source: 'custom',
       }));
 
@@ -88,12 +87,10 @@ export default function AutocompleteScreen() {
   const handleViewPress = async (foodText, index) => {
     const item = combinedSuggestions[index];
 
-    // Custom DB entry → build from its 'warning' field
     if (item.source === 'custom') {
       const warningArray = parseWarning(item.warning);
 
       setSelectedFoodDetails({
-        // keep original shape so the UI below doesn't need refactors
         food: { food_attributes: { allergens: { allergen: warningArray } } }
       });
       setExpandedIndex(index);
@@ -110,10 +107,8 @@ export default function AutocompleteScreen() {
       }
       return;
     }
-
-    // Firestore entry → fetch exact match and build from 'warning'
     try {
-      await ensureAnonAuth(); // ✅ ensure auth before exact-match lookup
+      await ensureAnonAuth(); 
 
       const firestoreQuery = query(
         collection(db, "Products"),
