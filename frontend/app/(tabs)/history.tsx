@@ -1,12 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { getHistory } from '@/db/history';
 import { useFocusEffect } from '@react-navigation/native';
+import { useThemedColor } from '@/components/ThemedColor';
 
 export default function Screen() {
+  const { isDarkMode, colors } = useThemedColor();
+  const activeColors = isDarkMode ? colors.dark : colors.light;
+
   const [harmful, setHarmful] = useState([]);
   const [notHarmful, setNotHarmful] = useState([]);
 
@@ -29,31 +33,31 @@ export default function Screen() {
   );
 
   const renderEntry = (item) => (
-    <View key={item.id} style={styles.entry}>
-      <Text style={styles.foodName}>{item.food_name}</Text>
-      <Text style={styles.details}>Allergens: {item.allergens || 'None'}</Text>
-      <Text style={styles.details}>Matched: {item.match || 'None'}</Text>
+    <View key={item.id} style={[styles.entry, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
+      <ThemedText style={[styles.foodName, { color: activeColors.text }]}>{item.food_name}</ThemedText>
+      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>Allergens: {item.allergens || 'None'}</ThemedText>
+      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>Matched: {item.match || 'None'}</ThemedText>
     </View>
   );
 
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">History</ThemedText>
+    <ScrollView style={[styles.container, { backgroundColor: activeColors.background }]}>
+      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+        <ThemedText type="title" style={{ color: activeColors.text }}>History</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.divider} />
+      <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
 
       <ThemedView style={styles.text}>
-        <Text style={styles.sectionHeader}>Harmful</Text>
+        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>Harmful</ThemedText>
         {harmful.length === 0 ? (
-          <Text style={styles.emptyText}>No harmful foods found.</Text>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>No harmful foods found.</ThemedText>
         ) : (
           harmful.map(renderEntry)
         )}
 
-        <Text style={styles.sectionHeader}>Not Harmful</Text>
+        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>Not Harmful</ThemedText>
         {notHarmful.length === 0 ? (
-          <Text style={styles.emptyText}>No safe foods logged yet.</Text>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>No safe foods logged yet.</ThemedText>
         ) : (
           notHarmful.map(renderEntry)
         )}
@@ -64,7 +68,6 @@ export default function Screen() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'transparent',
   },
   titleContainer: {
     paddingTop: 60,
@@ -73,7 +76,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    backgroundColor: '#E5E5EA',
     marginBottom: 16,
     width: '100%',
   },
@@ -91,9 +93,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 8,
-    backgroundColor: 'white',
+    // backgroundColor and borderColor set dynamically
   },
   foodName: {
     fontWeight: 'bold',
@@ -102,16 +103,9 @@ const styles = StyleSheet.create({
   },
   details: {
     fontSize: 14,
-    color: '#333',
-  },
-
-  detailsHarm: {
-    fontSize: 14,
-    color: '#333',
   },
   emptyText: {
     fontStyle: 'italic',
-    color: '#666',
     marginBottom: 10,
   },
 });

@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { saveToHistory } from '@/db/history';
 import { searchCustomEntries } from '@/db/customFoods';
+import { useThemedColor } from '@/components/ThemedColor';
 
 // Firestore
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -30,6 +31,8 @@ const parseWarning = (warning) => {
 };
 
 export default function AutocompleteScreen() {
+  const { isDarkMode, colors } = useThemedColor();
+  const activeColors = isDarkMode ? colors.dark : colors.light;
   const navigation = useNavigation();
   const [queryText, setQueryText] = useState('');
   const [combinedSuggestions, setCombinedSuggestions] = useState([]);
@@ -154,8 +157,8 @@ export default function AutocompleteScreen() {
     };
 
     return (
-      <View style={styles.suggestionCard}>
-        <Text style={styles.suggestionText}>
+      <View style={[styles.suggestionCard, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
+        <Text style={[styles.suggestionText, { color: activeColors.text }]}>
           {item.brand_name 
             ? `${item.brand_name} — ${item.name}` 
             : item.name
@@ -167,11 +170,11 @@ export default function AutocompleteScreen() {
         </Pressable>
 
         {expandedIndex === index && selectedFoodDetails && (
-          <View style={styles.detailsBox}>
+          <View style={[styles.detailsBox, { backgroundColor: activeColors.backgroundTitle, borderColor: 'transparent' }]}>
             <ScrollView style={styles.detailsScroll}>
               {warnings?.length > 0 ? (
                 <View style={styles.allergenContainer}>
-                  <Text style={styles.detailsText}>Warnings:</Text>
+                  <Text style={[styles.detailsText, { color: activeColors.text}]}>Warnings:</Text>
                   <View style={styles.allergenBlockWrapper}>
                     {warnings.map((a, i) => (
                       <View key={i} style={styles.allergenBlock}>
@@ -199,18 +202,19 @@ export default function AutocompleteScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Search</ThemedText>
+    <ScrollView style={[styles.container, { backgroundColor: activeColors.background }]}>
+      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle}]}>
+        <ThemedText type="title" style={{ color: activeColors.text }}>Search</ThemedText>
       </ThemedView>
-      <ThemedView style={styles.divider} />
+      <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
 
-      <ThemedView style={styles.innerContainer}>
+      <ThemedView style={[styles.innerContainer, { backgroundColor: activeColors.background }]}>
         <TextInput
           placeholder="Start typing a food name..."
+          placeholderTextColor={activeColors.secondaryText}
           value={queryText}
           onChangeText={handleInputChange}
-          style={styles.input}
+          style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
         />
 
         <FlatList

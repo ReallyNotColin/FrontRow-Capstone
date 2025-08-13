@@ -6,10 +6,13 @@ import { useNavigation } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAllProfileNames, saveGroupProfile, getGroupMembers, getAllGroupProfileNames } from '@/db/Profiles';
+import { useThemedColor } from '@/components/ThemedColor';
 
 
 
 export default function Profile() {
+  const { isDarkMode, colors } = useThemedColor();
+  const activeColors = isDarkMode ? colors.dark : colors.light;
   const [profileNameModalVisible, setprofileNameModalVisible] = useState(false);
   const [profileprofileTypeModalVisible, setprofileprofileTypeModalVisible] = useState(false);
   const [profileTypeModalVisible, setprofileTypeModalVisible] = useState(false);
@@ -180,23 +183,29 @@ useEffect(() => {
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: activeColors.background }]}>
       <View style={styles.container}>
       <ScrollView>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Profiles</ThemedText>
+        <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+          <ThemedText type="title" style={{ color: activeColors.text }}>
+            Profiles
+          </ThemedText>
         </ThemedView>
-        <ThemedView style={styles.divider} />
+        <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
         <View style={styles.section}>
           
-          <Text style={styles.sectionTitle}>Profiles</Text>
+          <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Profiles</ThemedText>
             {savedProfiles.length === 0 ? (
-              <Text style={{ fontStyle: 'italic', marginLeft: 12 }}>No profiles saved yet.</Text>
+              <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
+              No profiles saved yet.
+            </ThemedText>
             ) : (
               savedProfiles.map((profile, index) => (
-                <View key={index} style={styles.card}>
+                <View 
+                  key={index} 
+                  style={[styles.card, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ fontWeight: 'bold', flex: 1 }}>{profile.name}</Text>
+                    <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>{profile.name}</ThemedText>
                     <TouchableOpacity onPress={() => handleDeleteProfile(profile.name)} style={{ marginRight: 10 }}>
                       <Text style={{ color: 'red' }}>Delete</Text>
                     </TouchableOpacity>
@@ -205,11 +214,13 @@ useEffect(() => {
                     </TouchableOpacity>
                   </View>
                   {profile.allergens.length > 0 ? (
-                    <Text style={{ marginTop: 4, fontSize: 14 }}>
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 4 }]}>
                       Allergens: {profile.allergens.join(', ')}
-                    </Text>
+                    </ThemedText>
                   ) : (
-                <Text style={{ fontStyle: 'italic', fontSize: 14 }}>No allergens selected</Text>
+                <ThemedText style={[styles.cardDetails, { fontStyle: 'italic', color: activeColors.secondaryText, marginTop: 4 }]}>
+                    No allergens selected
+                  </ThemedText>
               )}
       </View>
     ))
@@ -218,23 +229,31 @@ useEffect(() => {
 
       {/* Group Profiles Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Group Profiles</Text>
+        <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Group Profiles</ThemedText>
         {Object.keys(groupProfiles).length === 0 ? (
-          <Text style={{ fontStyle: 'italic', marginLeft: 12 }}>No group profiles saved.</Text>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
+            No group profiles saved.
+          </ThemedText>
         ) : (
           Object.entries(groupProfiles).map(([groupName, members]) => (
-            <View key={groupName} style={styles.groupContainer}>
+              <View
+                key={groupName}
+                style={[styles.groupContainer, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}
+              >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={styles.groupTitle}>{groupName}</Text>
+                <ThemedText style={[styles.groupTitle, { color: activeColors.text }]}>{groupName}</ThemedText>
                 <TouchableOpacity onPress={() => handleDeleteGroup(groupName)}>
                   <Text style={{ color: 'red' }}>Delete</Text>
                 </TouchableOpacity>
               </View>
               {Array.isArray(members) && members.length > 0 ? (
                 members.map((memberName, index) => (
-                  <Text key={`${groupName}-${index}`} style={styles.groupMemberText}>
-                    • {memberName}
-                  </Text>
+                  <ThemedText
+                      key={`${groupName}-${index}`}
+                      style={[styles.groupMemberText, { color: activeColors.secondaryText }]}
+                    >
+                      • {memberName}
+                    </ThemedText>
                 ))
               ) : (
                 <Text style={{ marginLeft: 10, fontStyle: 'italic' }}>No members</Text>
@@ -405,29 +424,23 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    backgroundColor: '#E5E5EA',
     marginBottom: 16,
     width: '100%',
   },
-  text: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 24,
-  },
-    buttonContainer: {
+  buttonContainer: {
     padding: 16,
     alignItems: 'flex-end', // align to right
     paddingBottom: Platform.OS === 'ios' ? 95 : 16,
   },
   button: {
-    backgroundColor: '#007AFF',
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#007AFF', 
   },
   continueButtonText: {
-    color: 'black',
     fontSize: 28,
   },
   section: {
@@ -441,9 +454,18 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 12,
-    backgroundColor: '#f0f0f0',
     borderRadius: 8,
     marginBottom: 8,
+    borderWidth: 1,
+  },
+  cardTitle: {
+    fontWeight: 'bold',
+  },
+  cardDetails: {
+    fontSize: 14,
+  },
+  emptyText: {
+    fontStyle: 'italic',
   },
   openButton: { 
     backgroundColor: '#007AFF', 
@@ -493,10 +515,6 @@ const styles = StyleSheet.create({
   },
   listItem: {
     paddingVertical: 4,
-  },
-  emptyText: {
-    fontStyle: 'italic',
-    color: '#999',
   },
   nameText: {
     justifyContent: 'center',
