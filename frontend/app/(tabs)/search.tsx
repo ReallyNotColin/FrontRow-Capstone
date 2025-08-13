@@ -66,12 +66,13 @@ export default function AutocompleteScreen() {
       });
 
       const customResults = await searchCustomEntries(text);
+      // SPRINT 3: Updated custom entry mapping to match firestore's fields
       const customFormatted = customResults.map(entry => ({
         name: entry.food_name,
-        barcode: entry.barcode,
-        brand_name: entry.brand_name,
-        warning: entry.warning,   
-        source: 'custom',
+        barcode: entry.barcode,              
+        brand_name: entry.brand_name ?? '',  
+        warning: entry.allergens ?? '',      
+        source: 'custom' as const,
       }));
 
       setCombinedSuggestions([...customFormatted, ...firestoreResults]);
