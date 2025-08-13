@@ -1,15 +1,17 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from '@/components/ThemedText'; 
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import Dropdown from 'react-native-input-select';
 
 import { useThemedColor } from '@/components/ThemedColor';
+import { useFontSize } from '@/components/FontTheme';
 
 export default function Screen() {
-  const { isDarkMode, setIsDarkMode, textSize, setTextSize, colors } = useThemedColor();
+  const { isDarkMode, setIsDarkMode, colors } = useThemedColor();
+  const { fontSize, setFontSize } = useFontSize();
 
   const activeColors = isDarkMode ? colors.dark : colors.light;
 
@@ -22,8 +24,11 @@ export default function Screen() {
   return (
     <ScrollView style={{ backgroundColor: activeColors.background }}>
       <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-        <ThemedText type="title" style={{ color: activeColors.text }}>Settings</ThemedText>
+        <ThemedText type="title" style={{ color: activeColors.text }}>
+          Settings
+        </ThemedText>
       </ThemedView>
+
       <View style={[styles.divider, { backgroundColor: activeColors.divider }]} />
 
       <ThemedView style={styles.text}>
@@ -31,7 +36,9 @@ export default function Screen() {
         <View style={styles.settingRow}>
           <View style={styles.iconLabel}>
             <IconSymbol name="moon.fill" color={activeColors.icon} size={24} />
-            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Dark Mode</ThemedText>
+            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>
+              Dark Mode
+            </ThemedText>
           </View>
           <Switch
             value={isDarkMode}
@@ -47,19 +54,21 @@ export default function Screen() {
         <View style={styles.settingRow}>
           <View style={styles.iconLabel}>
             <IconSymbol name="textformat.size" color={activeColors.icon} size={24} />
-            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Text Size</ThemedText>
+            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>
+              Text Size
+            </ThemedText>
           </View>
           <View style={styles.dropdownContainer}>
             <Dropdown
               label=""
               placeholder="Medium"
               options={textSizeOptions}
-              selectedValue={textSize}
+              selectedValue={fontSize}
               onValueChange={(selected) => {
                 if (Array.isArray(selected)) {
-                  setTextSize(selected[0] as 'small' | 'medium' | 'large');
+                  setFontSize(selected[0] as 'small' | 'medium' | 'large');
                 } else if (typeof selected === 'string') {
-                  setTextSize(selected as 'small' | 'medium' | 'large');
+                  setFontSize(selected as 'small' | 'medium' | 'large');
                 }
               }}
               primaryColor={activeColors.primary}

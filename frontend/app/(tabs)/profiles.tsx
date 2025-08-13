@@ -207,10 +207,10 @@ useEffect(() => {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>{profile.name}</ThemedText>
                     <TouchableOpacity onPress={() => handleDeleteProfile(profile.name)} style={{ marginRight: 10 }}>
-                      <Text style={{ color: 'red' }}>Delete</Text>
+                      <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleEditProfile(profile)} >
-                      <Text style={{ color: '#007AFF' }}>Edit</Text>
+                      <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
                     </TouchableOpacity>
                   </View>
                   {profile.allergens.length > 0 ? (
@@ -241,9 +241,9 @@ useEffect(() => {
                 style={[styles.groupContainer, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}
               >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <ThemedText style={[styles.groupTitle, { color: activeColors.text }]}>{groupName}</ThemedText>
+                <ThemedText style={[styles.cardTitle, { color: activeColors.text }]}>{groupName}</ThemedText>
                 <TouchableOpacity onPress={() => handleDeleteGroup(groupName)}>
-                  <Text style={{ color: 'red' }}>Delete</Text>
+                  <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
                 </TouchableOpacity>
               </View>
               {Array.isArray(members) && members.length > 0 ? (
@@ -256,7 +256,7 @@ useEffect(() => {
                     </ThemedText>
                 ))
               ) : (
-                <Text style={{ marginLeft: 10, fontStyle: 'italic' }}>No members</Text>
+                <ThemedText style={{ marginLeft: 10, fontStyle: 'italic' }}>No members</ThemedText>
               )}
             </View>
           ))
@@ -447,7 +447,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
     marginLeft: 10,
@@ -462,7 +461,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   cardDetails: {
-    fontSize: 14,
   },
   emptyText: {
     fontStyle: 'italic',
@@ -675,7 +673,6 @@ groupTitle: {
 },
 
 groupMemberText: {
-  fontSize: 14,
   marginLeft: 10,
 },
 });

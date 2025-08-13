@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   buttonText: { color: 'white' },
   detailsBox: { marginTop: 10, backgroundColor: '#f4f4f4', borderRadius: 6, padding: 10, borderColor: '#ddd', borderWidth: 1, position: 'relative' },
   detailsScroll: { maxHeight: 200 },
-  detailsText: { fontSize: 12, color: '#333' },
+  detailsText: { color: '#333' },
   collapseButton: { marginTop: 8, alignSelf: 'flex-end', backgroundColor: '#888', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 4 },
   allergenContainer: { marginTop: 10 },
   allergenBlockWrapper: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },

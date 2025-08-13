@@ -8,6 +8,7 @@ import { initDB } from '@/db/history';
 import { useEffect } from 'react';
 
 import { ThemedColorProvider, useThemedColor } from '@/components/ThemedColor';
+import { FontSizeProvider } from '@/components/FontTheme';
 
 function NavigationWrapper() {
   const { isDarkMode, colors } = useThemedColor();
@@ -24,7 +25,6 @@ function NavigationWrapper() {
     return null;
   }
 
-  // Extend the stock navigation themes with your ThemedColor palette
   const CustomDarkTheme = {
     ...NavigationDarkTheme,
     colors: {
@@ -54,8 +54,10 @@ function NavigationWrapper() {
 
 export default function RootLayout() {
   return (
-    <ThemedColorProvider>
-      <NavigationWrapper />
-    </ThemedColorProvider>
+    <FontSizeProvider>
+      <ThemedColorProvider>
+        <NavigationWrapper />
+      </ThemedColorProvider>
+    </FontSizeProvider>
   );
 }

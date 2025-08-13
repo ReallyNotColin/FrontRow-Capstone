@@ -211,7 +211,7 @@ export default function ScanScreen() {
       <View style={styles.overlay}>
         <View style={styles.scanBox} />
         <Text style={styles.text}> </Text>
-        <Text style={styles.text}>Place barcode here</Text>
+        <ThemedText style={styles.text}>Place barcode here</ThemedText>
 
         {loadingDetails && (
           <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>
@@ -318,7 +318,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   text: {
-    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
