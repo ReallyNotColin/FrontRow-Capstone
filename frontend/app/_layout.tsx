@@ -1,37 +1,33 @@
-import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+// app/_layout.tsx
+import React from 'react';
 import { Slot } from 'expo-router';
-import { AuthProvider } from './auth/AuthProvider';
-import 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 
-import { initDB } from '@/db/history';
-import { useEffect } from 'react';
+import {
+  ThemeProvider,
+  DarkTheme as NavigationDarkTheme,
+  DefaultTheme as NavigationDefaultTheme,
+} from '@react-navigation/native';
 
+import { AuthProvider } from '../auth/AuthProvider';
 import { ThemedColorProvider, useThemedColor } from '@/components/ThemedColor';
 import { FontSizeProvider } from '@/components/FontTheme';
 
-function NavigationWrapper() {
+function ThemeWrapper(props) {
+  const { children } = props;
   const { isDarkMode, colors } = useThemedColor();
+
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-
-  useEffect(() => {
-    initDB();
-
-  }, []);
-
-  if (!loaded) {
-    return null;
-  }
+  if (!loaded) return null;
 
   const CustomDarkTheme = {
     ...NavigationDarkTheme,
     colors: {
       ...NavigationDarkTheme.colors,
-      ...colors.dark, // <-- from ThemedColor.tsx
+      ...colors.dark,
     },
   };
 
@@ -39,18 +35,17 @@ function NavigationWrapper() {
     ...NavigationDefaultTheme,
     colors: {
       ...NavigationDefaultTheme.colors,
-      ...colors.light, // <-- from ThemedColor.tsx
+      ...colors.light,
     },
   };
 
+  const theme = isDarkMode ? CustomDarkTheme : CustomLightTheme;
+
   return (
-    <NavigationThemeProvider value={isDarkMode ? CustomDarkTheme : CustomLightTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+    <ThemeProvider value={theme}>
+      {children}
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-    </NavigationThemeProvider>
+    </ThemeProvider>
   );
 }
 
@@ -59,8 +54,10 @@ export default function RootLayout() {
     <AuthProvider>
       <FontSizeProvider>
         <ThemedColorProvider>
-          <Slot />
-          <NavigationWrapper />
+          {/* Single navigator tree via Slot; child groups define Tabs/Stack */}
+          <ThemeWrapper>
+            <Slot />
+          </ThemeWrapper>
         </ThemedColorProvider>
       </FontSizeProvider>
     </AuthProvider>

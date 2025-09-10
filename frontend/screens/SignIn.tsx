@@ -1,7 +1,6 @@
-// src/screens/SignIn.tsx
 import React, { useState } from "react";
 import { View, TextInput, Button, Text } from "react-native";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from '@/auth/AuthProvider';
 
 export default function SignIn() {
   const { signIn } = useAuth();
