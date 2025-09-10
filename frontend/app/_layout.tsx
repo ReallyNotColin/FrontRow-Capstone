@@ -2,6 +2,8 @@ import { DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationDefaultThem
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Slot } from 'expo-router';
+import { AuthProvider } from './auth/AuthProvider';
 import 'react-native-reanimated';
 
 import { initDB } from '@/db/history';
@@ -54,10 +56,13 @@ function NavigationWrapper() {
 
 export default function RootLayout() {
   return (
-    <FontSizeProvider>
-      <ThemedColorProvider>
-        <NavigationWrapper />
-      </ThemedColorProvider>
-    </FontSizeProvider>
+    <AuthProvider>
+      <FontSizeProvider>
+        <ThemedColorProvider>
+          <Slot />
+          <NavigationWrapper />
+        </ThemedColorProvider>
+      </FontSizeProvider>
+    </AuthProvider>
   );
 }

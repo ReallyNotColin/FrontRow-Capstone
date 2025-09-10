@@ -4,8 +4,6 @@ import { getFirestore } from "firebase/firestore";
 import {
   initializeAuth,
   getReactNativePersistence,
-  onAuthStateChanged,
-  signInAnonymously,
 } from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -28,26 +26,3 @@ export const db = getFirestore(app);
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
-
-// Helper to ensure we’re signed in anonymously before Firestore reads
-let authReadyPromise: Promise<void> | null = null;
-export function ensureAnonAuth(): Promise<void> {
-  if (authReadyPromise) return authReadyPromise;
-
-  authReadyPromise = new Promise((resolve, reject) => {
-    const unsub = onAuthStateChanged(
-      auth,
-      (user) => {
-        if (user) {
-          unsub();
-          resolve();
-        }
-      },
-      (err) => reject(err)
-    );
-
-    signInAnonymously(auth).catch(reject);
-  });
-
-  return authReadyPromise;
-}
