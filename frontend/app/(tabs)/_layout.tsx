@@ -18,7 +18,7 @@ export default function TabLayout() {
   const borderTopColor = activeColors.divider;
 
   if (loading) return null;     
-  if (!user) return <Redirect href="/(auth)/sign-in" />;
+  if (!user) return <Redirect href="/auth/sign-in" />;
 
   return (
     <Tabs
