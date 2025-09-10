@@ -1,7 +1,7 @@
 import { Tabs, Redirect } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-import { useAuth } from '@/app/auth/AuthProvider'
+import { useAuth } from '@/auth/AuthProvider'
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
