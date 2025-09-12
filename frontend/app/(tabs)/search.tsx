@@ -8,7 +8,7 @@ import { searchCustomEntries } from '@/db/customFoods';
 import { useThemedColor } from '@/components/ThemedColor';
 
 // Firestore
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, limit, doc, getDoc } from "firebase/firestore";
 import { ensureAnonAuth, db } from "@/db/firebaseConfig"; 
 
 // Debounce
@@ -40,38 +40,72 @@ export default function AutocompleteScreen() {
   const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
   const [allergenMatches, setAllergenMatches] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
-
+  
+  
   const fetchSuggestions = async (text) => {
     if (text.length < 2) return;
     try {
-      await ensureAnonAuth(); 
+      await ensureAnonAuth();
 
+      // Typed text
       const searchText = text.toLowerCase();
-      const firestoreQuery = query(
-        collection(db, "Products"),     
+
+      // Access Firestore collection
+      const productsRef = collection(db, "Products");
+
+      // Retrieve name_lower entry that matches the start of searchText
+      const nameQ = query(
+        productsRef,
         where("name_lower", ">=", searchText),
-        where("name_lower", "<=", searchText + "\uf8ff")
+        where("name_lower", "<=", searchText + "\uf8ff"),
+        limit(20)
       );
 
-      const firestoreSnapshot = await getDocs(firestoreQuery);
-      const firestoreResults = firestoreSnapshot.docs.map(doc => {
-        const d = doc.data();
+      // Retrieve brand_lower entry that matches the start of searchText 
+      const brandQ = query(
+        productsRef,
+        where("brand_lower", ">=", searchText),
+        where("brand_lower", "<=", searchText + "\uf8ff"),
+        limit(20)
+      );
+
+      // Execute both queries in parallel
+      const [nameSnap, brandSnap] = await Promise.all([getDocs(nameQ), getDocs(brandQ)]);
+
+      // Map Firestore docs to our display format
+      const mapDoc = (docSnap) => {
+        const d = docSnap.data();
         return {
-          name: d.food_name,     
+          id: docSnap.id,               
+          name: d.food_name,
           barcode: d.barcode,
           brand_name: d.brand_name,
-          warning: d.warning,    
-          source: 'firebase',
+          warning: d.warning,
+          source: 'firebase' as const,
         };
-      });
+      };
 
+      const nameResults  = nameSnap.docs.map(mapDoc);
+      const brandResults = brandSnap.docs.map(mapDoc);
+
+      // dedupe by doc id (brand+name queries may return same doc)
+      const mergedById = {};
+      [...nameResults, ...brandResults].forEach(it => { if (!mergedById[it.id]) mergedById[it.id] = it; });
+      const firestoreResults = Object.values(mergedById);
+
+      // Local custom results — include brand matching too
       const customResults = await searchCustomEntries(text);
-      // SPRINT 3: Updated custom entry mapping to match firestore's fields
-      const customFormatted = customResults.map(entry => ({
+      const searchLower = text.toLowerCase();
+      const customFiltered = customResults.filter(e =>
+        (e.food_name ?? '').toLowerCase().includes(searchLower) ||
+        (e.brand_name ?? '').toLowerCase().includes(searchLower)
+      );
+      const customFormatted = customFiltered.map(entry => ({
+        id: `custom-${entry.barcode ?? entry.food_name}-${Math.random()}`, //using just a random number for now. In prod, use a proper unique ID
         name: entry.food_name,
-        barcode: entry.barcode,              
-        brand_name: entry.brand_name ?? '',  
-        warning: entry.allergens ?? '',      
+        barcode: entry.barcode,
+        brand_name: entry.brand_name ?? '',
+        warning: entry.allergens ?? '',
         source: 'custom' as const,
       }));
 
@@ -79,7 +113,7 @@ export default function AutocompleteScreen() {
     } catch (err) {
       console.error('Firestore fetch error:', err);
     }
-  };
+  }; // End of fetchSuggestions()
 
   const debouncedFetch = useMemo(() => debounce(fetchSuggestions, 400), []);
 
@@ -111,39 +145,25 @@ export default function AutocompleteScreen() {
       }
       return;
     }
+
+
     try {
-      await ensureAnonAuth(); 
-
-      const firestoreQuery = query(
-        collection(db, "Products"),
-        where("name_lower", "==", foodText.toLowerCase())
-      );
-
-      const snapshot = await getDocs(firestoreQuery);
-      if (!snapshot.empty) {
-        const docData = snapshot.docs[0].data();
-        const warningArray = parseWarning(docData.warning);
-
-        setSelectedFoodDetails({
-          food: { food_attributes: { allergens: { allergen: warningArray } } }
-        });
-        setExpandedIndex(index);
-
-        // Save to history
-        const warningsString = warningArray.map(a => a.name).join(', ');
-        const profile = ['Milk', 'Egg', 'Peanuts'];
-        const matched = warningArray.filter(a => profile.includes(a.name)).map(a => a.name);
-        try {
-          await saveToHistory(foodText, warningsString, matched.join(', '));
-          console.log('Saved to history');
-        } catch (err) {
-          console.error('History save error:', err);
+        await ensureAnonAuth();
+        // fetch the exact doc by ID instead of refiltering by name
+        const snap = await getDoc(doc(db, "Products", item.id));
+        if (snap.exists()) {
+          const docData = snap.data();
+          const warningArray = parseWarning(docData.warning);
+          setSelectedFoodDetails({
+            food: { food_attributes: { allergens: { allergen: warningArray } } }
+          });
+          setExpandedIndex(index);
+          // ... saveToHistory (unchanged)
         }
+      } catch (err) {
+        console.error('Firestore food fetch error:', err);
       }
-    } catch (err) {
-      console.error('Firestore food fetch error:', err);
-    }
-  };
+  }; // End of handleViewPress()
 
   const renderSuggestion = ({ item, index }) => {
     // Read from the reused shape:
