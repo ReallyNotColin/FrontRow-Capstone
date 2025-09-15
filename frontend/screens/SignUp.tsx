@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { View, TextInput, Button, Text } from "react-native";
 import { signUpWithEmail } from "@/db/auth";
+import { useAuth } from "@/auth/AuthProvider";
 
 export default function SignUp() {
+  const { signIn, signUp, signOut, user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

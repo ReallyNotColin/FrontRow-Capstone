@@ -1,25 +1,56 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+// app/(tabs)/settings.tsx  (or wherever your Settings screen lives)
+import React, { useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 
-import { ThemedText } from '@/components/ThemedText'; 
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import Dropdown from 'react-native-input-select';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import Dropdown from "react-native-input-select";
 
-import { useThemedColor } from '@/components/ThemedColor';
-import { useFontSize } from '@/components/FontTheme';
+import { useThemedColor } from "@/components/ThemedColor";
+import { useFontSize } from "@/components/FontTheme";
+import { useAuth } from "@/auth/AuthProvider"; // ⬅️ add this
 
 export default function Screen() {
   const { isDarkMode, setIsDarkMode, colors } = useThemedColor();
   const { fontSize, setFontSize } = useFontSize();
+  const { signOut } = useAuth(); // ⬅️ add this
+
+  const [signingOut, setSigningOut] = useState(false);
 
   const activeColors = isDarkMode ? colors.dark : colors.light;
+  const dangerColor = isDarkMode ? "#ff453a" : "#ff3b30"; // iOS system red tones
 
   const textSizeOptions = [
-    { label: 'Small', value: 'small' },
-    { label: 'Medium', value: 'medium' },
-    { label: 'Large', value: 'large' },
+    { label: "Small", value: "small" },
+    { label: "Medium", value: "medium" },
+    { label: "Large", value: "large" },
   ];
+
+  const confirmSignOut = () => {
+    Alert.alert(
+      "Sign out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSigningOut(true);
+              await signOut(); // onAuthStateChanged will flip `user` to null; your tabs layout will redirect
+            } catch (e: any) {
+              Alert.alert("Sign out failed", e?.message ?? String(e));
+            } finally {
+              setSigningOut(false);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   return (
     <ScrollView style={{ backgroundColor: activeColors.background }}>
@@ -44,14 +75,14 @@ export default function Screen() {
             value={isDarkMode}
             onValueChange={setIsDarkMode}
             trackColor={{ false: activeColors.switchTrack, true: activeColors.switchTrack }}
-            thumbColor={isDarkMode ? activeColors.switchThumb : activeColors.switchThumb}
+            thumbColor={activeColors.switchThumb}
           />
         </View>
 
         <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
 
         {/* Text Size dropdown */}
-        <View style={styles.settingRow}>
+        <View style={styles.settingRowDropdown}>
           <View style={styles.iconLabel}>
             <IconSymbol name="textformat.size" color={activeColors.icon} size={24} />
             <ThemedText style={[styles.labelText, { color: activeColors.text }]}>
@@ -66,9 +97,9 @@ export default function Screen() {
               selectedValue={fontSize}
               onValueChange={(selected) => {
                 if (Array.isArray(selected)) {
-                  setFontSize(selected[0] as 'small' | 'medium' | 'large');
-                } else if (typeof selected === 'string') {
-                  setFontSize(selected as 'small' | 'medium' | 'large');
+                  setFontSize(selected[0] as "small" | "medium" | "large");
+                } else if (typeof selected === "string") {
+                  setFontSize(selected as "small" | "medium" | "large");
                 }
               }}
               primaryColor={activeColors.primary}
@@ -77,15 +108,39 @@ export default function Screen() {
                 backgroundColor: activeColors.background,
                 borderColor: activeColors.divider,
               }}
-              dropdownTextStyle={{
-                color: activeColors.text,
-              }}
-              selectedItemStyle={{
-                color: activeColors.text,
-              }}
+              dropdownTextStyle={{ color: activeColors.text }}
+              selectedItemStyle={{ color: activeColors.text }}
               dropdownIconStyle={styles.hiddenIcon}
             />
           </View>
+        </View>
+
+        <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
+
+        {/* Sign Out (destructive) */}
+        <View style={{ paddingVertical: 12 }}>
+          <Pressable
+            onPress={confirmSignOut}
+            disabled={signingOut}
+            style={({ pressed }) => [
+              styles.dangerButton,
+              {
+                borderColor: dangerColor,
+                backgroundColor: pressed ? `${dangerColor}22` : "transparent",
+              },
+            ]}
+          >
+            <IconSymbol
+              name="rectangle.portrait.and.arrow.right"
+              color={dangerColor}
+              size={22}
+            />
+            <ThemedText
+              style={[styles.dangerText, { color: dangerColor, marginLeft: 8 }]}
+            >
+              {signingOut ? "Signing out…" : "Sign Out"}
+            </ThemedText>
+          </Pressable>
         </View>
       </ThemedView>
     </ScrollView>
@@ -101,49 +156,63 @@ const styles = StyleSheet.create({
   divider: {
     height: 2,
     marginBottom: 16,
-    width: '100%',
+    width: "100%",
   },
   dividerThin: {
     height: 1,
-    width: '150%',
+    width: "150%",
     marginBottom: 15,
     marginTop: 15,
-    alignSelf: 'center',
+    alignSelf: "center",
   },
   text: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     paddingHorizontal: 24,
   },
   settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 6,
   },
   settingRowDropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 12,
-    flexWrap: 'nowrap',
+    flexWrap: "nowrap",
   },
   iconLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   labelText: {
     marginLeft: 8,
   },
   dropdownContainer: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   dropdown: {
     width: 91,
     minHeight: 40,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
   },
   hiddenIcon: {
-    display: 'none',
+    display: "none",
+  },
+
+  // New styles for Sign Out button
+  dangerButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  dangerText: {
+    fontWeight: "600",
   },
 });

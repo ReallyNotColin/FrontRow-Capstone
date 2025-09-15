@@ -14,6 +14,7 @@ import { AuthProvider } from '../auth/AuthProvider';
 import { ThemedColorProvider, useThemedColor } from '@/components/ThemedColor';
 import { FontSizeProvider } from '@/components/FontTheme';
 
+
 function ThemeWrapper(props) {
   const { children } = props;
   const { isDarkMode, colors } = useThemedColor();
