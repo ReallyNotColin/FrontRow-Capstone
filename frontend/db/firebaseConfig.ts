@@ -1,11 +1,12 @@
-// src/db/firebaseConfig.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import {
   getAuth,
   initializeAuth,
   getReactNativePersistence,
+  type Auth,
 } from "firebase/auth";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
@@ -18,19 +19,28 @@ const firebaseConfig = {
   measurementId: "G-XH2E4SWK3S",
 };
 
-// 1) App: reuse if already initialized
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// 2) Auth: guard to avoid “multiple Auth instances” errors
-let _auth;
-try {
-  _auth = getAuth(app);
-} catch {
-  _auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
+// 2) Auth (web vs native, and guard RN with a global singleton)
+declare global {
+  // eslint-disable-next-line no-var
+  var _firebaseAuthSingleton: Auth | undefined;
 }
-export const auth = _auth;
+
+let auth: Auth;
+if (Platform.OS === "web") {
+  // Web uses default browser persistence
+  auth = getAuth(app);
+} else {
+  // RN: create once and reuse across Fast Refresh / re-imports
+  if (!global._firebaseAuthSingleton) {
+    global._firebaseAuthSingleton = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  }
+  auth = global._firebaseAuthSingleton;
+}
+export { auth };
 
 // 3) Firestore
 export const db = getFirestore(app);

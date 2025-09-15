@@ -8,7 +8,7 @@ import {
 type AuthCtx = {
   user: User | null;
   loading: boolean;
-  logIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
 };
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthCtx>(() => ({
     user,
     loading,
-    async logIn(email, password) {
+    async signIn(email, password) {
       await signInWithEmailAndPassword(auth, email, password);
     },
     async signUp(email, password) {
