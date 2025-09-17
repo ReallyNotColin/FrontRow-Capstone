@@ -1,63 +1,109 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+// app/(tabs)/history.tsx
+import React, { useState, useCallback } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { getHistory } from '@/db/history';
-import { useFocusEffect } from '@react-navigation/native';
-import { useThemedColor } from '@/components/ThemedColor';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { useThemedColor } from "@/components/ThemedColor";
+
+import { useFocusEffect } from "@react-navigation/native";
+import { onHistory } from "@/db/history"; // ⬅️ live subscription API
+
+type Row = {
+  id: string;
+  foodName?: string;
+  warnings?: string;
+  matched?: string;
+  // createdAt?: any; // optional, not used in UI
+};
 
 export default function Screen() {
   const { isDarkMode, colors } = useThemedColor();
   const activeColors = isDarkMode ? colors.dark : colors.light;
 
-  const [harmful, setHarmful] = useState([]);
-  const [notHarmful, setNotHarmful] = useState([]);
+  const [harmful, setHarmful] = useState<Row[]>([]);
+  const [notHarmful, setNotHarmful] = useState<Row[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      const loadHistory = async () => {
-        try {
-          const data = await getHistory();
-          const harmfulEntries = data.filter(item => item.match && item.match.trim() !== '');
-          const safeEntries = data.filter(item => !item.match || item.match.trim() === '');
-          setHarmful(harmfulEntries);
-          setNotHarmful(safeEntries);
-        } catch (error) {
-          console.error('[History] Failed to load history:', error);
-        }
-      };
+      // Subscribe on focus; unsubscribe on blur/unmount
+      const unsub = onHistory((rows: Row[]) => {
+        // If any legacy docs exist, coalesce old keys → new keys
+        const normalized = rows.map((r: any) => ({
+          id: r.id,
+          foodName: r.foodName ?? r.food_name ?? "Unknown",
+          warnings: r.warnings ?? r.allergens ?? "",
+          matched: r.matched ?? r.match ?? "",
+        })) as Row[];
 
-      loadHistory();
+        const harmfulEntries = normalized.filter(
+          (item) => item.matched && item.matched.trim() !== ""
+        );
+        const safeEntries = normalized.filter(
+          (item) => !item.matched || item.matched.trim() === ""
+        );
+
+        setHarmful(harmfulEntries);
+        setNotHarmful(safeEntries);
+      });
+
+      return () => unsub();
     }, [])
   );
 
-  const renderEntry = (item) => (
-    <View key={item.id} style={[styles.entry, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
-      <ThemedText style={[styles.foodName, { color: activeColors.text }]}>{item.food_name}</ThemedText>
-      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>Allergens: {item.allergens || 'None'}</ThemedText>
-      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>Matched: {item.match || 'None'}</ThemedText>
+  const renderEntry = (item: Row) => (
+    <View
+      key={item.id}
+      style={[
+        styles.entry,
+        {
+          backgroundColor: activeColors.backgroundTitle,
+          borderColor: activeColors.divider,
+        },
+      ]}
+    >
+      <ThemedText style={[styles.foodName, { color: activeColors.text }]}>
+        {item.foodName}
+      </ThemedText>
+      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
+        Allergens: {item.warnings?.trim() ? item.warnings : "None"}
+      </ThemedText>
+      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
+        Matched: {item.matched?.trim() ? item.matched : "None"}
+      </ThemedText>
     </View>
   );
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: activeColors.background }]}>
-      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-        <ThemedText type="title" style={{ color: activeColors.text }}>History</ThemedText>
+      <ThemedView
+        style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}
+      >
+        <ThemedText type="title" style={{ color: activeColors.text }}>
+          History
+        </ThemedText>
       </ThemedView>
       <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
 
       <ThemedView style={styles.text}>
-        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>Harmful</ThemedText>
+        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
+          Harmful
+        </ThemedText>
         {harmful.length === 0 ? (
-          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>No harmful foods found.</ThemedText>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
+            No harmful foods found.
+          </ThemedText>
         ) : (
           harmful.map(renderEntry)
         )}
 
-        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>Not Harmful</ThemedText>
+        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
+          Not Harmful
+        </ThemedText>
         {notHarmful.length === 0 ? (
-          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>No safe foods logged yet.</ThemedText>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
+            No safe foods logged yet.
+          </ThemedText>
         ) : (
           notHarmful.map(renderEntry)
         )}
@@ -67,8 +113,7 @@ export default function Screen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-  },
+  container: {},
   titleContainer: {
     paddingTop: 60,
     paddingBottom: 10,
@@ -77,15 +122,15 @@ const styles = StyleSheet.create({
   divider: {
     height: 2,
     marginBottom: 16,
-    width: '100%',
+    width: "100%",
   },
   text: {
     paddingHorizontal: 24,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   sectionHeader: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 20,
     marginBottom: 10,
   },
@@ -94,10 +139,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderRadius: 8,
-    // backgroundColor and borderColor set dynamically
   },
   foodName: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 16,
     marginBottom: 4,
   },
@@ -105,7 +149,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   emptyText: {
-    fontStyle: 'italic',
+    fontStyle: "italic",
     marginBottom: 10,
   },
 });
