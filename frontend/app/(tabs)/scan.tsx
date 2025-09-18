@@ -7,7 +7,7 @@ import { BlurView } from 'expo-blur';
 import { saveToHistory } from '@/db/history';
 
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { ensureAnonAuth, db } from '@/db/firebaseConfig';
+import { db } from '@/db/firebaseConfig';
 
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
@@ -101,7 +101,6 @@ export default function ScanScreen() {
   const fetchFoodDetailsByBarcode = async (barcode: string) => {
     setLoadingDetails(true);
     try {
-      await ensureAnonAuth(); // ✅ required for rules
 
       const docData = await findByBarcode(barcode);
       if (!docData) {

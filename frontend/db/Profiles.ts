@@ -1,190 +1,131 @@
 // src/db/Profiles.ts
-import { auth, db } from "@/db/firebaseConfig";
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc,
-  serverTimestamp, writeBatch, arrayUnion, arrayRemove
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp,
+  type Unsubscribe,
 } from "firebase/firestore";
+import { auth, db } from "@/db/firebaseConfig";
 
-export type Profile = {
-  name: string;
-  allergens: string[];
-};
-
-export type GroupProfile = {
-  groupName: string;
-  members: Profile[]; // kept for compatibility with your type
-};
-
-// --------- helpers ---------
+/** Require a signed-in user and return their uid. */
 function requireUid(): string {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("Not signed in");
-  return uid;
-}
-function profilesCol(uid = requireUid()) {
-  return collection(db, "users", uid, "profiles");
-}
-function profileDoc(name: string, uid = requireUid()) {
-  return doc(db, "users", uid, "profiles", name);
-}
-function groupsCol(uid = requireUid()) {
-  return collection(db, "users", uid, "groups");
-}
-function groupDoc(name: string, uid = requireUid()) {
-  return doc(db, "users", uid, "groups", name);
+  const u = auth.currentUser;
+  if (!u) throw new Error("Profiles: no signed-in user.");
+  return u.uid;
 }
 
-// -------------------------------------------------------------------
-// ❇️ PROFILES (individual)
-// Stored at /users/{uid}/profiles/{profileName} → { name, allergens[], updatedAt }
-//
-// Your original API shape is kept. Where appropriate, arrayUnion/arrayRemove
-// are used to avoid race conditions for single-item updates.
-// -------------------------------------------------------------------
+/** /users/{uid} */
+function userDoc() {
+  return doc(db, "users", requireUid());
+}
 
-/** Return a map of profileName -> allergens[] */
-export const getAllProfileData = async (): Promise<Record<string, string[]>> => {
-  const snap = await getDocs(profilesCol());
-  const out: Record<string, string[]> = {};
-  snap.forEach(d => {
-    const data = d.data() as { allergens?: string[] };
-    out[d.id] = Array.isArray(data.allergens) ? data.allergens : [];
-  });
-  return out;
-};
+/** /users/{uid}/profiles */
+function profilesCol() {
+  return collection(userDoc(), "profiles");
+}
 
-/** INTERNAL in your old file — still provided, overwrites all profiles to match `data`. */
-const saveAllProfileData = async (data: Record<string, string[]>): Promise<void> => {
-  const uid = requireUid();
-  const batch = writeBatch(db);
-  // clear all existing docs first (optional; here we overwrite existing and create missing)
-  // We won't delete extras, to be safer. If you need a full sync (delete missing), fetch and delete first.
-  Object.entries(data).forEach(([name, allergens]) => {
-    const ref = doc(db, "users", uid, "profiles", name);
-    batch.set(ref, { name, allergens, updatedAt: serverTimestamp() }, { merge: true });
-  });
-  await batch.commit();
-};
+/** /users/{uid}/groups */
+function groupsCol() {
+  return collection(userDoc(), "groups");
+}
 
-/** Create or overwrite a profile */
-export const saveProfile = async (profileName: string, options: string[]): Promise<void> => {
-  await setDoc(profileDoc(profileName), {
-    name: profileName,
-    allergens: options,
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
-};
+/* ----------------------------------------------------------------------------
+ * Individual profiles
+ * Doc id = profile name (trimmed). Fields: { name, allergens[], createdAt, updatedAt }
+ * ---------------------------------------------------------------------------*/
 
-/** Get a single profile's allergens[] */
-export const getProfiles = async (profileName: string): Promise<string[]> => {
-  const snap = await getDoc(profileDoc(profileName));
-  if (!snap.exists()) return [];
-  const data = snap.data() as { allergens?: string[] };
-  return Array.isArray(data.allergens) ? data.allergens : [];
-};
+/** Create or update an individual profile. */
+export async function saveProfileFS(name: string, allergens: string[]) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Profile name is required.");
 
-/** Add a new allergen to a profile */
-export const addProfile = async (profileName: string, newOption: string): Promise<void> => {
+  const ref = doc(profilesCol(), trimmed);
   await setDoc(
-    profileDoc(profileName),
-    { name: profileName, allergens: arrayUnion(newOption), updatedAt: serverTimestamp() },
+    ref,
+    {
+      name: trimmed,
+      allergens: Array.isArray(allergens) ? allergens : [],
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(), // will just get overwritten; that's OK for now
+    },
     { merge: true }
   );
-};
+}
 
-/** Replace one allergen value with another */
-export const updateProfile = async (
-  profileName: string,
-  oldOption: string,
-  newOption: string
-): Promise<void> => {
-  // Fetch current, replace, write back (array transforms can’t "replace")
-  const current = await getProfiles(profileName);
-  const updated = current.map(opt => (opt === oldOption ? newOption : opt));
-  await setDoc(
-    profileDoc(profileName),
-    { name: profileName, allergens: updated, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-};
+/** Delete an individual profile by name (doc id). */
+export async function deleteProfileFS(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  await deleteDoc(doc(profilesCol(), trimmed));
+}
 
-/** Remove a single allergen from a profile */
-export const deleteProfile = async (profileName: string, optionToDelete: string): Promise<void> => {
-  // Prefer arrayRemove (idempotent)
-  await setDoc(
-    profileDoc(profileName),
-    { name: profileName, allergens: arrayRemove(optionToDelete), updatedAt: serverTimestamp() },
-    { merge: true }
-  );
-};
-
-/** Delete the whole profile document */
-export const clearProfile = async (profileName: string): Promise<void> => {
-  await deleteDoc(profileDoc(profileName));
-};
-
-/** Get all profile names */
-export const getAllProfileNames = async (): Promise<string[]> => {
-  const snap = await getDocs(profilesCol());
-  return snap.docs.map(d => d.id).sort((a, b) => a.localeCompare(b));
-};
-
-// -------------------------------------------------------------------
-// ❇️ GROUPS
-// Stored at /users/{uid}/groups/{groupName} → { name, members[] (profile names), updatedAt }
-// Your old types used Profile[] for members; to keep behavior, we store just names
-// and your UI can still resolve to profiles if needed.
-// -------------------------------------------------------------------
-
-/** Save a group with member profile names */
-export const saveGroupProfile = async (groupName: string, profileNames: string[]): Promise<void> => {
-  await setDoc(groupDoc(groupName), {
-    name: groupName,
-    members: profileNames,
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
-};
-
-/** Get a group's member profile names */
-export const getGroupMembers = async (groupName: string): Promise<string[]> => {
-  const snap = await getDoc(groupDoc(groupName));
-  if (!snap.exists()) return [];
-  const data = snap.data() as { members?: string[] };
-  return Array.isArray(data.members) ? data.members : [];
-};
-
-/** Get all group names */
-export const getAllGroupProfileNames = async (): Promise<string[]> => {
-  const snap = await getDocs(groupsCol());
-  return snap.docs.map(d => d.id).sort((a, b) => a.localeCompare(b));
-};
-
-/** Delete a saved group */
-export const deleteGroupProfile = async (groupName: string): Promise<void> => {
-  await deleteDoc(groupDoc(groupName));
-};
-
-// -------------------------------------------------------------------
-// The AsyncStorage-only helpers from your old file are no-ops now.
-// Keeping compatibility stubs in case other code imports them.
-// -------------------------------------------------------------------
-
-const saveAllGroupData = async (_data: Record<string, string[]>): Promise<void> => {
-  // No global "save all" for groups in Firestore; implement if you actually need it.
-};
-
-export const getAllGroupData = async (): Promise<Record<string, string[]>> => {
-  // Build map groupName -> members[] from Firestore, for compatibility
-  const snap = await getDocs(groupsCol());
-  const out: Record<string, string[]> = {};
-  snap.forEach(d => {
-    const data = d.data() as any;
-    out[d.id] = Array.isArray(data.members) ? data.members : [];
+/** Subscribe to all individual profiles (sorted by name). */
+export function onProfiles(
+  callback: (profiles: { name: string; allergens: string[] }[]) => void
+): Unsubscribe {
+  const q = query(profilesCol(), orderBy("name"));
+  return onSnapshot(q, (snap) => {
+    const rows = snap.docs.map((d) => {
+      const data = d.data() as any;
+      return {
+        name: (data?.name ?? d.id) as string,
+        allergens: Array.isArray(data?.allergens) ? data.allergens : [],
+      };
+    });
+    callback(rows);
   });
-  return out;
-};
+}
 
-/** Alias that matches your old "saveGroup" signature (writes one group) */
-export const saveGroup = async (groupName: string, options: string[]): Promise<void> => {
-  await saveGroupProfile(groupName, options);
-};
+/* ----------------------------------------------------------------------------
+ * Group profiles
+ * Doc id = group name (trimmed). Fields: { name, members[], createdAt, updatedAt }
+ * ---------------------------------------------------------------------------*/
+
+/** Create or update a group profile. */
+export async function saveGroupProfile(groupName: string, members: string[]) {
+  const trimmed = groupName.trim();
+  if (!trimmed) throw new Error("Group name is required.");
+
+  const ref = doc(groupsCol(), trimmed);
+  await setDoc(
+    ref,
+    {
+      name: trimmed,
+      members: Array.isArray(members) ? members : [],
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+/** Delete a group profile by name (doc id). */
+export async function deleteGroupProfile(groupName: string) {
+  const trimmed = groupName.trim();
+  if (!trimmed) return;
+  await deleteDoc(doc(groupsCol(), trimmed));
+}
+
+/** Subscribe to all group profiles.
+ *  Returns a map { [groupName]: members[] } to match your screen.
+ */
+export function onGroups(
+  callback: (groupsMap: Record<string, string[]>) => void
+): Unsubscribe {
+  const q = query(groupsCol(), orderBy("name"));
+  return onSnapshot(q, (snap) => {
+    const map: Record<string, string[]> = {};
+    snap.docs.forEach((d) => {
+      const data = d.data() as any;
+      const name = (data?.name ?? d.id) as string;
+      const members = Array.isArray(data?.members) ? data.members : [];
+      map[name] = members;
+    });
+    callback(map);
+  });
+}
