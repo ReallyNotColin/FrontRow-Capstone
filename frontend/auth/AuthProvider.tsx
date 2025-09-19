@@ -12,6 +12,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
+  reload,
   signOut as fbSignOut,
   type User,
 } from "firebase/auth";
@@ -19,12 +21,14 @@ import {
 import { auth, db } from "@/db/firebaseConfig";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-type AuthCtx = {
+export type AuthCtx = {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthCtx | undefined>(undefined);
@@ -65,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[AuthProvider.signUp] start", email);
       const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-      // Optional: create a starter user profile in Firestore
+      // Create starter user doc (optional)
       try {
         await setDoc(doc(db, "users", cred.user.uid), {
           email: cred.user.email,
@@ -73,7 +77,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } catch (e: any) {
         console.log("[AuthProvider.signUp] profile create failed:", e?.message || e);
-        // Not fatal for auth; don’t rethrow here
+      }
+
+      // Send verification email immediately (best-effort)
+      try {
+        await sendEmailVerification(cred.user /*, actionCodeSettings */);
+        console.log("[AuthProvider.signUp] verification email sent");
+      } catch (e: any) {
+        console.log("[AuthProvider.signUp] sendEmailVerification failed:", e?.message || e);
       }
 
       console.log("[AuthProvider.signUp] success");
@@ -89,12 +100,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendVerificationEmailFn: AuthCtx["sendVerificationEmail"] = async () => {
+    const u = auth.currentUser;
+    if (!u) throw new Error("No user");
+    await sendEmailVerification(u /*, actionCodeSettings */);
+  };
+
+  const refreshUser: AuthCtx["refreshUser"] = async () => {
+    const u = auth.currentUser;
+    if (!u) throw new Error("No user");
+    await reload(u);               // refresh emailVerified + token claims
+    // onAuthStateChanged may not fire here; sync local state explicitly
+    setUser(auth.currentUser);
+  };
+
   const signOut: AuthCtx["signOut"] = async () => {
     try {
       console.log("[AuthProvider.signOut] start");
       await fbSignOut(auth);
       console.log("[AuthProvider.signOut] success");
-      // onAuthStateChanged will set user=null
+      // onAuthStateChanged will set user = null
     } catch (e: any) {
       console.log(
         "[AuthProvider.signOut] error",
@@ -107,7 +132,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo<AuthCtx>(
-    () => ({ user, loading, signIn, signUp, signOut }),
+    () => ({
+      user,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      sendVerificationEmail: sendVerificationEmailFn,
+      refreshUser,
+    }),
     [user, loading]
   );
 

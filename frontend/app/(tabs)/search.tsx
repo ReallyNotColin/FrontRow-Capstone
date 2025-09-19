@@ -1,3 +1,4 @@
+// app/(tabs)/search.tsx
 import React, { useState, useMemo } from 'react';
 import { View, TextInput, Text, StyleSheet, Pressable, FlatList, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -9,19 +10,18 @@ import { useThemedColor } from '@/components/ThemedColor';
 
 // Firestore
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { ensureAnonAuth, db } from "@/db/firebaseConfig"; 
+import { db } from "@/db/firebaseConfig";
 
 // Debounce
-const debounce = (func, delay) => {
-  let timeout;
-  return (...args) => {
+const debounce = (func: any, delay: number) => {
+  let timeout: any;
+  return (...args: any[]) => {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), delay);
   };
 };
 
-
-const parseWarning = (warning) => {
+const parseWarning = (warning?: string) => {
   if (!warning) return [];
   return warning
     .split(',')
@@ -35,43 +35,42 @@ export default function AutocompleteScreen() {
   const activeColors = isDarkMode ? colors.dark : colors.light;
   const navigation = useNavigation();
   const [queryText, setQueryText] = useState('');
-  const [combinedSuggestions, setCombinedSuggestions] = useState([]);
-  const [expandedIndex, setExpandedIndex] = useState(null);
-  const [selectedFoodDetails, setSelectedFoodDetails] = useState(null);
-  const [allergenMatches, setAllergenMatches] = useState([]);
+  const [combinedSuggestions, setCombinedSuggestions] = useState<any[]>([]);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [selectedFoodDetails, setSelectedFoodDetails] = useState<any>(null);
+  const [allergenMatches, setAllergenMatches] = useState<string[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const fetchSuggestions = async (text) => {
+  const fetchSuggestions = async (text: string) => {
     if (text.length < 2) return;
     try {
-      await ensureAnonAuth(); 
-
       const searchText = text.toLowerCase();
+
+      // Firestore "Products" prefix search
       const firestoreQuery = query(
-        collection(db, "Products"),     
+        collection(db, "Products"),
         where("name_lower", ">=", searchText),
         where("name_lower", "<=", searchText + "\uf8ff")
       );
-
       const firestoreSnapshot = await getDocs(firestoreQuery);
       const firestoreResults = firestoreSnapshot.docs.map(doc => {
-        const d = doc.data();
+        const d = doc.data() as any;
         return {
-          name: d.food_name,     
+          name: d.food_name,
           barcode: d.barcode,
           brand_name: d.brand_name,
-          warning: d.warning,    
-          source: 'firebase',
+          warning: d.warning,
+          source: 'firebase' as const,
         };
       });
 
+      // Custom entries (local collection)
       const customResults = await searchCustomEntries(text);
-      // SPRINT 3: Updated custom entry mapping to match firestore's fields
-      const customFormatted = customResults.map(entry => ({
+      const customFormatted = customResults.map((entry: any) => ({
         name: entry.food_name,
-        barcode: entry.barcode,              
-        brand_name: entry.brand_name ?? '',  
-        warning: entry.allergens ?? '',      
+        barcode: entry.barcode ?? '',
+        brand_name: entry.brand_name ?? '',
+        warning: entry.allergens ?? '',
         source: 'custom' as const,
       }));
 
@@ -83,45 +82,43 @@ export default function AutocompleteScreen() {
 
   const debouncedFetch = useMemo(() => debounce(fetchSuggestions, 400), []);
 
-  const handleInputChange = (text) => {
+  const handleInputChange = (text: string) => {
     setQueryText(text);
     debouncedFetch(text);
   };
 
-  const handleViewPress = async (foodText, index) => {
+  const handleViewPress = async (foodText: string, index: number) => {
     const item = combinedSuggestions[index];
 
+    // LOCAL/CUSTOM ENTRY
     if (item.source === 'custom') {
       const warningArray = parseWarning(item.warning);
-
       setSelectedFoodDetails({
         food: { food_attributes: { allergens: { allergen: warningArray } } }
       });
       setExpandedIndex(index);
 
-      // Save to history
+      // Save to history under /users/{uid}/history
       const warningsString = warningArray.map(a => a.name).join(', ');
       const profile = ['Milk', 'Egg', 'Peanuts'];
       const matched = warningArray.filter(a => profile.includes(a.name)).map(a => a.name);
       try {
         await saveToHistory(foodText, warningsString, matched.join(', '));
-        console.log('Saved to history');
       } catch (err) {
         console.error('History save error:', err);
       }
       return;
     }
-    try {
-      await ensureAnonAuth(); 
 
+    // FIRESTORE ENTRY
+    try {
       const firestoreQuery = query(
         collection(db, "Products"),
         where("name_lower", "==", foodText.toLowerCase())
       );
-
       const snapshot = await getDocs(firestoreQuery);
       if (!snapshot.empty) {
-        const docData = snapshot.docs[0].data();
+        const docData = snapshot.docs[0].data() as any;
         const warningArray = parseWarning(docData.warning);
 
         setSelectedFoodDetails({
@@ -135,7 +132,6 @@ export default function AutocompleteScreen() {
         const matched = warningArray.filter(a => profile.includes(a.name)).map(a => a.name);
         try {
           await saveToHistory(foodText, warningsString, matched.join(', '));
-          console.log('Saved to history');
         } catch (err) {
           console.error('History save error:', err);
         }
@@ -145,25 +141,20 @@ export default function AutocompleteScreen() {
     }
   };
 
-  const renderSuggestion = ({ item, index }) => {
-    // Read from the reused shape:
-    // selectedFoodDetails.food.food_attributes.allergens.allergen : [{name, value}]
-    const warnings = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter(a => a.value !== "0");
+  const renderSuggestion = ({ item, index }: any) => {
+    const warnings = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0");
     const profile = ['Milk', 'Egg', 'Peanuts'];
 
     const handleCompareAllergens = () => {
-      const matched = warnings.filter(a => profile.includes(a.name));
-      setAllergenMatches(matched.map(a => a.name));
+      const matched = (warnings ?? []).filter((a: any) => profile.includes(a.name));
+      setAllergenMatches(matched.map((a: any) => a.name));
       setModalVisible(true);
     };
 
     return (
       <View style={[styles.suggestionCard, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
         <Text style={[styles.suggestionText, { color: activeColors.text }]}>
-          {item.brand_name 
-            ? `${item.brand_name} — ${item.name}` 
-            : item.name
-          }
+          {item.brand_name ? `${item.brand_name} — ${item.name}` : item.name}
           {item.source === 'custom' && ' (Custom)'}
         </Text>
         <Pressable style={styles.viewButton} onPress={() => handleViewPress(item.name, index)}>
@@ -175,9 +166,9 @@ export default function AutocompleteScreen() {
             <ScrollView style={styles.detailsScroll}>
               {warnings?.length > 0 ? (
                 <View style={styles.allergenContainer}>
-                  <Text style={[styles.detailsText, { color: activeColors.text}]}>Warnings:</Text>
+                  <Text style={[styles.detailsText, { color: activeColors.text }]}>Warnings:</Text>
                   <View style={styles.allergenBlockWrapper}>
-                    {warnings.map((a, i) => (
+                    {warnings.map((a: any, i: number) => (
                       <View key={i} style={styles.allergenBlock}>
                         <Text style={styles.allergenText}>{a.name}</Text>
                       </View>
@@ -204,7 +195,7 @@ export default function AutocompleteScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: activeColors.background }]}>
-      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle}]}>
+      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
         <ThemedText type="title" style={{ color: activeColors.text }}>Search</ThemedText>
       </ThemedView>
       <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
@@ -228,14 +219,14 @@ export default function AutocompleteScreen() {
 
         <Pressable
           style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-          onPress={() => navigation.navigate('create-custom-entry')}
+          onPress={() => navigation.navigate('create-custom-entry' as never)}
         >
           <Text style={styles.buttonText}>Create Custom Entry</Text>
         </Pressable>
 
         <Pressable
           style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-          onPress={() => navigation.navigate('custom-entries-list')}
+          onPress={() => navigation.navigate('custom-entries-list' as never)}
         >
           <Text style={styles.buttonText}>View Custom Entries</Text>
         </Pressable>
