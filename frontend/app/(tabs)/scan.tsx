@@ -10,7 +10,7 @@ import { saveToHistory } from '@/db/history';
 import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/db/firebaseConfig';
 
-import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc } from '@/utils/compare';
+import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc } from '@/db/compare';
 
 type ProfileChoice = {
   id: string;
