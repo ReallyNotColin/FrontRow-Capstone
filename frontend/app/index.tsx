@@ -7,5 +7,5 @@ export default function Index() {
   if (!user) return <Redirect href="/auth/sign-in" />;
   if (!user.emailVerified) return <Redirect href="/auth/verify-email" />;
 
-  return <Redirect href="/(tabs)/search" />;
+  return <Redirect href="/(tabs)/scan" />;
 }

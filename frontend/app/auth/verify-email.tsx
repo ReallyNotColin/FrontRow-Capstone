@@ -1,64 +1,45 @@
-// app/auth/verify-email.tsx
-import React, { useEffect, useState } from "react";
+// app/auth/verify.tsx
+import React, { useState } from "react";
 import { View, Text, Button, Alert } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/auth/AuthProvider";
-import { auth } from "@/db/firebaseConfig";
 
-export default function VerifyEmail() {
-  const { user, loading, sendVerificationEmail, refreshUser } = useAuth();
+export default function Verify() {
+  const { user, resendVerification, refreshAuthClaims } = useAuth();
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!loading && user?.emailVerified) {
-      router.replace("/(tabs)/search");
+  const onResend = async () => {
+    setBusy(true);
+    try {
+      await resendVerification();
+      Alert.alert("Verification email sent");
+    } catch (e: any) {
+      Alert.alert("Failed to send email", e?.message ?? String(e));
+    } finally {
+      setBusy(false);
     }
-  }, [user, loading]);
+  };
 
-  if (loading) return null;
+  const onIveVerified = async () => {
+    setBusy(true);
+    try {
+      await refreshAuthClaims(); // updates user.emailVerified
+      if (user?.emailVerified) router.replace("/(tabs)/search");
+      else Alert.alert("Still not verified", "Open the email link, then tap again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
-      <Text style={{ fontSize: 22, marginBottom: 12 }}>Verify your email</Text>
-      <Text style={{ marginBottom: 24 }}>
-        We sent a verification link to {user?.email}. Please click the link in your email,
-        then return here and tap “I’ve verified”.
+    <View style={{ flex:1, justifyContent:"center", alignItems:"center", padding:24 }}>
+      <Text style={{ fontSize: 20, marginBottom: 12 }}>Verify your email</Text>
+      <Text style={{ textAlign: "center", marginBottom: 24 }}>
+        We sent a verification link to your email. Open it, then come back and tap below.
       </Text>
-
-      <Button
-        title={busy ? "Sending..." : "Resend verification email"}
-        disabled={busy}
-        onPress={async () => {
-          try {
-            setBusy(true);
-            await sendVerificationEmail();
-            Alert.alert("Sent", "Check your inbox (and spam).");
-          } catch (e: any) {
-            Alert.alert("Failed", e?.message ?? String(e));
-          } finally {
-            setBusy(false);
-          }
-        }}
-      />
-
+      <Button title={busy ? "Checking..." : "I've verified"} onPress={onIveVerified} disabled={busy} />
       <View style={{ height: 12 }} />
-
-      <Button
-        title="I’ve verified"
-        onPress={async () => {
-          try {
-            setBusy(true);
-            await refreshUser();
-            if (auth.currentUser?.emailVerified) {
-              router.replace("/(tabs)/search");
-            } else {
-              Alert.alert("Not verified yet", "Please click the link in your email, then try again.");
-            }
-          } finally {
-            setBusy(false);
-          }
-        }}
-      />
+      <Button title="Resend verification email" onPress={onResend} disabled={busy} />
     </View>
   );
 }
