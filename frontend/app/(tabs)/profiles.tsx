@@ -61,7 +61,7 @@ export default function Profile() {
     []
   );
   const dietaryOptions = useMemo(
-    () => ['Milk', 'Lactose', 'Egg', 'Fish', 'Gluten', 'Nuts', 'Peanuts', 'Shellfish', 'Soy', 'Sesame'],
+    () => ['High-Fat', 'High-Sodium', 'High-Sugar','High-Potassium', 'High-Cholesterol', 'High-Carbohydrates', 'High-Calcium', 'High-Iron', 'High-Protein', 'High-Fiber'],
     []
   );
 

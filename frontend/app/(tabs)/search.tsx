@@ -1,6 +1,6 @@
 // app/(tabs)/search.tsx
-import React, { useState, useMemo } from 'react';
-import { View, TextInput, Text, StyleSheet, Pressable, FlatList, ScrollView } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, TextInput, Text, StyleSheet, Pressable, FlatList, ScrollView, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -9,10 +9,18 @@ import { searchCustomEntries } from '@/db/customFoods';
 import { useThemedColor } from '@/components/ThemedColor';
 
 // Firestore
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/db/firebaseConfig";
+import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '@/db/firebaseConfig';
 
-// Debounce
+// Compare helpers
+import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc } from '@/db/compare';
+
+type ProfileChoice = {
+  id: string;
+  name: string;
+  data: { allergens: string[]; intolerances: string[]; dietary: string[] };
+};
+
 const debounce = (func: any, delay: number) => {
   let timeout: any;
   return (...args: any[]) => {
@@ -30,6 +38,39 @@ const parseWarning = (warning?: string) => {
     .map(name => ({ name, value: '1' }));
 };
 
+// ---- Profile Picker modal ----
+function ProfilePickerModal({
+  visible,
+  profiles,
+  onCancel,
+  onPick,
+}: {
+  visible: boolean;
+  profiles: ProfileChoice[];
+  onCancel: () => void;
+  onPick: (p: ProfileChoice) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.ppOverlay}>
+        <View style={styles.ppBox}>
+          <Text style={styles.ppTitle}>Choose a profile</Text>
+          <ScrollView style={{ maxHeight: 260 }}>
+            {profiles.map(p => (
+              <Pressable key={p.id} style={styles.ppItem} onPress={() => onPick(p)}>
+                <Text style={styles.ppItemText}>{p.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Pressable style={styles.ppCancel} onPress={onCancel}>
+            <Text style={styles.ppCancelText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function AutocompleteScreen() {
   const { isDarkMode, colors } = useThemedColor();
   const activeColors = isDarkMode ? colors.dark : colors.light;
@@ -38,19 +79,55 @@ export default function AutocompleteScreen() {
   const [combinedSuggestions, setCombinedSuggestions] = useState<any[]>([]);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [selectedFoodDetails, setSelectedFoodDetails] = useState<any>(null);
-  const [allergenMatches, setAllergenMatches] = useState<string[]>([]);
+
+  // Compare output modal
+  const [compareLines, setCompareLines] = useState<string[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // ---- NEW: live profiles + picker ----
+  const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<{
+    displayName: string;
+    product: ProductDoc;
+    warningsString: string;
+  } | null>(null);
+
+  // Subscribe to profiles
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const ref = collection(db, 'users', uid, 'profiles');
+    const unsub = onSnapshot(ref, (snap) => {
+      const arr: ProfileChoice[] = [];
+      let idx = 1;
+      snap.forEach(docSnap => {
+        const d = docSnap.data() as any;
+        arr.push({
+          id: docSnap.id,
+          name: d.name || d.profileName || `Profile ${idx++}`,
+          data: {
+            allergens: Array.isArray(d.allergens) ? d.allergens : [],
+            intolerances: Array.isArray(d.intolerances) ? d.intolerances : [],
+            dietary: Array.isArray(d.dietary) ? d.dietary : [],
+          },
+        });
+      });
+      setProfiles(arr);
+    });
+    return unsub;
+  }, []);
+
   const fetchSuggestions = async (text: string) => {
-    if (text.length < 2) return;
+    if (text.length < 2) { setCombinedSuggestions([]); return; }
     try {
       const searchText = text.toLowerCase();
 
       // Firestore "Products" prefix search
       const firestoreQuery = query(
-        collection(db, "Products"),
-        where("name_lower", ">=", searchText),
-        where("name_lower", "<=", searchText + "\uf8ff")
+        collection(db, 'Products'),
+        where('name_lower', '>=', searchText),
+        where('name_lower', '<=', searchText + '\uf8ff')
       );
       const firestoreSnapshot = await getDocs(firestoreQuery);
       const firestoreResults = firestoreSnapshot.docs.map(doc => {
@@ -64,7 +141,7 @@ export default function AutocompleteScreen() {
         };
       });
 
-      // Custom entries (local collection)
+      // Custom entries
       const customResults = await searchCustomEntries(text);
       const customFormatted = customResults.map((entry: any) => ({
         name: entry.food_name,
@@ -87,10 +164,46 @@ export default function AutocompleteScreen() {
     debouncedFetch(text);
   };
 
+  // Ensure a profile is chosen (auto-use single; pick if many)
+  const ensureProfileAndCompare = async (displayName: string, product: ProductDoc, warningsString: string) => {
+    if (profiles.length <= 1) {
+      const chosen = profiles[0] ?? null;
+      await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
+    } else {
+      setPendingProduct({ displayName, product, warningsString });
+      setPickerVisible(true);
+    }
+  };
+
+  // Compare + save history with profile name included
+  const runCompareAndHistory = async (
+    displayName: string,
+    product: ProductDoc,
+    warningsString: string,
+    profileData: { allergens: string[]; intolerances: string[]; dietary: string[] } | null,
+    profileName: string | null
+  ) => {
+    let matchedSummary = '';
+    if (profileData) {
+      const cmp = compareProductToProfile(product, profileData);
+      const lines = [...cmp.summary.allergens, ...cmp.summary.intolerances, ...cmp.summary.dietary];
+      setCompareLines(lines);
+      matchedSummary = lines.join('; ');
+    } else {
+      setCompareLines([]);
+    }
+    const matchedWithProfile = profileName ? `${matchedSummary}${matchedSummary ? ' ' : ''}[Profile: ${profileName}]` : matchedSummary;
+    try {
+      await saveToHistory(displayName, warningsString, matchedWithProfile);
+    } catch (err) {
+      console.error('History save error:', err);
+    }
+    setModalVisible(true);
+  };
+
   const handleViewPress = async (foodText: string, index: number) => {
     const item = combinedSuggestions[index];
 
-    // LOCAL/CUSTOM ENTRY
     if (item.source === 'custom') {
       const warningArray = parseWarning(item.warning);
       setSelectedFoodDetails({
@@ -98,23 +211,21 @@ export default function AutocompleteScreen() {
       });
       setExpandedIndex(index);
 
-      // Save to history under /users/{uid}/history
+      const product: ProductDoc = {
+        food_name: foodText,
+        ingredients: '',
+        warning: item.warning || '',
+      };
       const warningsString = warningArray.map(a => a.name).join(', ');
-      const profile = ['Milk', 'Egg', 'Peanuts'];
-      const matched = warningArray.filter(a => profile.includes(a.name)).map(a => a.name);
-      try {
-        await saveToHistory(foodText, warningsString, matched.join(', '));
-      } catch (err) {
-        console.error('History save error:', err);
-      }
+      await ensureProfileAndCompare(foodText, product, warningsString);
       return;
     }
 
-    // FIRESTORE ENTRY
+    // Firestore entry
     try {
       const firestoreQuery = query(
-        collection(db, "Products"),
-        where("name_lower", "==", foodText.toLowerCase())
+        collection(db, 'Products'),
+        where('name_lower', '==', foodText.toLowerCase())
       );
       const snapshot = await getDocs(firestoreQuery);
       if (!snapshot.empty) {
@@ -126,15 +237,9 @@ export default function AutocompleteScreen() {
         });
         setExpandedIndex(index);
 
-        // Save to history
+        const product = buildProductFromFirestoreDoc(docData);
         const warningsString = warningArray.map(a => a.name).join(', ');
-        const profile = ['Milk', 'Egg', 'Peanuts'];
-        const matched = warningArray.filter(a => profile.includes(a.name)).map(a => a.name);
-        try {
-          await saveToHistory(foodText, warningsString, matched.join(', '));
-        } catch (err) {
-          console.error('History save error:', err);
-        }
+        await ensureProfileAndCompare(foodText, product, warningsString);
       }
     } catch (err) {
       console.error('Firestore food fetch error:', err);
@@ -142,14 +247,7 @@ export default function AutocompleteScreen() {
   };
 
   const renderSuggestion = ({ item, index }: any) => {
-    const warnings = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0");
-    const profile = ['Milk', 'Egg', 'Peanuts'];
-
-    const handleCompareAllergens = () => {
-      const matched = (warnings ?? []).filter((a: any) => profile.includes(a.name));
-      setAllergenMatches(matched.map((a: any) => a.name));
-      setModalVisible(true);
-    };
+    const warnings = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== '0');
 
     return (
       <View style={[styles.suggestionCard, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
@@ -184,8 +282,8 @@ export default function AutocompleteScreen() {
               <Text style={styles.buttonText}>Collapse</Text>
             </Pressable>
 
-            <Pressable style={styles.compareButton} onPress={handleCompareAllergens}>
-              <Text style={styles.buttonText}>Compare with My Allergens</Text>
+            <Pressable style={[styles.viewButton, { alignSelf: 'flex-end', marginTop: 8 }]} onPress={() => setModalVisible(true)}>
+              <Text style={styles.buttonText}>Compare with My Profile</Text>
             </Pressable>
           </View>
         )}
@@ -217,30 +315,17 @@ export default function AutocompleteScreen() {
           scrollEnabled={false}
         />
 
-        <Pressable
-          style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-          onPress={() => navigation.navigate('create-custom-entry' as never)}
-        >
-          <Text style={styles.buttonText}>Create Custom Entry</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-          onPress={() => navigation.navigate('custom-entries-list' as never)}
-        >
-          <Text style={styles.buttonText}>View Custom Entries</Text>
-        </Pressable>
-
+        {/* Compare results */}
         {modalVisible && (
           <View style={styles.modalOverlay}>
             <View style={styles.modalBox}>
-              <Text style={styles.modalHeading}>⚠️ Allergen Match</Text>
-              {allergenMatches.length > 0 ? (
-                allergenMatches.map((name, idx) => (
-                  <Text key={idx} style={styles.modalText}>• {name}</Text>
+              <Text style={styles.modalHeading}>Profile Comparison</Text>
+              {compareLines.length > 0 ? (
+                compareLines.map((line, idx) => (
+                  <Text key={idx} style={styles.modalText}>• {line}</Text>
                 ))
               ) : (
-                <Text style={styles.modalText}>No matches found 🎉</Text>
+                <Text style={styles.modalText}>No issues found 🎉</Text>
               )}
               <Pressable style={styles.modalCloseButton} onPress={() => setModalVisible(false)}>
                 <Text style={styles.buttonText}>Close</Text>
@@ -248,6 +333,21 @@ export default function AutocompleteScreen() {
             </View>
           </View>
         )}
+
+        {/* Profile Picker */}
+        <ProfilePickerModal
+          visible={pickerVisible}
+          profiles={profiles}
+          onCancel={() => { setPickerVisible(false); setPendingProduct(null); }}
+          onPick={async (p) => {
+            setPickerVisible(false);
+            if (pendingProduct) {
+              const { displayName, product, warningsString } = pendingProduct;
+              setPendingProduct(null);
+              await runCompareAndHistory(displayName, product, warningsString, p.data, p.name);
+            }
+          }}
+        />
       </ThemedView>
     </ScrollView>
   );
@@ -272,10 +372,20 @@ const styles = StyleSheet.create({
   allergenBlockWrapper: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   allergenBlock: { backgroundColor: '#FF4D4D', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginRight: 8, marginBottom: 8 },
   allergenText: { color: 'white', fontSize: 12 },
-  compareButton: { position: 'absolute', bottom: 10, left: 10, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, backgroundColor: '#FF7F50' },
+
+  // compare modal
   modalOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   modalBox: { backgroundColor: '#fff', padding: 20, borderRadius: 12, width: '80%', elevation: 10, alignItems: 'center' },
   modalHeading: { fontWeight: 'bold', fontSize: 18, marginBottom: 10 },
   modalText: { fontSize: 14, marginVertical: 2, color: '#333' },
   modalCloseButton: { marginTop: 16, backgroundColor: '#444', paddingVertical: 6, paddingHorizontal: 20, borderRadius: 6 },
+
+  // profile picker modal
+  ppOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  ppBox: { width: '85%', backgroundColor: '#fff', padding: 18, borderRadius: 12 },
+  ppTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  ppItem: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' },
+  ppItemText: { fontSize: 16 },
+  ppCancel: { marginTop: 12, alignSelf: 'flex-end', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#eee', borderRadius: 8 },
+  ppCancelText: { color: '#333', fontWeight: '600' },
 });

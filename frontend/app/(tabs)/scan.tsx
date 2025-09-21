@@ -1,13 +1,22 @@
+// app/(tabs)/scan.tsx
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { useState } from 'react';
-import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Pressable } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
 import { saveToHistory } from '@/db/history';
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '@/db/firebaseConfig';
+import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '@/db/firebaseConfig';
+
+import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc } from '@/utils/compare';
+
+type ProfileChoice = {
+  id: string;
+  name: string;
+  data: { allergens: string[]; intolerances: string[]; dietary: string[] };
+};
 
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
@@ -21,7 +30,6 @@ function calculateCheckDigit(upc: string): string {
 
 function convertUPCEtoUPCA(upce: string): string {
   if (upce.length !== 8 || !/^\d+$/.test(upce)) return upce;
-
   const numberSystem = upce[0];
   const manufacturer = upce.slice(1, 7);
   const lastDigit = manufacturer[5];
@@ -43,13 +51,11 @@ function convertUPCEtoUPCA(upce: string): string {
       upcaWithoutCheckDigit = manufacturer.slice(0, 5) + '0000' + lastDigit;
   }
 
-  const upca11 = numberSystem + upcaWithoutCheckDigit; // 11 digits without check digit
-  const checkDigit = calculateCheckDigit(upca11); // calculate check digit for UPC-A
-
-  return upca11 + checkDigit; // return full 12-digit UPC-A
+  const upca11 = numberSystem + upcaWithoutCheckDigit;
+  const checkDigit = calculateCheckDigit(upca11);
+  return upca11 + checkDigit;
 }
 
-// Parse comma-separated warning string to FatSecret-like structure
 const parseWarning = (warning?: string) => {
   if (!warning) return [];
   return warning
@@ -59,18 +65,50 @@ const parseWarning = (warning?: string) => {
     .map(name => ({ name, value: '1' }));
 };
 
-// Build a FatSecret-shaped data object from Firestore doc for UI compatibility
 const toFoodDetailsShape = (docData: any) => ({
   food: {
     food_name: docData.food_name || 'Unknown food',
     brand_name: docData.brand_name || '',
     food_attributes: {
       allergens: {
-        allergen: parseWarning(docData.warning), // reuse UI allergen rendering
+        allergen: parseWarning(docData.warning),
       },
     },
   },
 });
+
+// ---- NEW: live profiles + picker ----
+function ProfilePickerModal({
+  visible,
+  profiles,
+  onCancel,
+  onPick,
+}: {
+  visible: boolean;
+  profiles: ProfileChoice[];
+  onCancel: () => void;
+  onPick: (p: ProfileChoice) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.ppOverlay}>
+        <View style={styles.ppBox}>
+          <Text style={styles.ppTitle}>Choose a profile</Text>
+          <ScrollView style={{ maxHeight: 260 }}>
+            {profiles.map(p => (
+              <Pressable key={p.id} style={styles.ppItem} onPress={() => onPick(p)}>
+                <Text style={styles.ppItemText}>{p.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Pressable style={styles.ppCancel} onPress={onCancel}>
+            <Text style={styles.ppCancelText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export default function ScanScreen() {
   const [facing, setFacing] = useState<CameraType>('back');
@@ -81,14 +119,45 @@ export default function ScanScreen() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Try multiple barcode normalizations to improve hit rate
-  const findByBarcode = async (barcode: string) => {
-    // Primary: exact match (your CSV import likely used 13-digit strings)
-    let tries = [barcode];
+  const [compareLines, setCompareLines] = useState<string[]>([]);
 
-    // Also try without a leading zero & last 12 digits (UPC-A vs EAN-13 quirks)
+  const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<{
+    displayName: string;
+    product: ProductDoc;
+    warningsString: string;
+  } | null>(null);
+
+  // Subscribe to profiles
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const ref = collection(db, 'users', uid, 'profiles');
+    const unsub = onSnapshot(ref, (snap) => {
+      const arr: ProfileChoice[] = [];
+      let idx = 1;
+      snap.forEach(docSnap => {
+        const d = docSnap.data() as any;
+        arr.push({
+          id: docSnap.id,
+          name: d.name || d.profileName || `Profile ${idx++}`,
+          data: {
+            allergens: Array.isArray(d.allergens) ? d.allergens : [],
+            intolerances: Array.isArray(d.intolerances) ? d.intolerances : [],
+            dietary: Array.isArray(d.dietary) ? d.dietary : [],
+          },
+        });
+      });
+      setProfiles(arr);
+    });
+    return unsub;
+  }, []);
+
+  const findByBarcode = async (barcode: string) => {
+    let tries = [barcode.trim()];
     if (barcode.startsWith('0')) tries.push(barcode.slice(1));
-    if (barcode.length === 13) tries.push(barcode.slice(1)); // last 12 as UPC-A
+    if (barcode.length === 13) tries.push(barcode.slice(1));
 
     for (const b of tries) {
       const qRef = query(collection(db, 'Products'), where('barcode', '==', b));
@@ -98,14 +167,51 @@ export default function ScanScreen() {
     return null;
   };
 
+  const runCompareAndHistory = async (
+    displayName: string,
+    product: ProductDoc,
+    warningsString: string,
+    profileData: { allergens: string[]; intolerances: string[]; dietary: string[] } | null,
+    profileName: string | null
+  ) => {
+    let matchedSummary = '';
+    if (profileData) {
+      const cmp = compareProductToProfile(product, profileData);
+      const lines = [...cmp.summary.allergens, ...cmp.summary.intolerances, ...cmp.summary.dietary];
+      setCompareLines(lines);
+      matchedSummary = lines.join('; ');
+    } else {
+      setCompareLines([]);
+    }
+    const matchedWithProfile = profileName ? `${matchedSummary}${matchedSummary ? ' ' : ''}[Profile: ${profileName}]` : matchedSummary;
+
+    try {
+      await saveToHistory(displayName, warningsString, matchedWithProfile);
+    } catch (saveError) {
+      console.error('Error saving to history:', saveError);
+    }
+
+    setModalVisible(true);
+  };
+
+  const ensureProfileThenCompare = async (displayName: string, product: ProductDoc, warningsString: string) => {
+    if (profiles.length <= 1) {
+      const chosen = profiles[0] ?? null;
+      await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
+    } else {
+      setPendingProduct({ displayName, product, warningsString });
+      setPickerVisible(true);
+    }
+  };
+
   const fetchFoodDetailsByBarcode = async (barcode: string) => {
     setLoadingDetails(true);
     try {
-
       const docData = await findByBarcode(barcode);
       if (!docData) {
         console.warn('No Firestore document found for barcode:', barcode);
         setFoodDetails(null);
+        setCompareLines([]);
         setModalVisible(true);
         return;
       }
@@ -113,46 +219,30 @@ export default function ScanScreen() {
       const details = toFoodDetailsShape(docData);
       setFoodDetails(details);
 
-      // Build history payload
+      const product = buildProductFromFirestoreDoc(docData);
       const foodName = details.food?.food_name || 'Unknown food';
       const allergensArray =
         details.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== '0') || [];
       const allergensString = allergensArray.map((a: any) => a.name).join(', ');
 
-      const userAllergenProfile = ['Milk', 'Egg', 'Peanuts'];
-      const matchedAllergens = allergensArray
-        .map((a: any) => a.name)
-        .filter((name: string) => userAllergenProfile.includes(name));
-      const matchedString = matchedAllergens.join(', ');
-
-      try {
-        await saveToHistory(foodName, allergensString, matchedString);
-        console.log('Successfully saved to history');
-      } catch (saveError) {
-        console.error('Error saving to history:', saveError);
-      }
-
-      setModalVisible(true);
+      await ensureProfileThenCompare(foodName, product, allergensString);
     } catch (err) {
       console.error('Error fetching food details:', err);
       setFoodDetails(null);
+      setCompareLines([]);
       setModalVisible(true);
     } finally {
       setLoadingDetails(false);
     }
   };
 
-  const toGTIN13 = (barcode: string): string => {
-    return barcode.padStart(13, '0');
-  };
+  const toGTIN13 = (barcode: string): string => barcode.padStart(13, '0');
 
   const handleBarcodeScanned = async ({ data, type }: { data: string; type: string }) => {
     setScanned(true);
 
     let finalData = data;
-    if (type === 'upc_e') {
-      finalData = convertUPCEtoUPCA(data);
-    }
+    if (type === 'upc_e') finalData = convertUPCEtoUPCA(data);
 
     const gtin13 = toGTIN13(finalData);
     setScannedData(gtin13);
@@ -163,6 +253,7 @@ export default function ScanScreen() {
     setScanned(false);
     setScannedData(null);
     setFoodDetails(null);
+    setCompareLines([]);
     setModalVisible(false);
   };
 
@@ -190,21 +281,13 @@ export default function ScanScreen() {
   const allergens =
     foodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== '0') || [];
 
-  const userAllergenProfile = ['Milk', 'Egg', 'Peanuts'];
-  const matchedAllergens = allergens
-    .map((a: any) => a.name)
-    .filter((name: string) => userAllergenProfile.includes(name));
-  const matchedString = matchedAllergens.join(', ');
-
   return (
     <View style={styles.container}>
       <CameraView
         style={StyleSheet.absoluteFill}
         facing={facing}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ['upc_a', 'upc_e', 'ean13', 'ean8'],
-        }}
+        barcodeScannerSettings={{ barcodeTypes: ['upc_a', 'upc_e', 'ean13', 'ean8'] }}
       />
 
       <View style={styles.overlay}>
@@ -212,17 +295,11 @@ export default function ScanScreen() {
         <Text style={styles.text}> </Text>
         <ThemedText style={styles.text}>Place barcode here</ThemedText>
 
-        {loadingDetails && (
-          <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>
-        )}
+        {loadingDetails && <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>}
       </View>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      {/* Results modal */}
+      <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -232,15 +309,8 @@ export default function ScanScreen() {
             <ScrollView style={styles.modalScroll}>
               {foodDetails?.food ? (
                 <>
-                  <Text style={styles.productName}>
-                    {foodDetails.food.food_name}
-                  </Text>
-
-                  {foodDetails.food.brand_name && (
-                    <Text style={styles.brandName}>
-                      by {foodDetails.food.brand_name}
-                    </Text>
-                  )}
+                  <Text style={styles.productName}>{foodDetails.food.food_name}</Text>
+                  {foodDetails.food.brand_name && <Text style={styles.brandName}>by {foodDetails.food.brand_name}</Text>}
 
                   <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Warnings</Text>
@@ -256,6 +326,17 @@ export default function ScanScreen() {
                       <Text style={styles.sectionText}>No warnings found</Text>
                     )}
                   </View>
+
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Matches with Selected Profile</Text>
+                    {compareLines.length > 0 ? (
+                      compareLines.map((line, idx) => (
+                        <Text key={idx} style={styles.sectionText}>• {line}</Text>
+                      ))
+                    ) : (
+                      <Text style={styles.sectionText}>None 🎉</Text>
+                    )}
+                  </View>
                 </>
               ) : (
                 <Text style={styles.errorText}>No food data found for this barcode.</Text>
@@ -263,10 +344,7 @@ export default function ScanScreen() {
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={resetScanner}
-              >
+              <TouchableOpacity style={styles.actionButton} onPress={resetScanner}>
                 <Text style={styles.actionButtonText}>Scan Another</Text>
               </TouchableOpacity>
             </View>
@@ -274,180 +352,195 @@ export default function ScanScreen() {
         </BlurView>
       </Modal>
 
+      {/* Profile Picker */}
+      <ProfilePickerModal
+        visible={pickerVisible}
+        profiles={profiles}
+        onCancel={() => { setPickerVisible(false); setPendingProduct(null); }}
+        onPick={async (p) => {
+          setPickerVisible(false);
+          if (pendingProduct) {
+            const { displayName, product, warningsString } = pendingProduct;
+            setPendingProduct(null);
+            await runCompareAndHistory(displayName, product, warningsString, p.data, p.name);
+          }
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  permissionContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  titleContainer: {
-    paddingTop: 60,
-    paddingBottom: 10,
-    paddingHorizontal: 24,
-  },
-  divider: {
-    height: 2,
-    backgroundColor: '#E5E5EA',
-    marginBottom: 16,
-    width: '100%',
-  },
+  container: { flex: 1 },
+  permissionContainer: { 
+    flex: 1, 
+    backgroundColor: 'transparent' },
+
+  titleContainer: { 
+    paddingTop: 60, 
+    paddingBottom: 10, 
+    paddingHorizontal: 24 },
+
+  divider: { 
+    height: 2, 
+    backgroundColor: '#E5E5EA', 
+    marginBottom: 16, 
+    width: '100%' },
+
   textContainer: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 24,
-  },
-  buttonWrapper: {
-    marginTop: 16,
-  },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  button: {
-    backgroundColor: '#00000088',
-    padding: 12,
-    borderRadius: 8,
-  },
-  text: {
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 50 : 0,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scanBox: {
-    width: 300,
-    height: 200,
-    borderWidth: 4,
-    borderColor: 'white',
-    borderRadius: 10,
-    backgroundColor: 'transparent',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    width: '90%',
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  closeButton: {
-    width: 30,
-    height: 30,
+     backgroundColor: 'transparent', 
+    paddingHorizontal: 24 },
+
+  buttonWrapper: { marginTop: 16 },
+
+  text: { 
+    fontWeight: 'bold', 
+    color: 'white', 
+    textAlign: 'center', 
+    paddingBottom: Platform.OS === 'ios' ? 50 : 0 },
+
+  overlay: { 
+    ...StyleSheet.absoluteFillObject, 
+    justifyContent: 'center', 
+    alignItems: 'center' },
+
+  scanBox: { 
+    width: 300, 
+    height: 200, 
+    borderWidth: 4, 
+    borderColor: 'white', 
+    borderRadius: 10, 
+    backgroundColor: 'transparent' },
+
+  // results modal
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center' },
+
+  modalContent: { 
+    backgroundColor: 'white', 
+    borderRadius: 20, width: '90%', 
+    maxHeight: '80%', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.25, 
+    shadowRadius: 4, 
+    elevation: 5 },
+
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#e0e0e0' },
+
+  modalTitle: { 
+    fontSize: 30, 
+    fontWeight: 'bold', 
+    color: '#333' },
+
+  modalScroll: { padding: 20 },
+
+  productName: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: 8 },
+
+  brandName: { 
+    fontSize: 16, 
+    color: '#666', 
+    marginBottom: 20, 
+    fontStyle: 'italic' },
+
+  section: { marginBottom: 20 },
+
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    marginBottom: 8 },
+
+  sectionText: { 
+    fontSize: 14, 
+    color: '#666', 
+    lineHeight: 20 },
+
+  allergenContainer: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginTop: 8 },
+
+  allergenTag: { 
+    backgroundColor: '#FF4D4D', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
     borderRadius: 15,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  modalScroll: {
-    padding: 20,
-  },
-  productName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  brandName: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-    fontStyle: 'italic',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  sectionText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  allergenContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  allergenTag: {
-    backgroundColor: '#FF4D4D',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  allergenText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  modalActions: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  actionButton: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+     marginRight: 8, 
+     marginBottom: 8 },
+
+  allergenText: { 
+    color: 'white', 
+    fontSize: 12, 
+    fontWeight: '600' },
+
+  errorText: { 
+    fontSize: 16, 
+    color: '#666', 
+    textAlign: 'center', 
+    marginTop: 20 },
+
+  modalActions: { 
+    padding: 20, 
+    borderTopWidth: 1, 
+    borderTopColor: '#e0e0e0' },
+
+  actionButton: { 
+    backgroundColor: '#007AFF', 
+    padding: 15, 
+    borderRadius: 10, 
+    alignItems: 'center' },
+
+  actionButtonText: { 
+    color: 'white', 
+    fontSize: 16, 
+    fontWeight: '600' },
+
+  // profile picker
+  ppOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center' },
+
+  ppBox: { 
+    width: '85%', 
+    backgroundColor: '#fff', 
+    padding: 18, borderRadius: 12 },
+
+  ppTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    marginBottom: 12 },
+
+  ppItem: { 
+    paddingVertical: 10, 
+    borderBottomWidth: StyleSheet.hairlineWidth, 
+    borderBottomColor: '#ddd' },
+
+  ppItemText: { fontSize: 16 },
+  ppCancel: { 
+    marginTop: 12, 
+    alignSelf: 'flex-end', 
+    paddingHorizontal: 14, 
+    paddingVertical: 8, 
+    backgroundColor: '#eee', 
+    borderRadius: 8 },
+
+  ppCancelText: { 
+    color: '#333', 
+    fontWeight: '600' },
 });
