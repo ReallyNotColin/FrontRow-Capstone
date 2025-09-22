@@ -13,7 +13,7 @@ export default function SignIn() {
   // If auth state resolves and we have a user, hop to tabs.
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/(tabs)/search"); // replace so back won't return to sign-in
+      router.replace("/(tabs)/scan"); // replace so back won't return to sign-in
     }
   }, [user, loading]);
 
@@ -38,7 +38,7 @@ export default function SignIn() {
   if (loading) return null;
 
   return (
-    <View style={{ padding: 20, gap: 12 }}>
+    <View style={{ margin: 20, padding: 20, gap: 12 }}>
       <Text style={{ fontSize: 24 }}>Sign In</Text>
 
       <TextInput

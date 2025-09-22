@@ -1,22 +1,33 @@
+// screens/SignUp.tsx
 import React, { useState } from "react";
-import { View, TextInput, Button, Text } from "react-native";
-import { signUpWithEmail } from "@/db/auth";
+import { View, TextInput, Button, Text, Alert } from "react-native";
+import { router } from "expo-router";
 import { useAuth } from "@/auth/AuthProvider";
 
 export default function SignUp() {
-  const { signIn, signUp, signOut, user, loading } = useAuth();
+  const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignUp = async () => {
+    setError(null);
+    const e = email.trim();
+    if (!e || !password) {
+      setError("Email and password are required.");
+      return;
+    }
     try {
-      setError(null);
-      const cred = await signUpWithEmail(email.trim(), password);
-      console.log("User created:", cred.user.uid);
+      setSubmitting(true);
+      await signUp(e, password);          // creates the user
+      Alert.alert("Check your email", "We sent you a verification link.");
+      router.replace("./app/auth/verify-email");     // go to verify flow, not tabs
     } catch (err: any) {
       console.error(err);
-      setError(err.message);
+      setError(err?.message ?? String(err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -37,7 +48,7 @@ export default function SignUp() {
         value={password}
         style={{ borderWidth: 1, marginBottom: 12, padding: 8 }}
       />
-      <Button title="Sign Up" onPress={handleSignUp} />
+      <Button title={submitting ? "Creating..." : "Sign Up"} onPress={handleSignUp} disabled={submitting} />
       {error && <Text style={{ color: "red", marginTop: 10 }}>{error}</Text>}
     </View>
   );
