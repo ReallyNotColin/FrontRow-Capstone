@@ -80,39 +80,6 @@ const toFoodDetailsShape = (docData: any) => ({
   },
 });
 
-// ---- NEW: live profiles + picker ----
-function ProfilePickerModal({
-  visible,
-  profiles,
-  onCancel,
-  onPick,
-}: {
-  visible: boolean;
-  profiles: ProfileChoice[];
-  onCancel: () => void;
-  onPick: (p: ProfileChoice) => void;
-}) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <View style={styles.ppOverlay}>
-        <View style={styles.ppBox}>
-          <Text style={styles.ppTitle}>Choose a profile</Text>
-          <ScrollView style={{ maxHeight: 260 }}>
-            {profiles.map(p => (
-              <Pressable key={p.id} style={styles.ppItem} onPress={() => onPick(p)}>
-                <Text style={styles.ppItemText}>{p.name}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <Pressable style={styles.ppCancel} onPress={onCancel}>
-            <Text style={styles.ppCancelText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 export default function ScanScreen() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
@@ -192,7 +159,12 @@ export default function ScanScreen() {
     } else {
       setCompareLines([]);
     }
-    const matchedWithProfile = profileName ? `${matchedSummary}${matchedSummary ? ' ' : ''}[Profile: ${profileName}]` : matchedSummary;
+    
+    let matchedWithProfile = matchedSummary;
+    if (matchedSummary && profileName) {
+    matchedWithProfile = `${matchedSummary} [Profile: ${profileName}]`;
+  }
+  
 
     try {
       await saveToHistory(displayName, warningsString, matchedWithProfile);
@@ -344,17 +316,6 @@ export default function ScanScreen() {
                       <Text style={styles.sectionText}>No warnings found</Text>
                     )}
                   </View>
-
-                  <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Matches with Selected Profile</Text>
-                    {compareLines.length > 0 ? (
-                      compareLines.map((line, idx) => (
-                        <Text key={idx} style={styles.sectionText}>• {line}</Text>
-                      ))
-                    ) : (
-                      <Text style={styles.sectionText}>None 🎉</Text>
-                    )}
-                  </View>
                 </>
               ) : (
                 <Text style={styles.errorText}>No food data found for this barcode.</Text>
@@ -379,19 +340,47 @@ export default function ScanScreen() {
       </Modal>
 
       {/* Profile Picker */}
-      <ProfilePickerModal
-        visible={pickerVisible}
-        profiles={profiles}
-        onCancel={() => { setPickerVisible(false); setPendingProduct(null); }}
-        onPick={async (p) => {
-          setPickerVisible(false);
-          if (pendingProduct) {
-            const { displayName, product, warningsString } = pendingProduct;
-            setPendingProduct(null);
-            await runCompareAndHistory(displayName, product, warningsString, p.data, p.name);
-          }
-        }}
-      />
+      <Modal animationType="slide" transparent visible={pickerVisible} onRequestClose={() => setModalVisible(false)}>
+        <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Profiles</Text>
+            </View>
+
+            <ScrollView style={[styles.modalScroll, {backgroundColor: activeColors.background}]}>
+                {profiles.map((p, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.ppItem}
+                    onPress={async () => {
+                      setPickerVisible(false);
+                      if (pendingProduct) {
+                        const { displayName, product, warningsString } = pendingProduct;
+                        setPendingProduct(null);
+                        await runCompareAndHistory(displayName, product, warningsString, p.data, p.name);
+                      }
+                    }}
+                  >
+                    <Text style={styles.ppItemText}>{p.name}</Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => {
+                  setPickerVisible(false);
+                  setPendingProduct(null);
+                }}
+              >
+                <Text style={styles.actionButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </BlurView>
+      </Modal>
+
     </View>
   );
 }
@@ -577,38 +566,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // profile picker
-  ppOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'center', 
-    alignItems: 'center' },
-
-  ppBox: { 
-    width: '85%', 
-    backgroundColor: '#fff', 
-    padding: 18, borderRadius: 12 },
-
-  ppTitle: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    marginBottom: 12 },
-
+  // profile picker,
   ppItem: { 
     paddingVertical: 10, 
-    borderBottomWidth: StyleSheet.hairlineWidth, 
-    borderBottomColor: '#ddd' },
+    marginBottom: 5,
+    borderWidth: 1, 
+    borderRadius:10,
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#ddd' },
 
-  ppItemText: { fontSize: 16 },
-  ppCancel: { 
-    marginTop: 12, 
-    alignSelf: 'flex-end', 
-    paddingHorizontal: 14, 
-    paddingVertical: 8, 
-    backgroundColor: '#eee', 
-    borderRadius: 8 },
-
-  ppCancelText: { 
-    color: '#333', 
-    fontWeight: '600' },
+  ppItemText: { 
+    fontSize: 16,
+    fontWeight: '500'
+  },
 });
