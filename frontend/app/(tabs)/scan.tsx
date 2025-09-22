@@ -347,7 +347,7 @@ export default function ScanScreen() {
               <Text style={styles.modalTitle}>Profiles</Text>
             </View>
 
-            <ScrollView style={[styles.modalScroll, {backgroundColor: activeColors.background}]}>
+            <ScrollView style={[styles.modalScroll, {backgroundColor: "#f0f0f0"}]}>
                 {profiles.map((p, i) => (
                   <TouchableOpacity
                     key={i}
