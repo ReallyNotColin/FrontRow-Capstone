@@ -63,14 +63,15 @@ export default function Screen() {
         },
       ]}
     >
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <ThemedText style={[styles.foodName, { color: activeColors.text }]}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <ThemedText style={[styles.foodName, { color: activeColors.text, flex: 1, flexWrap: "wrap" }]}>
           {item.foodName}
         </ThemedText>
-        <TouchableOpacity onPress={() => item.id && deleteHistory(item.id)}>
+        <TouchableOpacity onPress={() => item.id && deleteHistory(item.id)} style={{ marginLeft: 8 }}>
           <Ionicons name="close-circle" size={20} color={activeColors.text} />
         </TouchableOpacity>
       </View>
+
       <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
         Allergens: {item.warnings?.trim() ? item.warnings : "None"}
       </ThemedText>
