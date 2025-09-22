@@ -1,13 +1,14 @@
 // app/(tabs)/history.tsx
 import React, { useState, useCallback } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemedColor } from "@/components/ThemedColor";
 
 import { useFocusEffect } from "@react-navigation/native";
-import { onHistory } from "@/db/history"; // ⬅️ live subscription API
+import { onHistory, deleteHistory } from "@/db/history"; // ⬅️ live subscription API
+import { Ionicons } from "@expo/vector-icons";
 
 type Row = {
   id: string;
@@ -62,9 +63,14 @@ export default function Screen() {
         },
       ]}
     >
-      <ThemedText style={[styles.foodName, { color: activeColors.text }]}>
-        {item.foodName}
-      </ThemedText>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <ThemedText style={[styles.foodName, { color: activeColors.text }]}>
+          {item.foodName}
+        </ThemedText>
+        <TouchableOpacity onPress={() => item.id && deleteHistory(item.id)}>
+          <Ionicons name="close-circle" size={20} color={activeColors.text} />
+        </TouchableOpacity>
+      </View>
       <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
         Allergens: {item.warnings?.trim() ? item.warnings : "None"}
       </ThemedText>

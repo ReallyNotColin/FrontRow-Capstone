@@ -1,10 +1,13 @@
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
-import { saveToHistory } from '@/db/history';
+import { saveToHistory, saveToResults } from '@/db/history';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from "@react-navigation/native";
+import { useThemedColor } from '@/components/ThemedColor';
 
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/db/firebaseConfig';
@@ -80,6 +83,8 @@ export default function ScanScreen() {
   const [foodDetails, setFoodDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+  const { activeColors } = useThemedColor();
 
   // Try multiple barcode normalizations to improve hit rate
   const findByBarcode = async (barcode: string) => {
@@ -128,6 +133,10 @@ export default function ScanScreen() {
       try {
         await saveToHistory(foodName, allergensString, matchedString);
         console.log('Successfully saved to history');
+
+        await saveToResults(foodName, allergensString, matchedString);
+        console.log('Successfully saved to results');
+
       } catch (saveError) {
         console.error('Error saving to history:', saveError);
       }
@@ -166,24 +175,32 @@ export default function ScanScreen() {
     setModalVisible(false);
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      resetScanner();
+    }, [])
+  );
+
   if (!permission) return <View />;
 
   if (!permission.granted) {
     return (
-      <View style={styles.permissionContainer}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="title">Scan</ThemedText>
+      <ScrollView style={[styles.container,{backgroundColor: activeColors.background}]}>
+        <ThemedView style={[styles.titleContainer,{backgroundColor: activeColors.backgroundTitle}]}>
+          <ThemedText type="title" style={{ color: activeColors.text}}>
+            Scan
+          </ThemedText>
         </ThemedView>
-        <ThemedView style={styles.divider} />
+        <ThemedView style={[styles.divider, {backgroundColor: activeColors.divider}]} />
         <ThemedView style={styles.textContainer}>
-          <ThemedText>
+          <ThemedText style={{ color: activeColors.text}}>
             We need your permission to access the camera in order to scan barcodes.
           </ThemedText>
           <View style={styles.buttonWrapper}>
             <Button onPress={requestPermission} title="Grant Permission" />
           </View>
         </ThemedView>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -226,7 +243,7 @@ export default function ScanScreen() {
         <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Results</Text>
+              <Text style={styles.modalTitle}>Scanned</Text>
             </View>
 
             <ScrollView style={styles.modalScroll}>
@@ -269,6 +286,14 @@ export default function ScanScreen() {
               >
                 <Text style={styles.actionButtonText}>Scan Another</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton2}
+                onPress={() => {
+                  setModalVisible(false); 
+                  router.push('/results') ;
+                }}>
+                <Text style={styles.actionButtonText}>Done</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </BlurView>
@@ -293,7 +318,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    backgroundColor: '#E5E5EA',
     marginBottom: 16,
     width: '100%',
   },
@@ -442,6 +466,13 @@ const styles = StyleSheet.create({
   actionButton: {
     backgroundColor: '#007AFF',
     padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+    actionButton2: {
+    backgroundColor: '#74B72E',
+    padding: 15,
+    marginTop:5,
     borderRadius: 10,
     alignItems: 'center',
   },
