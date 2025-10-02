@@ -856,6 +856,14 @@ export default function AutocompleteScreen() {
             >
               <Text style={styles.buttonText}>View Custom Entries</Text>
             </Pressable>
+
+            <Pressable
+              style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+              onPress={() => navigation.navigate('create-ticket' as never)}
+            >
+              <Text style={styles.buttonText}>Create Product Request Ticket</Text>
+
+            </Pressable>
           </View>
         }
       />
