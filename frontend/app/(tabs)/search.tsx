@@ -375,7 +375,7 @@ export default function AutocompleteScreen() {
           name_lower: d.name_lower ?? (d.food_name ?? "").toLowerCase(),
           brand_name: d.brand_name,
           brand_lower: d.brand_lower ?? (d.brand_name ?? "").toLowerCase(),
-          barcode: d.barcode,                  // keep raw stored barcode
+          barcode: d.barcode,
           warning: d.warning,
           ingredients: d.ingredients,
           index_ngrams: d.index_ngrams ?? [],
@@ -399,7 +399,6 @@ export default function AutocompleteScreen() {
         usedFallback = true;
         console.log('[search] rescue fallback used — scanned', candidates.length, 'docs');
 
-        // If it's a barcode-style query, prefer direct barcode matches among fallback
         if (isBarcodey) {
           const directBarcodeMatches = candidates.filter(c => matchesBarcodeClientSide(c.barcode, qDigits));
           if (directBarcodeMatches.length > 0) {
@@ -468,18 +467,14 @@ export default function AutocompleteScreen() {
         }
       };
 
-      // For non-barcode text queries, use precision gate unless fallback used.
-      // For barcode-style queries, skip precision gate (barcode matching will steer results).
       let filtered = (usedFallback || isBarcodey)
         ? candidates
         : candidates.filter(c => passesPrecisionGateLocal(qLower, c));
 
-      // ---------- Apply filters (allergens + custom terms) ----------
       filtered = filtered
         .filter(it => matchesAllergenFilters(it, filters.allergens))
         .filter(it => matchesCustomTerms(it, filters.customTerms));
 
-      // Rank + anchors (+ barcode bonus)
       const labelOf = (it: any) => `${it.brand_lower ?? ""} ${it.name_lower ?? ""}`.trim();
       const cutoff = minScoreFor(qLower);
 
@@ -492,7 +487,6 @@ export default function AutocompleteScreen() {
 
       let ranked: any[] = [];
       if (usedFallback && !isBarcodey) {
-        // When fallback due to text query, prefer anchored text matches first.
         const anchored = scored.filter(x => strongAnchor(x.it, qLower));
         if (anchored.length > 0) {
           ranked = anchored.sort((a, b) => b.s - a.s).map(x => x.it);
@@ -501,7 +495,7 @@ export default function AutocompleteScreen() {
       if (ranked.length === 0) {
         const kept = scored
           .filter(x => {
-            if (isBarcodey && matchesBarcodeClientSide(x.it.barcode, qDigits)) return true; // keep all barcode matches
+            if (isBarcodey && matchesBarcodeClientSide(x.it.barcode, qDigits)) return true;
             const anchored = strongAnchor(x.it, qLower);
             const anchoredCutoff = Math.max(0, cutoff - 0.18);
             return x.s >= (anchored ? anchoredCutoff : cutoff);
@@ -532,7 +526,6 @@ export default function AutocompleteScreen() {
         source: "firebase" as const,
       }));
 
-      // --- Custom entries (apply same filters) ---
       const customResults = await searchCustomEntries(text);
       const customCandidates = customResults.map((entry: any) => {
         const brand_lower = (entry.brand_name ?? "").toLowerCase();
@@ -554,7 +547,6 @@ export default function AutocompleteScreen() {
         .filter(it => matchesCustomTerms(it, filters.customTerms));
 
       if (isBarcodey) {
-        // Prefer barcode hits for custom entries too
         const direct = customFiltered.filter(c => matchesBarcodeClientSide(c.barcode, qDigits));
         if (direct.length > 0) customFiltered = direct;
       }
@@ -595,7 +587,6 @@ export default function AutocompleteScreen() {
 
   const debouncedFetch = useMemo(
     () => debounce((t: string) => fetchSuggestions(t), 400),
-    // re-create debounce when any filter dimension changes
     [filters.allergens.peanut, filters.allergens.soy, filters.customTerms.join('|')]
   );
 
@@ -640,7 +631,6 @@ export default function AutocompleteScreen() {
     }
   };
 
-  // ---------- UPDATED layout with image placeholder + details ----------
   const renderSuggestion = ({ item, index }: { item: any; index: number }) => {
     const warnings = selectedFoodDetails?.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== "0");
     const profile = ['Milk', 'Egg', 'Peanuts'];
@@ -666,12 +656,10 @@ export default function AutocompleteScreen() {
         {expandedIndex === index && selectedFoodDetails && (
           <View style={[styles.detailsBox, { backgroundColor: activeColors.backgroundTitle, borderColor: 'transparent' }]}>
             <View style={styles.detailsRow}>
-              {/* Left: image placeholder */}
               <View style={styles.imagePlaceholder}>
                 <Text style={styles.imagePlaceholderText}>Put image here</Text>
               </View>
 
-              {/* Right: details */}
               <View style={styles.detailsCol}>
                 <Text style={[styles.prodTitle, { color: activeColors.text }]}>
                   {item.brand_name ? `${item.brand_name} — ${item.name}` : item.name}
@@ -689,7 +677,6 @@ export default function AutocompleteScreen() {
                   </Text>
                 )}
 
-                {/* Warnings */}
                 {warnings?.length ? (
                   <View style={styles.allergenContainer}>
                     <Text style={[styles.detailsText, { color: activeColors.text }]}>Warnings:</Text>
@@ -707,7 +694,6 @@ export default function AutocompleteScreen() {
                   </Text>
                 )}
 
-                {/* Action buttons */}
                 <View style={styles.detailsButtonsRow}>
                   <Pressable onPress={() => setExpandedIndex(null)} style={[styles.secondaryBtn]}>
                     <Text style={styles.secondaryBtnText}>Collapse</Text>
@@ -750,7 +736,6 @@ export default function AutocompleteScreen() {
                 style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
               />
 
-              {/* Filters dropdown trigger */}
               <Pressable
                 onPress={() => setFiltersOpen(v => !v)}
                 style={[styles.filtersTrigger, { borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
@@ -759,7 +744,7 @@ export default function AutocompleteScreen() {
                   Filters {filtersOpen ? '▴' : '▾'}
                 </Text>
                 {(filters.allergens.peanut || filters.allergens.soy || filters.customTerms.length > 0) && (
-                  <Text style={{ color: activeColors.secondaryText, marginTop: 4, fontSize: 12 }}>
+                  <Text style={{ color: { ...activeColors }.secondaryText, marginTop: 4, fontSize: 12 }}>
                     Active: {[
                       filters.allergens.peanut ? 'Peanut' : null,
                       filters.allergens.soy ? 'Soy' : null,
@@ -769,7 +754,6 @@ export default function AutocompleteScreen() {
                 )}
               </Pressable>
 
-              {/* Filters dropdown */}
               {filtersOpen && (
                 <View style={styles.filtersBox}>
                   <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Allergens</Text>
@@ -795,7 +779,6 @@ export default function AutocompleteScreen() {
                     </Pressable>
                   </View>
 
-                  {/* Submenu: Custom filters */}
                   <View style={styles.customSection}>
                     <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Custom filters</Text>
                     <View style={styles.customRow}>
@@ -812,7 +795,6 @@ export default function AutocompleteScreen() {
                       </Pressable>
                     </View>
 
-                    {/* Chips */}
                     {filters.customTerms.length > 0 && (
                       <View style={styles.chipsRow}>
                         {filters.customTerms.map(term => (
@@ -856,6 +838,14 @@ export default function AutocompleteScreen() {
             >
               <Text style={styles.buttonText}>View Custom Entries</Text>
             </Pressable>
+
+            <Pressable
+              style={[styles.viewButton, { marginTop: 10, alignSelf: 'center', backgroundColor: '#6C757D' }]}
+              onPress={() => navigation.navigate('ocr-scan-screen' as never)}
+            >
+              <Text style={styles.buttonText}>Can’t find a product?</Text>
+            </Pressable>
+
           </View>
         }
       />
@@ -888,7 +878,6 @@ const styles = StyleSheet.create({
   innerContainer: { paddingHorizontal: 24, backgroundColor: 'transparent' },
   input: { borderWidth: 1, borderColor: '#888', padding: 8, borderRadius: 6, backgroundColor: 'transparent' },
 
-  // Filters
   filtersTrigger: {
     marginTop: 10,
     paddingVertical: 10,

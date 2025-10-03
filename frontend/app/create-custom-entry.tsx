@@ -147,6 +147,31 @@ export default function CreateCustomEntryScreen() {
   const [foodName, setFoodName] = useState('');
   const [barcode, setBarcode] = useState('');
   const [selectedAllergens, setSelectedAllergens] = useState([]);
+  const prefill = (route.params as any)?.prefill || {};
+  const [ingredients, setIngredients] = useState(prefill.ingredients || '');
+  const [warnings, setWarnings] = useState(prefill.warnings || '');
+  const [manufacturer, setManufacturer] = useState(prefill.manufacturer || '');
+  const [contact, setContact] = useState(prefill.contact || '');
+  const [nutrition, setNutrition] = useState<{[k: string]: string}>({
+    serving_size: prefill.nutrition?.serving_size || '',
+    servings_per_container: prefill.nutrition?.servings_per_container || '',
+    calories: prefill.nutrition?.calories || '',
+    total_fat_g: prefill.nutrition?.total_fat_g || '',
+    sat_fat_g: prefill.nutrition?.sat_fat_g || '',
+    trans_fat_g: prefill.nutrition?.trans_fat_g || '',
+    cholesterol_mg: prefill.nutrition?.cholesterol_mg || '',
+    sodium_mg: prefill.nutrition?.sodium_mg || '',
+    total_carbs_g: prefill.nutrition?.total_carbs_g || '',
+    fiber_g: prefill.nutrition?.fiber_g || '',
+    total_sugars_g: prefill.nutrition?.total_sugars_g || '',
+    added_sugars_g: prefill.nutrition?.added_sugars_g || '',
+    protein_g: prefill.nutrition?.protein_g || '',
+    vitamin_d_mcg: prefill.nutrition?.vitamin_d_mcg || '',
+    calcium_mg: prefill.nutrition?.calcium_mg || '',
+    iron_mg: prefill.nutrition?.iron_mg || '',
+    potassium_mg: prefill.nutrition?.potassium_mg || '',
+  });
+
 
   useEffect(() => {
     const init = async () => {
@@ -166,6 +191,8 @@ export default function CreateCustomEntryScreen() {
     }
   }, [editingEntry]);
 
+  
+
   // SPRINT 3: Updated handleSave to support multiple barcode types
   const handleSave = async () => {
     const cleanedName = foodName.trim();
@@ -182,6 +209,24 @@ export default function CreateCustomEntryScreen() {
     const normalized13 = norm.ean13;
     const allergenString = selectedAllergens.join(', ');
     const timestamp = Date.now();
+    const nutritionJson = JSON.stringify(nutrition);
+    if (editingEntry?.id) {
+      await customDb.runAsync(
+        `UPDATE custom_entries 
+        SET food_name=?, barcode=?, allergens=?, ingredients=?, warning=?, manufacturer=?, contact=?, nutrition_json=? 
+        WHERE id=?`,
+        [cleanedName, normalized13, allergenString, ingredients, warnings, manufacturer, contact, nutritionJson, editingEntry.id]
+      );
+      Alert.alert('Updated', 'Custom entry updated!');
+    } else {
+      await customDb.runAsync(
+        `INSERT INTO custom_entries 
+        (food_name, barcode, allergens, ingredients, warning, manufacturer, contact, nutrition_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [cleanedName, normalized13, allergenString, ingredients, warnings, manufacturer, contact, nutritionJson, timestamp]
+      );
+      Alert.alert('Saved', 'Custom entry saved!');
+    }
 
     try {
       await saveToHistory(cleanedName, allergenString, allergenString);
@@ -248,6 +293,41 @@ export default function CreateCustomEntryScreen() {
         IconRenderer={Icon}
         styles={{ chipContainer: { backgroundColor: '#ff8080' } }}
       />
+
+
+      <Text style={{ marginTop: 8, fontWeight: '600' }}>Ingredients (ALL CAPS list ok)</Text>
+      <TextInput placeholder="INGREDIENTS: …" value={ingredients} onChangeText={setIngredients} style={styles.input} multiline />
+
+      <Text style={{ fontWeight: '600' }}>Warnings</Text>
+      <TextInput placeholder="e.g., CONTAINS WHEAT; MANUFACTURED IN A FACILITY THAT ALSO PROCESSES PEANUTS" value={warnings} onChangeText={setWarnings} style={styles.input} multiline />
+
+      <Text style={{ fontWeight: '600' }}>Manufacturer (optional)</Text>
+      <TextInput placeholder="e.g., Unilever" value={manufacturer} onChangeText={setManufacturer} style={styles.input} />
+
+      <Text style={{ fontWeight: '600' }}>Contact (phone / email / URL)</Text>
+      <TextInput placeholder="e.g., 1-800-xxx-xxxx or help@example.com or https://example.com" value={contact} onChangeText={setContact} style={styles.input} />
+
+      <Text style={{ marginTop: 12, fontSize: 18, fontWeight: '700' }}>Nutrition Facts</Text>
+
+      {[
+        ['serving_size','Serving size'], ['servings_per_container','Servings per container'], ['calories','Calories'],
+        ['total_fat_g','Total fat (g)'], ['sat_fat_g','Saturated fat (g)'], ['trans_fat_g','Trans fat (g)'],
+        ['cholesterol_mg','Cholesterol (mg)'], ['sodium_mg','Sodium (mg)'],
+        ['total_carbs_g','Total carbohydrate (g)'], ['fiber_g','Dietary fiber (g)'],
+        ['total_sugars_g','Total sugars (g)'], ['added_sugars_g','Added sugars (g)'],
+        ['protein_g','Protein (g)'],
+        ['vitamin_d_mcg','Vitamin D (mcg/IU)'], ['calcium_mg','Calcium (mg)'], ['iron_mg','Iron (mg)'], ['potassium_mg','Potassium (mg)'],
+      ].map(([key,label]) => (
+        <View key={key} style={{ marginBottom: 8 }}>
+          <Text style={{ fontWeight: '600' }}>{label}</Text>
+          <TextInput
+            placeholder={label}
+            value={nutrition[key] || ''}
+            onChangeText={(v) => setNutrition(prev => ({ ...prev, [key]: v }))}
+            style={styles.input}
+          />
+        </View>
+      ))}
 
       <Pressable style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.buttonText}>{editingEntry ? 'Update Entry' : 'Save Entry'}</Text>
