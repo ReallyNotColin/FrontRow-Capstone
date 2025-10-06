@@ -8,7 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "admin:grant": "node scripts/admin-claims.mjs grant",
+    "admin:revoke": "node scripts/admin-claims.mjs revoke",
+    "admin:show": "node scripts/admin-claims.mjs show"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -58,6 +61,7 @@
     "@types/react": "19.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "firebase-admin": "^13.5.0",
     "typescript": "~5.9.2"
   },
   "private": true

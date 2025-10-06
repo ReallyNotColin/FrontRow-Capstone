@@ -210,7 +210,7 @@ export default function CreateTicketScreen() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Create Product Ticket</Text>
         <Text style={styles.subtitle}>
-          Please provide as much information as you can. Fields mirror our product schema (ingredients, nutrition, warnings, etc.).
+          Please provide as much information as you can.
         </Text>
 
         {/* Core identity */}

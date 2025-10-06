@@ -13,6 +13,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
+  getIdTokenResult,
   signOut as fbSignOut,
   type User,
 } from "firebase/auth";
@@ -153,4 +154,12 @@ export function useAuth(): AuthCtx {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
+}
+
+async function refreshClaimsIfNeeded(user) {
+  if (!user) return;
+  // force refresh once so new custom claims appear in the token
+  const tokenResult = await getIdTokenResult(user, true);
+  const isAdmin = tokenResult.claims.admin === true;
+  // store isAdmin in context/state and route accordingly
 }
