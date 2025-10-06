@@ -21,6 +21,12 @@ type ProfileChoice = {
   data: { allergens: string[]; intolerances: string[]; dietary: string[] };
 };
 
+type GroupChoice = {
+  id: string;
+  name: string;
+  members: string[];
+};
+
 function calculateCheckDigit(upc: string): string {
   let sum = 0;
   for (let i = 0; i < upc.length; i++) {
@@ -94,18 +100,26 @@ export default function ScanScreen() {
   const [compareLines, setCompareLines] = useState<string[]>([]);
 
   const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
+  const [groups, setGroups] = useState<GroupChoice[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<{
     displayName: string;
     product: ProductDoc;
     warningsString: string;
   } | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<{
+  type: 'profile' | 'group';
+  data: ProfileChoice | GroupChoice;
+} | null>(null);
 
   // Subscribe to profiles
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     const ref = collection(db, 'users', uid, 'profiles');
+    const refGroup = collection(db, 'users', uid, 'groups');
+    // const refPet = collection(db, 'users', uid, 'pets');   -for future use of pet profiles
+    
     const unsub = onSnapshot(ref, (snap) => {
       const arr: ProfileChoice[] = [];
       let idx = 1;
@@ -123,8 +137,25 @@ export default function ScanScreen() {
       });
       setProfiles(arr);
     });
-    return unsub;
-  }, []);
+    
+    const unsubGroup = onSnapshot(refGroup, (snap) => {
+      const arr: GroupChoice[] = [];
+      snap.forEach(docSnap => {
+        const d = docSnap.data() as any;
+        const memberNames: string[] = Array.isArray(d.members) ? d.members : [];
+        arr.push({
+          id: docSnap.id,
+          name: d.name,
+          members: memberNames,
+        });
+      });
+      setGroups(arr);
+    });
+    return () => {
+      unsub();
+      unsubGroup();
+    };
+  }, [profiles]);
 
    // Try multiple barcode normalizations to improve hit rate
   const findByBarcode = async (barcode: string) => {
@@ -147,36 +178,70 @@ export default function ScanScreen() {
     displayName: string,
     product: ProductDoc,
     warningsString: string,
-    profileData: { allergens: string[]; intolerances: string[]; dietary: string[] } | null,
+    profileData: 
+      | { allergens: string[]; intolerances: string[]; dietary: string[] } 
+      | { name: string; data: { allergens: string[]; intolerances: string[]; dietary: string[] } }[]
+      | null,
     profileName: string | null
   ) => {
     let matchedSummary = '';
-    if (profileData) {
-      const cmp = compareProductToProfile(product, profileData);
+    let allCompareLines: string[] = [];
+
+    const profilesArray =
+      Array.isArray(profileData)
+        ? profileData
+        : profileData
+        ? [{ name: profileName, data: profileData }]
+        : [];
+
+    for (const {name, data} of profilesArray) {
+      const cmp = compareProductToProfile(product, data);
       const lines = [...cmp.summary.allergens, ...cmp.summary.intolerances, ...cmp.summary.dietary];
-      setCompareLines(lines);
-      matchedSummary = lines.join('; ');
-    } else {
-      setCompareLines([]);
+
+    if (lines.length > 0) {
+      allCompareLines.push(...lines);
+      const summary = `${lines.join('; ')} [Profile: ${name}]`;
+      matchedSummary = matchedSummary
+        ? `${matchedSummary} | ${summary}`
+        : summary;
     }
+  }
+  setCompareLines(allCompareLines);
     
     let matchedWithProfile = matchedSummary;
     if (matchedSummary && profileName) {
     matchedWithProfile = `${matchedSummary} [Profile: ${profileName}]`;
   }
   
-
     try {
       await saveToHistory(displayName, warningsString, matchedWithProfile);
-      await saveToResults(displayName, warningsString, matchedWithProfile);
     } catch (saveError) {
       console.error('Error saving to history:', saveError);
     }
-
+    
+    try {
+      await saveToResults(displayName, warningsString, matchedWithProfile);
+    } catch (saveError) {
+      console.error('Error saving to results:', saveError);
+    }
     setModalVisible(true);
   };
 
   const ensureProfileThenCompare = async (displayName: string, product: ProductDoc, warningsString: string) => {
+    if (selectedProfile) {
+      if (selectedProfile.type === 'profile') {
+        const profile = selectedProfile.data as ProfileChoice;
+        await runCompareAndHistory(displayName, product, warningsString, profile.data, profile.name);
+      } else {
+        const group = selectedProfile.data as GroupChoice;
+        const memberProfiles = group.members
+          .map(name => profiles.find(profile => profile.name === name))
+          .filter(Boolean) as { name: string; data: any }[];
+        await runCompareAndHistory(displayName, product, warningsString, memberProfiles, null);
+      }
+      return;
+    }
+    
     if (profiles.length <= 1) {
       const chosen = profiles[0] ?? null;
       await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
@@ -237,6 +302,15 @@ export default function ScanScreen() {
     setFoodDetails(null);
     setCompareLines([]);
     setModalVisible(false);
+    setSelectedProfile(null); 
+  };
+
+  const scanAnother = () => {
+  setScanned(false);
+  setScannedData(null);
+  setFoodDetails(null);
+  setCompareLines([]);
+  setModalVisible(false);
   };
 
   useFocusEffect(
@@ -323,13 +397,14 @@ export default function ScanScreen() {
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.actionButton} onPress={resetScanner}>
+              <TouchableOpacity style={styles.actionButton} onPress={scanAnother}>
                 <Text style={styles.actionButtonText}>Scan Another</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton2}
                 onPress={() => {
-                  setModalVisible(false); 
+                  setModalVisible(false);
+                  resetScanner(); 
                   router.push('/results') ;
                 }}>
                 <Text style={styles.actionButtonText}>Done</Text>
@@ -344,16 +419,18 @@ export default function ScanScreen() {
         <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Profiles</Text>
+              <Text style={styles.modalTitle}>Scan for:</Text>
             </View>
 
             <ScrollView style={[styles.modalScroll, {backgroundColor: "#f0f0f0"}]}>
+              <Text style={styles.modalSubtitle}>Profiles:</Text>
                 {profiles.map((p, i) => (
                   <TouchableOpacity
                     key={i}
                     style={styles.ppItem}
                     onPress={async () => {
                       setPickerVisible(false);
+                      setSelectedProfile({ type: 'profile', data: p }); // Save the selection
                       if (pendingProduct) {
                         const { displayName, product, warningsString } = pendingProduct;
                         setPendingProduct(null);
@@ -364,6 +441,28 @@ export default function ScanScreen() {
                     <Text style={styles.ppItemText}>{p.name}</Text>
                   </TouchableOpacity>
                 ))}
+              <Text style={styles.modalSubtitle}>Groups:</Text>
+                {groups.map((g, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.ppItem}
+                    onPress={async () => {
+                      setPickerVisible(false);
+                      setSelectedProfile({ type: 'group', data: g }); // Save the selection
+                      if (pendingProduct) {
+                        const { displayName, product, warningsString } = pendingProduct;
+                        setPendingProduct(null);
+                        const memberProfiles = g.members
+                          .map(name => profiles.find(profile => profile.name === name))
+                          .filter(Boolean) as { name: string; data: any }[];
+                        await runCompareAndHistory(displayName, product, warningsString, memberProfiles, null);
+                      }
+                    }}
+                  >
+                    <Text style={styles.ppItemText}>{g.name}</Text>
+                  </TouchableOpacity>
+                ))}
+
             </ScrollView>
 
             <View style={styles.modalActions}>
@@ -470,6 +569,11 @@ const styles = StyleSheet.create({
 
   modalTitle: { 
     fontSize: 30, 
+    fontWeight: 'bold', 
+    color: '#333' },
+
+    modalSubtitle: { 
+    fontSize: 20, 
     fontWeight: 'bold', 
     color: '#333' },
 
