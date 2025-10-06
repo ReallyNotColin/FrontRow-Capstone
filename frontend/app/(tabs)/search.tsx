@@ -839,22 +839,13 @@ export default function AutocompleteScreen() {
               <Text style={styles.buttonText}>View Custom Entries</Text>
             </Pressable>
 
-<<<<<<< Updated upstream
-            <Pressable
-              style={[styles.viewButton, { marginTop: 10, alignSelf: 'center', backgroundColor: '#6C757D' }]}
-=======
             
             <Pressable
               style={[styles.viewButton, { marginTop: 10, alignSelf: 'center', backgroundColor: '#6B7280' }]}
->>>>>>> Stashed changes
               onPress={() => navigation.navigate('ocr-scan-screen' as never)}
             >
               <Text style={styles.buttonText}>Can’t find a product?</Text>
             </Pressable>
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
           </View>
         }
       />

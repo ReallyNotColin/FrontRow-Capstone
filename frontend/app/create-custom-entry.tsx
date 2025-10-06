@@ -142,36 +142,7 @@ export default function CreateCustomEntryScreen() {
 
   const [foodName, setFoodName] = useState('');
   const [barcode, setBarcode] = useState('');
-<<<<<<< Updated upstream
-  const [selectedAllergens, setSelectedAllergens] = useState([]);
-  const prefill = (route.params as any)?.prefill || {};
-  const [ingredients, setIngredients] = useState(prefill.ingredients || '');
-  const [warnings, setWarnings] = useState(prefill.warnings || '');
-  const [manufacturer, setManufacturer] = useState(prefill.manufacturer || '');
-  const [contact, setContact] = useState(prefill.contact || '');
-  const [nutrition, setNutrition] = useState<{[k: string]: string}>({
-    serving_size: prefill.nutrition?.serving_size || '',
-    servings_per_container: prefill.nutrition?.servings_per_container || '',
-    calories: prefill.nutrition?.calories || '',
-    total_fat_g: prefill.nutrition?.total_fat_g || '',
-    sat_fat_g: prefill.nutrition?.sat_fat_g || '',
-    trans_fat_g: prefill.nutrition?.trans_fat_g || '',
-    cholesterol_mg: prefill.nutrition?.cholesterol_mg || '',
-    sodium_mg: prefill.nutrition?.sodium_mg || '',
-    total_carbs_g: prefill.nutrition?.total_carbs_g || '',
-    fiber_g: prefill.nutrition?.fiber_g || '',
-    total_sugars_g: prefill.nutrition?.total_sugars_g || '',
-    added_sugars_g: prefill.nutrition?.added_sugars_g || '',
-    protein_g: prefill.nutrition?.protein_g || '',
-    vitamin_d_mcg: prefill.nutrition?.vitamin_d_mcg || '',
-    calcium_mg: prefill.nutrition?.calcium_mg || '',
-    iron_mg: prefill.nutrition?.iron_mg || '',
-    potassium_mg: prefill.nutrition?.potassium_mg || '',
-  });
-
-=======
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
->>>>>>> Stashed changes
 
   useEffect(() => {
     const init = async () => {
@@ -202,12 +173,6 @@ export default function CreateCustomEntryScreen() {
     }
   }, [editingEntry]);
 
-<<<<<<< Updated upstream
-  
-
-  // SPRINT 3: Updated handleSave to support multiple barcode types
-=======
->>>>>>> Stashed changes
   const handleSave = async () => {
     const cleanedName = foodName.trim();
     const norm = normalizeToEan13(barcode);
