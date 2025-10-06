@@ -1,264 +1,216 @@
-// utils/compare.ts
+// db/compare.ts
+// Unified compare helpers used by scan & search
+
 export type ProductDoc = {
-  id?: string;
-  food_name?: string;       // "Strawberry Cheesecake Ice Cream - 16oz"
-  ingredients?: string;     // free text
-  warning?: string;         // "Wheat, Egg, Soy, Milk"
-  // nutrition (strings in your DB; we'll parse numbers)
+  // label fields
+  food_name: string;
+  brand_name: string;
+  barcode?: string;
+
+  // text we scan for allergens/intolerances
+  ingredients?: string;
+  warning?: string;
+
+  // nutrition (strings; grams assumed if no unit)
   calories?: string;
   fat?: string;
   saturated_fat?: string;
   trans_fat?: string;
-  cholesterol?: string;
-  sodium?: string;
+  cholesterol?: string; // mg or g handled
+  sodium?: string;      // mg or g handled
   carbohydrate?: string;
   sugar?: string;
   added_sugars?: string;
   fiber?: string;
   protein?: string;
-  potassium?: string;
-  calcium?: string;
-  iron?: string;
+  potassium?: string;   // mg/g handled
+  calcium?: string;     // mg/g handled
+  iron?: string;        // mg/g handled
+  vitamin_d?: string;   // mcg/µg or IU-ish (we treat mcg-ish)
 };
 
-export type SavedProfileUI = {
-  allergens?: string[];     // e.g., ["Milk","Lactose","Egg",...]
-  intolerances?: string[];  // e.g., ["Lactose","Gluten","Soy",...]
-  dietary?: string[];       // e.g., ["High-Fat","High-Sodium",...]
+export type ProfileData = {
+  allergens: string[];
+  intolerances: string[];
+  dietary: string[]; // e.g. ["High-Fat", "High-Sodium"]
 };
 
-export type CompareReason =
-  | { type: "allergen"; term: string; matchedBy: "warning" | "ingredient" | "alias"; snippet?: string }
-  | { type: "intolerance"; term: string; matchedBy: "ingredient" | "alias"; snippet?: string }
-  | { type: "dietary"; term: string; field: string; value: number; unit: string; dv: number; percentDV: number; thresholdPercent: number };
+// ---------- Normalization & parsing helpers ----------
+const normalize = (s?: string) =>
+  (s ?? "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-export type CompareResult = {
-  harmful: boolean;
-  reasons: CompareReason[];
-  summary: {
-    allergens: string[];
-    intolerances: string[];
-    dietary: string[];
-  };
-};
+const titleCase = (s: string) => s.replace(/\b[a-z]/g, (m) => m.toUpperCase());
 
-/* -------------------- helpers -------------------- */
-const lc = (s?: string | null) => (s ?? "").toLowerCase();
-const asTokens = (s?: string | null) =>
-  lc(s).replace(/[()]/g, " ").replace(/[^a-z0-9+&/,'\s-]/g, "").split(/[\s,;/]+/).filter(Boolean);
-const commaList = (s?: string | null) => lc(s).split(",").map(x => x.trim()).filter(Boolean);
-const num = (v: unknown): number | null => {
-  if (v == null) return null;
-  const n = Number(String(v).trim());
-  return Number.isFinite(n) ? n : null;
-};
-const hasPhrase = (hay: string, needle: string) => hay.includes(needle.toLowerCase());
+// naive unit parsing: returns grams-equivalent
+function parseAmountToGramsLike(raw?: string): number | null {
+  if (!raw) return null;
+  const s = raw.toString().trim().toLowerCase();
+  const m = s.match(/([\d.]+)/);
+  if (!m) return null;
+  const num = parseFloat(m[1]);
+  if (Number.isNaN(num)) return null;
 
-/* -------------------- synonyms -------------------- */
-// “Nuts” means tree nuts in your UI; “Peanuts” is separate
-const ALLERGEN_SYNONYMS: Record<string, string[]> = {
-  milk: ["milk","cream","butter","ghee","cheese","yogurt","whey","casein","milkfat","skim milk"],
-  egg: ["egg","egg yolk","albumen","ovalbumin"],
-  soy: ["soy","soybean","soya","soy lecithin","edamame","tofu","tempeh"],
-  wheat: ["wheat","semolina","spelt","graham","farina","durum"],
-  gluten: ["wheat","barley","rye","malt","semolina","spelt","graham"],
-  peanut: ["peanut","groundnut"],
-  tree_nut: ["almond","walnut","pecan","hazelnut","cashew","pistachio","macadamia","brazil nut","pine nut"],
-  sesame: ["sesame","tahini"],
-  fish: ["fish","anchovy","salmon","tuna","cod","haddock","pollock"],
-  shellfish: ["shrimp","prawn","lobster","crab","crayfish","scallop","clam","oyster","mussel"],
-};
-
-const INTOLERANCE_SYNONYMS: Record<string, string[]> = {
-  lactose: ALLERGEN_SYNONYMS.milk, // lactose intolerance → any dairy term
-  gluten: ALLERGEN_SYNONYMS.gluten,
-  histamine: ["vinegar","yeast extract","soy sauce","fish sauce","sauerkraut","kimchi","fermented","cured"], // heuristic
-  salicylate: ["wintergreen","mint","willow","balsam"], // heuristic (very approximate)
-  soy: ALLERGEN_SYNONYMS.soy,
-  corn: ["corn","corn starch","cornstarch","corn syrup","hfcs","high fructose corn syrup","dextrose","maltodextrin"],
-  caffeine: ["caffeine","coffee","espresso","tea","matcha","yerba mate","guarana","cocoa","chocolate"],
-  sulfite: ["sulfite","sulphite","sulfur dioxide","sodium metabisulfite","potassium metabisulfite"],
-};
-
-/* -------------------- %DV tables -------------------- */
-// Units and Daily Values (FDA adults/children 4+; adjust as needed)
-const DV: Record<string, { dv: number; unit: "g" | "mg" | "mcg" }> = {
-  fat:            { dv: 78,   unit: "g"   },
-  saturated_fat:  { dv: 20,   unit: "g"   },
-  sodium:         { dv: 2300, unit: "mg"  },
-  carbohydrate:   { dv: 275,  unit: "g"   },
-  added_sugars:   { dv: 50,   unit: "g"   },
-  fiber:          { dv: 28,   unit: "g"   },
-  protein:        { dv: 50,   unit: "g"   },
-  cholesterol:    { dv: 300,  unit: "mg"  },
-  potassium:      { dv: 4700, unit: "mg"  },
-  calcium:        { dv: 1300, unit: "mg"  },
-  iron:           { dv: 18,   unit: "mg"  },
-};
-
-// Product field → base unit in your docs
-const FIELD_UNITS: Record<string, "g" | "mg" | "mcg"> = {
-  fat: "g",
-  saturated_fat: "g",
-  sodium: "mg",
-  carbohydrate: "g",
-  added_sugars: "g",
-  sugar: "g",
-  fiber: "g",
-  protein: "g",
-  cholesterol: "mg",
-  potassium: "mg",
-  calcium: "mg",
-  iron: "mg",
-};
-
-function toDVUnit(field: string, value: number): number {
-  const target = DV[field]?.unit;
-  const source = FIELD_UNITS[field];
-  if (!target || !source) return value;
-  if (source === target) return value;
-  if (source === "mg" && target === "g") return value / 1000;
-  if (source === "g" && target === "mg") return value * 1000;
-  if (source === "mcg" && target === "mg") return value / 1000;
-  if (source === "mg" && target === "mcg") return value * 1000;
-  if (source === "mcg" && target === "g") return value / 1_000_000;
-  if (source === "g" && target === "mcg") return value * 1_000_000;
-  return value;
+  if (s.includes("mg")) return num / 1000;                // mg → g
+  if (s.includes("mcg") || s.includes("μg")) return num / 1_000_000; // mcg → g
+  if (s.includes("g")) return num;                         // g
+  return num; // assume grams
 }
 
-/* -------------------- normalize UI strings -------------------- */
-function uiAllergenToKey(s: string): string {
-  const k = lc(s);
-  if (k === "nuts") return "tree_nut";
-  if (k === "peanuts") return "peanut";
-  return k; // milk, egg, fish, gluten, shellfish, soy, sesame
-}
-
-function uiIntoleranceToKey(s: string): string {
-  return lc(s); // lactose, gluten, histamine, salicylate, soy, corn, caffeine, sulfite
-}
-
-const DIETARY_TO_FIELD: Record<string, string[]> = {
-  "high-fat": ["fat"],
-  "high-sodium": ["sodium"],
-  "high-sugar": ["added_sugars","sugar"], // prefer added_sugars; fallback sugar
-  "high-potassium": ["potassium"],
-  "high-cholesterol": ["cholesterol"],
-  "high-carbohydrates": ["carbohydrate"],
-  "high-calcium": ["calcium"],
-  "high-iron": ["iron"],
-  "high-protein": ["protein"],        // UI typo handled below
-  "high-fiber": ["fiber"],
+// ---------- Synonyms ----------
+const SYNONYMS: Record<string, string[]> = {
+  milk: ["dairy", "lactose", "casein", "whey"],
+  lactose: ["milk", "whey", "casein"],
+  egg: ["albumen", "egg white", "egg yolk"],
+  gluten: ["wheat", "barley", "rye", "malt"],
+  nuts: ["almond", "walnut", "pecan", "hazelnut", "cashew", "pistachio"],
+  peanuts: ["peanut", "groundnut", "arachis"],
+  shellfish: ["shrimp", "prawn", "crab", "lobster", "crayfish"],
+  soy: ["soya", "soybean", "lecithin (soy)", "soy lecithin"],
+  sesame: ["tahini", "sesamum"],
+  fish: ["salmon", "tuna", "cod", "anchovy", "sardine"],
 };
 
-export function normalizeProfileFromUI(p: SavedProfileUI, strictnessThresholdPercent = 0.20) {
-  const allergens = (p.allergens ?? []).map(uiAllergenToKey);
-  const intolerances = (p.intolerances ?? []).map(uiIntoleranceToKey);
-  const dietaryKeys = (p.dietary ?? []).map(s => lc(s))
-    .map(s => s.replace(/\s+/g, "-"))
-    .map(s => s.replace(/–/g, "-"));
-
-  return { allergens, intolerances, dietaryKeys, strictnessThresholdPercent };
-}
-
-/* -------------------- compare -------------------- */
-export function compareProductToProfile(product: ProductDoc, uiProfile: SavedProfileUI): CompareResult {
-  const { allergens, intolerances, dietaryKeys, strictnessThresholdPercent } = normalizeProfileFromUI(uiProfile);
-
-  const reasons: CompareReason[] = [];
-  const ingText = lc(product.ingredients);
-  const ingTokens = asTokens(product.ingredients);
-  const warnings = commaList(product.warning);
-
-  // 1) Allergens: warning first, then aliases in ingredients
-  for (const a of allergens) {
-    if (warnings.includes(a)) {
-      reasons.push({ type: "allergen", term: a, matchedBy: "warning", snippet: a });
-      continue;
-    }
-    const aliases = ALLERGEN_SYNONYMS[a] ?? [a];
-    const hit = aliases.find(alias => ingTokens.includes(alias) || hasPhrase(ingText, alias));
-    if (hit) reasons.push({ type: "allergen", term: a, matchedBy: "alias", snippet: hit });
+function expandTerms(userTerms: string[] = []): string[] {
+  const out = new Set<string>();
+  for (const raw of userTerms) {
+    const key = normalize(raw);
+    if (!key) continue;
+    out.add(key);
+    const syns = SYNONYMS[key] || [];
+    for (const s of syns) out.add(normalize(s));
   }
-
-  // 2) Intolerances: aliases in ingredients (labels rarely list them)
-  for (const it of intolerances) {
-    const aliases = INTOLERANCE_SYNONYMS[it] ?? [it];
-    const hit = aliases.find(alias => ingTokens.includes(alias) || hasPhrase(ingText, alias));
-    if (hit) reasons.push({ type: "intolerance", term: it, matchedBy: "alias", snippet: hit });
-  }
-
-  // 3) Dietary: %DV per serving vs threshold
-  const threshold = strictnessThresholdPercent;
-
-  const checkField = (term: string, field: string) => {
-    const dvInfo = DV[field];
-    if (!dvInfo) return;
-    const raw = num((product as any)[field]);
-    if (raw == null) return;
-    const normalized = toDVUnit(field, raw);
-    const pctDV = normalized / dvInfo.dv;
-    if (pctDV >= threshold) {
-      reasons.push({
-        type: "dietary",
-        term,
-        field,
-        value: normalized,
-        unit: dvInfo.unit,
-        dv: dvInfo.dv,
-        percentDV: pctDV,
-        thresholdPercent: threshold,
-      });
-    }
-  };
-
-  for (const tag of dietaryKeys) {
-    const fields = DIETARY_TO_FIELD[tag];
-    if (!fields) continue;
-    // Prefer the first available field (e.g., added_sugars over sugar)
-    const available = fields.find(f => num((product as any)[f]) != null);
-    if (available) checkField(tag, available);
-  }
-
-  const humanPct = (n: number) => `${Math.round(n * 100)}%`;
-
-  const summary = {
-    allergens: reasons.filter(r => r.type === "allergen").map(r => {
-      const rr = r as Extract<CompareReason,{type:"allergen"}>;
-      return `Allergen: ${rr.term} (via ${rr.matchedBy}${rr.snippet ? `: "${rr.snippet}"` : ""})`;
-    }),
-    intolerances: reasons.filter(r => r.type === "intolerance").map(r => {
-      const rr = r as Extract<CompareReason,{type:"intolerance"}>;
-      return `Intolerance: ${rr.term} (via ${rr.matchedBy}${rr.snippet ? `: "${rr.snippet}"` : ""})`;
-    }),
-    dietary: reasons.filter(r => r.type === "dietary").map(r => {
-      const rr = r as Extract<CompareReason,{type:"dietary"}>;
-      return `Dietary: ${rr.term} — ${rr.field} ${rr.value}${rr.unit} ≈ ${humanPct(rr.percentDV)} DV (≥ ${humanPct(rr.thresholdPercent)})`;
-    }),
-  };
-
-  return { harmful: reasons.length > 0, reasons, summary };
+  return Array.from(out);
 }
 
-/* Optional: helper to build from your Firestore doc */
+// ---------- Dietary thresholds ----------
+const DIET_THRESHOLDS_GRAMS: Record<string, number> = {
+  "high-fat": 17,          // g per serving
+  "high-saturated": 5,     // g
+  "high-sugar": 22.5,      // g
+  "high-sodium": 0.6,      // g (600 mg)
+  "high-carbohydrates": 45,// g
+  "high-protein": 20,      // g
+  "high-fiber": 6,         // g
+  "high-potassium": 1.0,   // g (1000 mg)
+  "high-calcium": 0.26,    // g (260 mg)
+  "high-iron": 0.018,      // g (18 mg)
+  "high-cholesterol": 0.3, // g (300 mg)
+};
+
+function dietKey(s: string) {
+  return normalize(s).replace(/\s+/g, "-"); // "High Fat" -> "high-fat"
+}
+
+// ---------- Public: build product doc from Firestore data ----------
 export function buildProductFromFirestoreDoc(d: any): ProductDoc {
   return {
-    food_name: d.food_name,
-    ingredients: d.ingredients,
-    warning: d.warning,
-    calories: d.calories,
-    fat: d.fat,
-    saturated_fat: d.saturated_fat,
-    trans_fat: d.trans_fat,
-    cholesterol: d.cholesterol,
-    sodium: d.sodium,
-    carbohydrate: d.carbohydrate,
-    sugar: d.sugar,
-    added_sugars: d.added_sugars,
-    fiber: d.fiber,
-    protein: d.protein,
-    potassium: d.potassium,
-    calcium: d.calcium,
-    iron: d.iron,
+    food_name: (d.food_name ?? "").toString(),
+    brand_name: (d.brand_name ?? "").toString(),
+    barcode: (d.barcode ?? "").toString(),
+
+    ingredients: (d.ingredients ?? "").toString(),
+    warning: (d.warning ?? "").toString(),
+
+    calories: (d.calories ?? "").toString(),
+    fat: (d.fat ?? "").toString(),
+    saturated_fat: (d.saturated_fat ?? "").toString(),
+    trans_fat: (d.trans_fat ?? "").toString(),
+    cholesterol: (d.cholesterol ?? "").toString(),
+    sodium: (d.sodium ?? "").toString(),
+    carbohydrate: (d.carbohydrate ?? "").toString(),
+    sugar: (d.sugar ?? "").toString(),
+    added_sugars: (d.added_sugars ?? "").toString(),
+    fiber: (d.fiber ?? "").toString(),
+    protein: (d.protein ?? "").toString(),
+    potassium: (d.potassium ?? "").toString(),
+    calcium: (d.calcium ?? "").toString(),
+    iron: (d.iron ?? "").toString(),
+    vitamin_d: (d.vitamin_d ?? "").toString(),
+  };
+}
+
+// ---------- Core compare ----------
+export function compareProductToProfile(product: ProductDoc, profile: ProfileData) {
+  const hay = normalize(
+    [product.ingredients, product.warning, product.food_name, product.brand_name]
+      .filter(Boolean)
+      .join(" | ")
+  );
+
+  // Expand terms & find hits
+  const allergenTerms = expandTerms(profile.allergens);
+  const intoleranceTerms = expandTerms(profile.intolerances);
+
+  const allergenHitsRaw = allergenTerms.filter((t) => t && hay.includes(t));
+  const intoleranceHitsRaw = intoleranceTerms.filter((t) => t && hay.includes(t));
+
+  // Unique + title-case for display
+  const uniq = (arr: string[]) => Array.from(new Set(arr));
+  const allergenHits = uniq(allergenHitsRaw).map(titleCase);
+  const intoleranceHits = uniq(intoleranceHitsRaw).map(titleCase);
+
+  // Dietary evaluation
+  const grams = {
+    fat: parseAmountToGramsLike(product.fat),
+    saturated_fat: parseAmountToGramsLike(product.saturated_fat),
+    sugar: parseAmountToGramsLike(product.sugar),
+    sodium: parseAmountToGramsLike(product.sodium),
+    carbohydrate: parseAmountToGramsLike(product.carbohydrate),
+    protein: parseAmountToGramsLike(product.protein),
+    fiber: parseAmountToGramsLike(product.fiber),
+    potassium: parseAmountToGramsLike(product.potassium),
+    calcium: parseAmountToGramsLike(product.calcium),
+    iron: parseAmountToGramsLike(product.iron),
+    cholesterol: parseAmountToGramsLike(product.cholesterol),
+  };
+
+  const FIELD_MAP: Record<string, keyof typeof grams> = {
+    "high-fat": "fat",
+    "high-saturated": "saturated_fat",
+    "high-sugar": "sugar",
+    "high-sodium": "sodium",
+    "high-carbohydrates": "carbohydrate",
+    "high-protein": "protein",
+    "high-fiber": "fiber",
+    "high-potassium": "potassium",
+    "high-calcium": "calcium",
+    "high-iron": "iron",
+    "high-cholesterol": "cholesterol",
+  };
+
+  const requested = new Set(profile.dietary.map(dietKey));
+  const dietaryFindings: { key: string; value: number; threshold: number }[] = [];
+
+  for (const key of requested) {
+    const field = FIELD_MAP[key];
+    const threshold = DIET_THRESHOLDS_GRAMS[key];
+    if (!field || threshold == null) continue;
+    const val = grams[field];
+    if (val != null && val >= threshold) {
+      dietaryFindings.push({ key, value: val, threshold });
+    }
+  }
+
+  // Build summary strings suited for UI/history
+  const dietarySummary = dietaryFindings.map((f) =>
+    `${titleCase(f.key.replace(/-/g, " "))}: ${f.value} g (≥ ${f.threshold} g)`
+  );
+
+  return {
+    hasIssues: allergenHits.length > 0 || intoleranceHits.length > 0 || dietaryFindings.length > 0,
+    details: {
+      allergenHitsRaw,
+      intoleranceHitsRaw,
+      dietaryFindings,
+    },
+    summary: {
+      allergens: allergenHits,           // ["Milk", "Wheat"]
+      intolerances: intoleranceHits,     // ["Lactose"]
+      dietary: dietarySummary,           // ["High Sodium: 0.8 g (≥ 0.6 g)"]
+    },
   };
 }

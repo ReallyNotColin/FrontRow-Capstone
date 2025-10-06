@@ -70,12 +70,14 @@ export default function Profile() {
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [activeTag, setActiveTag] = useState<TagTab>(null);
+  const [customInput, setCustomInput] = useState(""); // text box for adding custom items
 
   // pet selections (separate so editing person vs pet doesn't clash)
   const [petSelectedAllergens, setPetSelectedAllergens] = useState<string[]>([]);
   const [petSelectedIntolerances, setPetSelectedIntolerances] = useState<string[]>([]);
   const [petSelectedDietary, setPetSelectedDietary] = useState<string[]>([]);
   const [activePetTag, setActivePetTag] = useState<TagTab>(null);
+  const [petCustomInput, setPetCustomInput] = useState("");
 
   /* ------------------ live data ------------------ */
   const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([]);
@@ -203,12 +205,21 @@ export default function Profile() {
   useFocusEffect(useCallback(() => { return () => {}; }, []));
 
   /* ------------------ current list helpers ------------------ */
-  const currentOptions = useMemo(() => {
-    if (activeTag === 'allergens') return allergenOptions;
-    if (activeTag === 'intolerances') return intoleranceOptions;
-    if (activeTag === 'dietary') return dietaryOptions;
-    return [];
-  }, [activeTag, allergenOptions, intoleranceOptions, dietaryOptions]);
+const currentOptions = useMemo(() => {
+  const base =
+    activeTag === 'allergens' ? allergenOptions :
+    activeTag === 'intolerances' ? intoleranceOptions :
+    activeTag === 'dietary' ? dietaryOptions : [];
+
+  const selected =
+    activeTag === 'allergens' ? selectedAllergens :
+    activeTag === 'intolerances' ? selectedIntolerances :
+    activeTag === 'dietary' ? selectedDietary : [];
+
+  const extra = selected.filter(s => !base.includes(s));
+  return [...base, ...extra].sort((a, b) => a.localeCompare(b));
+}, [activeTag, allergenOptions, intoleranceOptions, dietaryOptions, selectedAllergens, selectedIntolerances, selectedDietary]);
+
 
   const currentSelected = useMemo(() => {
     if (activeTag === 'allergens') return selectedAllergens;
@@ -226,12 +237,20 @@ export default function Profile() {
   };
 
   // Pets variant
-  const petCurrentOptions = useMemo(() => {
-    if (activePetTag === 'allergens') return allergenOptions;
-    if (activePetTag === 'intolerances') return intoleranceOptions;
-    if (activePetTag === 'dietary') return dietaryOptions;
-    return [];
-  }, [activePetTag, allergenOptions, intoleranceOptions, dietaryOptions]);
+const petCurrentOptions = useMemo(() => {
+  const base =
+    activePetTag === 'allergens' ? allergenOptions :
+    activePetTag === 'intolerances' ? intoleranceOptions :
+    activePetTag === 'dietary' ? dietaryOptions : [];
+
+  const selected =
+    activePetTag === 'allergens' ? petSelectedAllergens :
+    activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary;
+
+  const extra = selected.filter(s => !base.includes(s));
+  return [...base, ...extra].sort((a, b) => a.localeCompare(b));
+}, [activePetTag, allergenOptions, intoleranceOptions, dietaryOptions, petSelectedAllergens, petSelectedIntolerances, petSelectedDietary]);
+
 
   const petCurrentSelected = useMemo(() => {
     if (activePetTag === 'allergens') return petSelectedAllergens;
@@ -500,23 +519,53 @@ export default function Profile() {
 
             {activeTag && (
               <Animated.View style={[styles.allergensMenuContainer, { opacity: menuOpacity }]}>
-                {(
-                  activeTag === 'allergens' ? allergenOptions :
-                  activeTag === 'intolerances' ? intoleranceOptions :
-                  dietaryOptions
-                ).map((o) => {
-                  const isChecked =
-                    (activeTag === 'allergens' ? selectedAllergens :
-                     activeTag === 'intolerances' ? selectedIntolerances : selectedDietary).includes(o);
-                  return (
-                    <TouchableOpacity key={o} onPress={() => toggleOption(o)} style={styles.checkboxRow}>
-                      <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                      <Text style={styles.checkboxLabel}>{o}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {/* make the options list scrollable */}
+                <ScrollView style={{ maxHeight: 260 }}>
+                  {currentOptions.map((o) => {
+                    const isChecked =
+                      (activeTag === 'allergens' ? selectedAllergens :
+                      activeTag === 'intolerances' ? selectedIntolerances : selectedDietary).includes(o);
+                    return (
+                      <TouchableOpacity key={o} onPress={() => toggleOption(o)} style={styles.checkboxRow}>
+                        <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+                        <Text style={styles.checkboxLabel}>{o}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* pinned "Add custom" row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                  <TextInput
+                    value={customInput}
+                    onChangeText={setCustomInput}
+                    placeholder={`Add custom ${activeTag?.slice(0, -1) ?? 'item'}`}
+                    placeholderTextColor="#8a8a8a"
+                    style={[styles.input, { flex: 1, marginBottom: 0, fontSize:18 }]}
+                  />
+                  <Pressable
+                    onPress={() => {
+                      const v = customInput.trim();
+                      if (!v) return;
+                      // prevent dup in defaults ∪ current selections
+                      if (currentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
+                        setCustomInput("");
+                        return;
+                      }
+                      if (activeTag === 'allergens') setSelectedAllergens(prev => [...prev, v]);
+                      else if (activeTag === 'intolerances') setSelectedIntolerances(prev => [...prev, v]);
+                      else if (activeTag === 'dietary') setSelectedDietary(prev => [...prev, v]);
+                      setCustomInput("");
+                    }}
+                    style={[styles.secondaryButton, { marginLeft: 8 }]}
+                  >
+                    <Text style={styles.secondaryButtonText}>Add</Text>
+                  </Pressable>
+                </View>
               </Animated.View>
             )}
+
+
 
             <Pressable onPress={handleSaveProfile} style={[styles.secondaryButton, { marginTop: 12 }]}>
               <Text style={styles.secondaryButtonText}>Save</Text>
@@ -582,25 +631,53 @@ export default function Profile() {
               </TouchableOpacity>
             </Animated.View>
 
-            {activePetTag && (
+           {activePetTag && (
               <Animated.View style={[styles.allergensMenuContainer, { opacity: petMenuOpacity }]}>
-                {(
-                  activePetTag === 'allergens' ? allergenOptions :
-                  activePetTag === 'intolerances' ? intoleranceOptions :
-                  dietaryOptions
-                ).map((o) => {
-                  const isChecked =
-                    (activePetTag === 'allergens' ? petSelectedAllergens :
-                     activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary).includes(o);
-                  return (
-                    <TouchableOpacity key={o} onPress={() => petToggleOption(o)} style={styles.checkboxRow}>
-                      <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                      <Text style={styles.checkboxLabel}>{o}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                {/* scrollable list */}
+                <ScrollView style={{ maxHeight: 260 }}>
+                  {petCurrentOptions.map((o) => {
+                    const isChecked =
+                      (activePetTag === 'allergens' ? petSelectedAllergens :
+                      activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary).includes(o);
+                    return (
+                      <TouchableOpacity key={o} onPress={() => petToggleOption(o)} style={styles.checkboxRow}>
+                        <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+                        <Text style={styles.checkboxLabel}>{o}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* pinned "Add custom" row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                  <TextInput
+                    value={petCustomInput}
+                    onChangeText={setPetCustomInput}
+                    placeholder={`Add custom ${activePetTag?.slice(0, -1) ?? 'item'}`}
+                    placeholderTextColor="#8a8a8a"
+                    style={[styles.input, { flex: 1, marginBottom: 0 , fontSize:18}]}
+                  />
+                  <Pressable
+                    onPress={() => {
+                      const v = petCustomInput.trim();
+                      if (!v) return;
+                      if (petCurrentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
+                        setPetCustomInput("");
+                        return;
+                      }
+                      if (activePetTag === 'allergens') setPetSelectedAllergens(prev => [...prev, v]);
+                      else if (activePetTag === 'intolerances') setPetSelectedIntolerances(prev => [...prev, v]);
+                      else if (activePetTag === 'dietary') setPetSelectedDietary(prev => [...prev, v]);
+                      setPetCustomInput("");
+                    }}
+                    style={[styles.secondaryButton, { marginLeft: 8 }]}
+                  >
+                    <Text style={styles.secondaryButtonText}>Add</Text>
+                  </Pressable>
+                </View>
               </Animated.View>
             )}
+
 
             <Pressable onPress={handleSavePet} style={[styles.secondaryButton, { marginTop: 12 }]}>
               <Text style={styles.secondaryButtonText}>Save Pet</Text>
