@@ -100,6 +100,7 @@ export default function ScanScreen() {
   const [compareLines, setCompareLines] = useState<string[]>([]);
 
   const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
+  const [pets, setPets] = useState<ProfileChoice[]>([]);
   const [groups, setGroups] = useState<GroupChoice[]>([]);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<{
@@ -108,9 +109,8 @@ export default function ScanScreen() {
     warningsString: string;
   } | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<{
-  type: 'profile' | 'group';
-  data: ProfileChoice | GroupChoice;
-} | null>(null);
+  type: 'profile' | 'pet' | 'group';
+  data: ProfileChoice | GroupChoice;} | null>(null);
 
   // Subscribe to profiles
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function ScanScreen() {
     if (!uid) return;
     const ref = collection(db, 'users', uid, 'profiles');
     const refGroup = collection(db, 'users', uid, 'groups');
-    // const refPet = collection(db, 'users', uid, 'pets');   -for future use of pet profiles
+    const refPet = collection(db, 'users', uid, 'pets');
     
     const unsub = onSnapshot(ref, (snap) => {
       const arr: ProfileChoice[] = [];
@@ -138,6 +138,24 @@ export default function ScanScreen() {
       setProfiles(arr);
     });
     
+    const unsubPet = onSnapshot(refPet, (snap) => {
+      const arr: ProfileChoice[] = [];
+      let idx = 1;
+      snap.forEach(docSnap => {
+        const d = docSnap.data() as any;
+        arr.push({
+          id: docSnap.id,
+          name: d.name || `Pet ${idx++}`,
+          data: {
+            allergens: Array.isArray(d.allergens) ? d.allergens : [],
+            intolerances: Array.isArray(d.intolerances) ? d.intolerances : [],
+            dietary: Array.isArray(d.dietary) ? d.dietary : [],
+          },
+        });
+      });
+      setPets(arr);
+    });
+
     const unsubGroup = onSnapshot(refGroup, (snap) => {
       const arr: GroupChoice[] = [];
       snap.forEach(docSnap => {
@@ -153,6 +171,7 @@ export default function ScanScreen() {
     });
     return () => {
       unsub();
+      unsubPet();
       unsubGroup();
     };
   }, [profiles]);
@@ -171,6 +190,12 @@ export default function ScanScreen() {
       const snap = await getDocs(qRef);
       if (!snap.empty) return snap.docs[0].data();
     }
+    return null;
+  };
+  const findPetByBarcode = async (barcode: string) => {
+    const qRef = query(collection(db, 'PetProducts'), where('barcode', '==', barcode));
+    const snap = await getDocs(qRef);
+    if (!snap.empty) return snap.docs[0].data();
     return null;
   };
 
@@ -207,7 +232,6 @@ export default function ScanScreen() {
     }
   }
   setCompareLines(allCompareLines);
-    
     let matchedWithProfile = matchedSummary;
     if (matchedSummary && profileName) {
     matchedWithProfile = `${matchedSummary} [Profile: ${profileName}]`;
@@ -232,6 +256,9 @@ export default function ScanScreen() {
       if (selectedProfile.type === 'profile') {
         const profile = selectedProfile.data as ProfileChoice;
         await runCompareAndHistory(displayName, product, warningsString, profile.data, profile.name);
+      } else if (selectedProfile.type === 'pet') {
+        const pet = selectedProfile.data as ProfileChoice;
+        await runCompareAndHistory(displayName, product, warningsString, pet.data, pet.name);
       } else {
         const group = selectedProfile.data as GroupChoice;
         const memberProfiles = group.members
@@ -242,8 +269,8 @@ export default function ScanScreen() {
       return;
     }
     
-    if (profiles.length <= 1) {
-      const chosen = profiles[0] ?? null;
+    if (profiles.length + pets.length <= 1) {
+      const chosen = profiles[0] ?? pets[0] ?? null;
       await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
     } else {
       setPendingProduct({ displayName, product, warningsString });
@@ -251,10 +278,10 @@ export default function ScanScreen() {
     }
   };
 
-  const fetchFoodDetailsByBarcode = async (barcode: string) => {
+  const fetchFoodDetailsByBarcode = async (barcode: string, isPet: boolean = false) => {
     setLoadingDetails(true);
     try {
-      const docData = await findByBarcode(barcode);
+      const docData = isPet ? await findPetByBarcode(barcode) : await findByBarcode(barcode);
       if (!docData) {
         console.warn('No Firestore document found for barcode:', barcode);
         setFoodDetails(null);
@@ -272,7 +299,11 @@ export default function ScanScreen() {
         details.food?.food_attributes?.allergens?.allergen?.filter((a: any) => a.value !== '0') || [];
       const allergensString = allergensArray.map((a: any) => a.name).join(', ');
 
-      await ensureProfileThenCompare(foodName, product, allergensString);
+      if (isPet) {
+        await ensureProfileThenCompare(foodName, product, allergensString, pets);
+      } else {
+        await ensureProfileThenCompare(foodName, product, allergensString);
+      }
     } catch (err) {
       console.error('Error fetching food details:', err);
       setFoodDetails(null);
@@ -441,6 +472,24 @@ export default function ScanScreen() {
                     <Text style={styles.ppItemText}>{p.name}</Text>
                   </TouchableOpacity>
                 ))}
+              <Text style={styles.modalSubtitle}>Pet Profiles:</Text>
+                {pets.map((pet, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.ppItem}
+                    onPress={async () => {
+                      setPickerVisible(false);
+                      setSelectedProfile({ type: 'pet', data: pet });
+                      if (pendingProduct) {
+                        const { displayName, product, warningsString } = pendingProduct;
+                        setPendingProduct(null);
+                        await runCompareAndHistory(displayName, product, warningsString, pet.data, pet.name);
+                      }
+                    }}
+                  >
+                    <Text style={styles.ppItemText}>{pet.name}</Text>
+                  </TouchableOpacity>
+                ))}
               <Text style={styles.modalSubtitle}>Groups:</Text>
                 {groups.map((g, i) => (
                   <TouchableOpacity
@@ -448,7 +497,7 @@ export default function ScanScreen() {
                     style={styles.ppItem}
                     onPress={async () => {
                       setPickerVisible(false);
-                      setSelectedProfile({ type: 'group', data: g }); // Save the selection
+                      setSelectedProfile({ type: 'group', data: g });
                       if (pendingProduct) {
                         const { displayName, product, warningsString } = pendingProduct;
                         setPendingProduct(null);
