@@ -78,14 +78,21 @@ export default function OcrScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [busy, setBusy] = useState(false);
   const [debugText, setDebugText] = useState('');
+<<<<<<< Updated upstream
   const cameraRef = useRef<CameraView>(null);
   const [ocrAvailable, setOcrAvailable] = useState<boolean | null>(null);
   const [ocrError, setOcrError] = useState<string | null>(null);
+=======
+  const [ocrReady, setOcrReady] = useState<boolean | null>(null);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const cameraRef = useRef<CameraView>(null);
+>>>>>>> Stashed changes
 
   useEffect(() => {
     if (!permission?.granted) requestPermission();
   }, [permission]);
 
+<<<<<<< Updated upstream
   // lazily check if the native module is present
   useEffect(() => {
     (async () => {
@@ -98,6 +105,19 @@ export default function OcrScanScreen() {
       } catch (e: any) {
         setOcrAvailable(false);
         setOcrError(e?.message ?? 'Native OCR module not linked.');
+=======
+  // Lazy probe so the route doesn't crash if native module isn't linked (Expo Go)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (Platform.OS === 'web') { setOcrReady(false); return; }
+        const mod = await import('expo-text-extractor');
+        // Some versions export flags (not required). If import succeeded, we're good.
+        setOcrReady(true);
+      } catch (e: any) {
+        setOcrReady(false);
+        setOcrError(e?.message ?? 'Native OCR module not available. Use a Development Build.');
+>>>>>>> Stashed changes
       }
     })();
   }, []);
@@ -109,11 +129,18 @@ export default function OcrScanScreen() {
 
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.85, skipProcessing: true });
 
+<<<<<<< Updated upstream
       // import here too, to be safe
       const { extractTextFromImage } = await import('expo-text-extractor');
       const lines = await extractTextFromImage(photo.uri);
       const text = (lines || []).join('\n');
       setDebugText(text.slice(0, 1500));
+=======
+      const { extractTextFromImage } = await import('expo-text-extractor');
+      const lines = await extractTextFromImage(photo.uri);
+      const text = (lines || []).join('\n');
+      setDebugText(text.slice(0, 2000));
+>>>>>>> Stashed changes
 
       const nutrition = parseNutritionFacts(text);
       const { ingredientsLine } = extractIngredientsBlock(text);
@@ -147,6 +174,7 @@ export default function OcrScanScreen() {
     );
   }
 
+<<<<<<< Updated upstream
   // User-friendly notice if OCR module isn’t available
   if (ocrAvailable === false) {
     return (
@@ -154,6 +182,13 @@ export default function OcrScanScreen() {
         <Text style={{ textAlign: 'center', marginHorizontal: 24 }}>
           OCR isn’t available in this build. Please run a development build (not Expo Go) after installing
           <Text style={{ fontWeight: '700' }}> expo-text-extractor</Text>.
+=======
+  if (ocrReady === false) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ textAlign: 'center', marginHorizontal: 24 }}>
+          OCR isn’t available in this runtime. Build and open a <Text style={{ fontWeight: '700' }}>Development Build</Text> to use on-device OCR (no API keys).
+>>>>>>> Stashed changes
         </Text>
         {!!ocrError && <Text style={{ marginTop: 8, color: '#c00' }}>{ocrError}</Text>}
         <Pressable style={[styles.btn, { marginTop: 16 }]} onPress={() => navigation.goBack()}>
@@ -177,7 +212,11 @@ export default function OcrScanScreen() {
 
       <View style={styles.overlay}>
         <Text style={styles.hint}>Align the Nutrition Facts panel, then tap Scan.</Text>
+<<<<<<< Updated upstream
         <Pressable style={styles.scanBtn} onPress={captureAndProcess} disabled={busy || ocrAvailable === null}>
+=======
+        <Pressable style={styles.scanBtn} onPress={captureAndProcess} disabled={busy || ocrReady !== true}>
+>>>>>>> Stashed changes
           {busy ? <ActivityIndicator /> : <Text style={styles.scanBtnText}>Scan</Text>}
         </Pressable>
         {!!debugText && (
@@ -194,6 +233,10 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   btn: { marginTop: 12, backgroundColor: '#007BFF', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
   btnText: { color: '#fff', fontWeight: '600' },
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
   overlay: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, backgroundColor: 'rgba(0,0,0,0.35)' },
   hint: { color: '#fff', marginBottom: 8 },
   scanBtn: { alignSelf: 'center', backgroundColor: '#FF7F50', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 },

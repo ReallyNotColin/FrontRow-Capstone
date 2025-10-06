@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SectionedMultiSelect from 'react-native-sectioned-multi-select';
@@ -7,7 +7,6 @@ import * as SQLite from 'expo-sqlite';
 import { saveToHistory } from '@/db/history';
 import { initCustomDb, getCustomDb } from '@/db/customFoods';
 
-// NOTE: Extend this list, OR refer to an existing database of allergens
 const allergenOptions = [
   { id: 'Milk', name: 'Milk' },
   { id: 'Egg', name: 'Egg' },
@@ -24,8 +23,7 @@ const allergenOptions = [
   { id: 'MSG', name: 'MSG' },
 ];
 
-// Helper functions for barcode normalization and validation
-
+// barcode helpers (unchanged from your file) ----------
 const onlyDigits = (s: string) => (s || '').replace(/\D+/g, '');
 
 function ean13CheckDigit(first12: string): string {
@@ -36,12 +34,12 @@ function ean13CheckDigit(first12: string): string {
   }
   const mod = sum % 10;
   return mod === 0 ? '0' : String(10 - mod);
-} // END of ean13CheckDigit()
+}
 
 function isValidEAN13(ean: string): boolean {
   if (!/^\d{13}$/.test(ean)) return false;
   return ean[12] === ean13CheckDigit(ean.slice(0, 12));
-}// END of isValidEAN13()
+}
 
 function upcaCheckDigit(first11: string): string {
   let sumOdd = 0, sumEven = 0;
@@ -52,13 +50,12 @@ function upcaCheckDigit(first11: string): string {
   const total = sumOdd * 3 + sumEven;
   const mod = total % 10;
   return mod === 0 ? '0' : String(10 - mod);
-} // END of upcaCheckDigit()
+}
 
 function isValidUPCA(upcA: string): boolean {
   if (!/^\d{12}$/.test(upcA)) return false;
   return upcA[11] === upcaCheckDigit(upcA.slice(0, 11));
-} // END of isValidUPCA()
-
+}
 
 function upceToUpca(upceRaw: string): string | null {
   const s = onlyDigits(upceRaw);
@@ -71,7 +68,7 @@ function upceToUpca(upceRaw: string): string | null {
   } else {
     ns = s[0];
     if (ns !== '0' && ns !== '1') return null;
-    body = s.slice(1, 7); 
+    body = s.slice(1, 7);
   }
 
   const a = body[0], b = body[1], c = body[2], d = body[3], e = body[4], n = body[5];
@@ -89,44 +86,31 @@ function upceToUpca(upceRaw: string): string | null {
     manufacturer = a + b + c + d + '0';
     product      = '0000' + e;
   } else {
-    // 5..9
     manufacturer = a + b + c + d + e;
     product      = '0000' + n;
   }
 
-  const upcNoCheck = ns + manufacturer + product; // 11 digits total
+  const upcNoCheck = ns + manufacturer + product;
   const check = upcaCheckDigit(upcNoCheck);
-  return upcNoCheck + check; // 12 digits total
+  return upcNoCheck + check;
 }
-
 
 function upcaToEan13(upcA: string): string | null {
   if (!/^\d{12}$/.test(upcA)) return null;
-  const first12 = ('0' + upcA).slice(0, 12); // leading 0 + first 11 data digits of UPC-A
+  const first12 = ('0' + upcA).slice(0, 12);
   const eanCheck = ean13CheckDigit(first12);
-  return first12 + eanCheck; // 13 digits total
+  return first12 + eanCheck;
 }
 
-
-
-// This function calls the above helper functions to normalize any of the three barcode types to EAN-13
 function normalizeToEan13(input: string): { ean13: string, variant: 'EAN-13'|'UPC-A'|'UPC-E' } | null {
-  
-  // cleans the input (the barcode) to only digits to process into a barcode type
   const digits = onlyDigits(input);
-
-  // 13 digits == validate EAN-13 
   if (digits.length === 13 && isValidEAN13(digits)) {
     return { ean13: digits, variant: 'EAN-13' };
   }
-
-  // 12 digits == validate UPC-A and convert
   if (digits.length === 12 && isValidUPCA(digits)) {
     const ean = upcaToEan13(digits);
     if (ean) return { ean13: ean, variant: 'UPC-A' };
   }
-
-  // 8 || 6 digits == treat as UPC-E, expand to UPC-A, THEN to EAN-13
   if (digits.length === 8 || digits.length === 6) {
     const upcA = upceToUpca(digits);
     if (upcA && isValidUPCA(upcA)) {
@@ -134,18 +118,31 @@ function normalizeToEan13(input: string): { ean13: string, variant: 'EAN-13'|'UP
       if (ean) return { ean13: ean, variant: 'UPC-E' };
     }
   }
+  return null;
+}
 
-  return null; 
-} // END of normalizeToEan13()
-
+const KNOWN_ALLERGENS = allergenOptions.map(a => a.id.toUpperCase());
+const parseAllergensFromWarnings = (warnings: string): string[] => {
+  const U = (warnings || '').toUpperCase();
+  const hits: string[] = [];
+  for (const name of KNOWN_ALLERGENS) {
+    if (U.includes(name)) hits.push(name);
+  }
+  const ids = hits
+    .map(h => allergenOptions.find(a => a.id.toUpperCase() === h)?.id)
+    .filter(Boolean) as string[];
+  return Array.from(new Set(ids));
+};
 
 export default function CreateCustomEntryScreen() {
   const navigation = useNavigation();
-  const route = useRoute();
+  const route = useRoute<any>();
   const editingEntry = route.params?.entry;
+  const prefill = route.params?.prefill;
 
   const [foodName, setFoodName] = useState('');
   const [barcode, setBarcode] = useState('');
+<<<<<<< Updated upstream
   const [selectedAllergens, setSelectedAllergens] = useState([]);
   const prefill = (route.params as any)?.prefill || {};
   const [ingredients, setIngredients] = useState(prefill.ingredients || '');
@@ -172,6 +169,9 @@ export default function CreateCustomEntryScreen() {
     potassium_mg: prefill.nutrition?.potassium_mg || '',
   });
 
+=======
+  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
+>>>>>>> Stashed changes
 
   useEffect(() => {
     const init = async () => {
@@ -180,20 +180,34 @@ export default function CreateCustomEntryScreen() {
     init();
   }, []);
 
+  useEffect(() => {
+    if (prefill) {
+      if (typeof prefill.food_name === 'string') setFoodName(prefill.food_name);
+      if (typeof prefill.barcode === 'string') setBarcode(prefill.barcode);
+      if (typeof prefill.warnings === 'string') {
+        const ids = parseAllergensFromWarnings(prefill.warnings);
+        if (ids.length) setSelectedAllergens(ids);
+      }
+    }
+  }, [prefill]);
 
+  // Existing edit flow preserved
   useEffect(() => {
     if (editingEntry) {
       setFoodName(editingEntry.food_name || '');
       setBarcode(editingEntry.barcode || '');
       setSelectedAllergens(
-        editingEntry.allergens?.split(',').map(a => a.trim()) || []
+        editingEntry.allergens?.split(',').map((a: string) => a.trim()) || []
       );
     }
   }, [editingEntry]);
 
+<<<<<<< Updated upstream
   
 
   // SPRINT 3: Updated handleSave to support multiple barcode types
+=======
+>>>>>>> Stashed changes
   const handleSave = async () => {
     const cleanedName = foodName.trim();
     const norm = normalizeToEan13(barcode);
@@ -258,7 +272,7 @@ export default function CreateCustomEntryScreen() {
       console.error(error);
       Alert.alert('Error', 'Failed to save entry.');
     }
-  }; // END of handleSave() 
+  };
 
   return (
     <View style={styles.container}>
@@ -271,16 +285,13 @@ export default function CreateCustomEntryScreen() {
         style={styles.input}
       />
 
-      
       <TextInput
-        // SPRINT 3: Updated placeholder and keyboard type
         placeholder="Barcode (EAN-13 / UPC-A / UPC-E)"
         value={barcode}
         onChangeText={setBarcode}
         keyboardType="number-pad"
         style={styles.input}
       />
-
 
       <SectionedMultiSelect
         items={allergenOptions}
@@ -337,32 +348,9 @@ export default function CreateCustomEntryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#888',
-    borderRadius: 6,
-    padding: 12,
-    marginBottom: 16,
-  },
-  saveButton: {
-    marginTop: 24,
-    backgroundColor: '#007BFF',
-    paddingVertical: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
+  container: { flex: 1, padding: 24, backgroundColor: '#fff' },
+  title: { fontSize: 22, fontWeight: '600', marginBottom: 20 },
+  input: { borderWidth: 1, borderColor: '#888', borderRadius: 6, padding: 12, marginBottom: 16 },
+  saveButton: { marginTop: 24, backgroundColor: '#007BFF', paddingVertical: 12, borderRadius: 6, alignItems: 'center' },
+  buttonText: { color: '#fff', fontSize: 16 },
 });
