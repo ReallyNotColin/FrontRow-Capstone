@@ -58,6 +58,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     lineHeight: 32,
   },
+  modalTitle: { 
+    fontSize: 30, 
+    fontWeight: 'bold', 
+    color: '#333' 
+  },
   subtitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -66,5 +71,5 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     fontSize: 16,
     color: '#0a7ea4',
-  },
+  }
 });

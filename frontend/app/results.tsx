@@ -75,6 +75,12 @@ export default function ResultsScreen() {
       <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
         Matched: {item.matched?.trim() ? item.matched : 'None'}
       </ThemedText>
+        <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <TouchableOpacity 
+            onPress={() => console.log("View Details pressed")} style={styles.actionButton}>
+            <ThemedText style={[styles.foodName, { color: activeColors.buttonText }]}>View Details</ThemedText>
+          </TouchableOpacity>
+        </View>
     </View>
   );
 
@@ -149,5 +155,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontStyle: 'italic',
     marginBottom: 10,
+  },
+  actionButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    alignItems: 'center',
   },
 });
