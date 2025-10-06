@@ -86,7 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Centralized router
   const routeNow = (u: User | null, admin: boolean, verified: boolean) => {
     if (!u) {
-      if (router.canGoBack()) router.dismissAll();
       router.replace(SIGNIN_PATH);
       return;
     }
