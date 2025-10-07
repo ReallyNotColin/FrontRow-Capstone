@@ -78,7 +78,19 @@ export default function Screen() {
         limit(1)
       );
       
-      const snapshot = await getDocs(q);
+      let snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        console.log("Not found in Products, checking PetProducts...");
+        const petProductsRef = collection(db, "PetProducts");
+        const qPet = query(
+          petProductsRef,
+          where("name_lower", ">=", foodName.toLowerCase()),
+          where("name_lower", "<=", foodName.toLowerCase() + "\uf8ff"),
+          limit(1)
+        );
+        snapshot = await getDocs(qPet);
+      }
       
       if (!snapshot.empty) {
         const docData = snapshot.docs[0].data();
