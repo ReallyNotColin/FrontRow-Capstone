@@ -193,9 +193,15 @@ export default function ScanScreen() {
     return null;
   };
   const findPetByBarcode = async (barcode: string) => {
-    const qRef = query(collection(db, 'PetProducts'), where('barcode', '==', barcode));
-    const snap = await getDocs(qRef);
-    if (!snap.empty) return snap.docs[0].data();
+    let tries = [barcode.trim()];
+    if (barcode.startsWith('0')) tries.push(barcode.slice(1));
+    if (barcode.length === 13) tries.push(barcode.slice(1));
+
+    for (const b of tries) {
+      const qRef = query(collection(db, 'PetProducts'), where('barcode', '==', b));
+      const snap = await getDocs(qRef);
+      if (!snap.empty) return snap.docs[0].data();
+    }
     return null;
   };
 
@@ -281,7 +287,11 @@ export default function ScanScreen() {
   const fetchFoodDetailsByBarcode = async (barcode: string, isPet: boolean = false) => {
     setLoadingDetails(true);
     try {
-      const docData = isPet ? await findPetByBarcode(barcode) : await findByBarcode(barcode);
+      let docData = isPet ? await findPetByBarcode(barcode) : await findByBarcode(barcode);
+      if (!docData && !isPet) {
+        console.log('Not found in Products, checking PetProducts...');
+        docData = await findPetByBarcode(barcode);
+      }
       if (!docData) {
         console.warn('No Firestore document found for barcode:', barcode);
         setFoodDetails(null);
@@ -300,7 +310,7 @@ export default function ScanScreen() {
       const allergensString = allergensArray.map((a: any) => a.name).join(', ');
 
       if (isPet) {
-        await ensureProfileThenCompare(foodName, product, allergensString, pets);
+        await ensureProfileThenCompare(foodName, product, allergensString);
       } else {
         await ensureProfileThenCompare(foodName, product, allergensString);
       }
@@ -324,7 +334,10 @@ export default function ScanScreen() {
 
     const gtin13 = toGTIN13(finalData);
     setScannedData(gtin13);
-    await fetchFoodDetailsByBarcode(gtin13);
+  
+    const isPetScan = selectedProfile?.type === 'pet';
+    await fetchFoodDetailsByBarcode(gtin13, isPetScan)
+
   };
 
   const resetScanner = () => {
