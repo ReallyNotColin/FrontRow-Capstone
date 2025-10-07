@@ -9,8 +9,10 @@ import { useThemedColor } from '@/components/ThemedColor';
 
 export default function TabLayout() {
   const { activeColors } = useThemedColor();
-  const {user, loading} = useAuth();
-  if (loading) return null;     
+  const {user, loading, isAdmin} = useAuth();
+  
+  if (loading) return null;  
+  if (isAdmin ) return <Redirect href="/admin" /> 
   if (!user) return <Redirect href="/auth/sign-in" />;
   const activeTintColor = activeColors.primary;
   const inactiveTintColor = activeColors.secondaryText;

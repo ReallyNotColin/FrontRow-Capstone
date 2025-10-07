@@ -1,14 +1,27 @@
 // screens/SignIn.tsx
 import React, { useEffect, useState } from "react";
-import { View, TextInput, Button, Text, Pressable, Alert } from "react-native";
+import {
+  View,
+  TextInput,
+  Text,
+  Pressable,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/auth/AuthProvider";
+import { useThemedColor } from "@/components/ThemedColor";
 
 export default function SignIn() {
   const { signIn, user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const { isDarkMode, colors } = useThemedColor();
+  const c = isDarkMode ? colors.dark : colors.light;
 
   // If auth state resolves and we have a user, hop to tabs.
   useEffect(() => {
@@ -34,38 +47,83 @@ export default function SignIn() {
     }
   };
 
-  // Optional: while initial auth state is loading, render nothing (or a splash)
   if (loading) return null;
 
   return (
-    <View style={{ margin: 20, padding: 20, gap: 12 }}>
-      <Text style={{ fontSize: 24 }}>Sign In</Text>
-
-      <TextInput
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        onChangeText={setEmail}
-        value={email}
-        style={{ borderWidth: 1, padding: 8 }}
-      />
-
-      <TextInput
-        placeholder="Password"
-        secureTextEntry
-        onChangeText={setPassword}
-        value={password}
-        style={{ borderWidth: 1, padding: 8 }}
-      />
-
-      <Button title={submitting ? "Signing in..." : "Sign In"} onPress={onSignIn} disabled={submitting} />
-
-      {/* Sign Up link */}
-      <Pressable onPress={() => router.push("/auth/sign-up")} style={{ paddingVertical: 8 }}>
-        <Text style={{ textAlign: "center", textDecorationLine: "underline" }}>
-          Don’t have an account? Create one
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: c.background }}
+      behavior={Platform.select({ ios: "padding", android: undefined })}
+    >
+      <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
+        <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 12, justifyContent: "center", color: c.text }}>
+          Sign In
         </Text>
-      </Pressable>
-    </View>
+
+        <TextInput
+          placeholder="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          placeholderTextColor={c.mutedText ?? "#8a8a8a"}
+          style={{
+            borderWidth: 1,
+            borderColor: c.divider,
+            backgroundColor: c.card ?? (isDarkMode ? "#1c1c1e" : "#fff"),
+            color: c.text,
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            marginBottom: 10,
+          }}
+        />
+
+        <TextInput
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          placeholderTextColor={c.mutedText ?? "#8a8a8a"}
+          style={{
+            borderWidth: 1,
+            borderColor: c.divider,
+            backgroundColor: c.card ?? (isDarkMode ? "#1c1c1e" : "#fff"),
+            color: c.text,
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            marginBottom: 16,
+          }}
+        />
+
+        <Pressable
+          disabled={submitting}
+          onPress={onSignIn}
+          style={({ pressed }) => ({
+            opacity: submitting ? 0.7 : pressed ? 0.95 : 1,
+            backgroundColor: c.primary,
+            borderRadius: 12,
+            paddingVertical: 12,
+            alignItems: "center",
+            justifyContent: "center",
+          })}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Sign In</Text>
+          )}
+        </Pressable>
+
+        {/* Sign Up link */}
+        <View style={{ marginTop: 12, alignItems: "center" }}>
+          <Pressable onPress={() => router.push("/auth/sign-up")}>
+            <Text style={{ color: c.primary, textDecorationLine: "underline", fontWeight: "600" }}>
+              Don’t have an account? Create one
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
