@@ -3,8 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { doc, onSnapshot, Timestamp } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/db/firebaseConfig";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { db, app } from "@/db/firebaseConfig";
 
 type TicketDoc = {
   food_name: string;
@@ -56,7 +56,6 @@ export default function TicketDetail() {
   const [ticket, setTicket] = useState<TicketDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [edits, setEdits] = useState<Partial<TicketDoc>>({});
-  const callable = useMemo(() => httpsCallable(functions, "reviewTicket"), []);
 
   useEffect(() => {
     const ref = doc(db, "ProductTickets", id!);
@@ -81,21 +80,35 @@ export default function TicketDetail() {
   const doAction = async (action: "saveEdits" | "approve" | "deny") => {
     try {
       if (!id) return;
+
+      // Always get a valid Functions instance in the correct region
+      const fns = getFunctions(app, "us-central1");
+      const callable = httpsCallable(fns, "reviewTicket");
+
       const payload: any = { ticketId: id, action };
       if (Object.keys(edits).length > 0) payload.edits = edits;
+
+      console.log("[reviewTicket] calling", payload);
       const res: any = await callable(payload);
+      console.log("[reviewTicket] response", res?.data);
+
       if (!res?.data?.ok) throw new Error("Function failed");
+
       if (action === "saveEdits") {
         Alert.alert("Saved", "Edits saved on ticket.");
         setEdits({});
       } else if (action === "approve") {
-        Alert.alert("Approved", "Ticket approved and published.", [{ text: "OK", onPress: () => router.back() }]);
+        Alert.alert("Approved", "Ticket approved and published.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
       } else {
-        Alert.alert("Denied", "Ticket denied and archived.", [{ text: "OK", onPress: () => router.back() }]);
+        Alert.alert("Denied", "Ticket denied and archived.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
       }
     } catch (e: any) {
+      console.error("[reviewTicket] error:", e);
       Alert.alert("Error", e?.message ?? String(e));
-      console.error(e);
     }
   };
 
