@@ -223,7 +223,7 @@ export default function CreateTicketScreen() {
           label="Brand name"
           value={brand_name}
           onChangeText={setBrandName}
-          placeholder='e.g., "Ben & Jerry\'s"'
+          placeholder='e.g., "Ben & Jerry\s"'
         />
         <Field
           label="Barcode"
