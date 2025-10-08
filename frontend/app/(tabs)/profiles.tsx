@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
   titleContainer: { paddingTop: 60, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, marginBottom: 16, width: '100%' },
 
-  buttonContainer: { padding: 16, alignItems: 'flex-end', paddingBottom: Platform.OS === 'ios' ? 95 : 16 },
+  buttonContainer: { position: 'absolute', right: 16, alignItems: 'flex-end', bottom: Platform.OS === 'ios' ? 95 : 16, backgroundColor: 'transparent' },
   button: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
   continueButtonText: { fontSize: 28 },
 
@@ -746,6 +746,11 @@ const styles = StyleSheet.create({
 
   secondaryButton: { backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center' },
   secondaryButtonText: { color: '#000', fontWeight: '600' },
+  saveButton: {
+  backgroundColor: '#4CAF50',
+  padding: 10,
+  borderRadius: 6,
+  },
   cancelButton: { padding: 10 },
 
   // Pet UI

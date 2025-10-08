@@ -407,7 +407,7 @@ export default function ScanScreen() {
       </View>
 
       {/* Results modal */}
-      <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+      <Modal animationType="fade" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -459,7 +459,7 @@ export default function ScanScreen() {
       </Modal>
 
       {/* Profile Picker */}
-      <Modal animationType="slide" transparent visible={pickerVisible} onRequestClose={() => setModalVisible(false)}>
+      <Modal animationType="fade" transparent visible={pickerVisible} onRequestClose={() => setModalVisible(false)}>
         <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
