@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions} from "firebase/functions";
 import {
   getAuth,
   initializeAuth,
@@ -44,3 +45,5 @@ export { auth };
 
 // 3) Firestore
 export const db = getFirestore(app);
+
+export const functions = getFunctions(app, 'us-central1');
