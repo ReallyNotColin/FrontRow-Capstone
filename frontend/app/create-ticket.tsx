@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   scanAnchor: {
     position: "absolute",
     right: 16,
-    top: 12,
+    top: 40,
     zIndex: 1,
   },
   scanBtn: {
