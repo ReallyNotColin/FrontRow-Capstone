@@ -1,4 +1,3 @@
-// screens/SignIn.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -14,8 +13,16 @@ import { router } from "expo-router";
 import { useAuth } from "@/auth/AuthProvider";
 import { useThemedColor } from "@/components/ThemedColor";
 
+// NEW: store the MFA resolver for the verify screen
+import { setPendingMfaResolver } from "@/auth/mfaResolverStore";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  getMultiFactorResolver,
+} from "firebase/auth";
+
 export default function SignIn() {
-  const { signIn, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -38,9 +45,24 @@ export default function SignIn() {
     }
     try {
       setSubmitting(true);
-      await signIn(e, password);
-      // onAuthStateChanged will flip `user`, effect above will navigate
+
+      // Try password sign-in
+      await signInWithEmailAndPassword(getAuth(), e, password);
+
+      // If success and no MFA required, the AuthProvider routing will kick in
     } catch (err: any) {
+      // Handle MFA-required path
+      if (err?.code === "auth/multi-factor-auth-required") {
+        try {
+          const resolver = getMultiFactorResolver(getAuth(), err);
+          setPendingMfaResolver(resolver); // save for /auth/mfa-verify
+          router.push("/auth/mfa-verify");
+          return;
+        } catch (e: any) {
+          Alert.alert("MFA error", e?.message ?? String(e));
+          return;
+        }
+      }
       Alert.alert("Sign in failed", err?.message ?? String(err));
     } finally {
       setSubmitting(false);
@@ -55,7 +77,7 @@ export default function SignIn() {
       behavior={Platform.select({ ios: "padding", android: undefined })}
     >
       <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
-        <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 12, justifyContent: "center", color: c.text }}>
+        <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 12, color: c.text }}>
           Sign In
         </Text>
 

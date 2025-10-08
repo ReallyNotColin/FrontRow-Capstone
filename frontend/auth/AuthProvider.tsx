@@ -16,6 +16,9 @@ import {
   sendEmailVerification,
   getIdTokenResult,
   signOut as fbSignOut,
+  getMultiFactorResolver,
+  TotpMultiFactorGenerator,
+  type MultiFactorResolver,
   type User,
 } from "firebase/auth";
 import { auth, db } from "@/db/firebaseConfig";
@@ -28,9 +31,15 @@ type AuthCtx = {
   isAdmin: boolean;
   isVerified: boolean;
 
+  // sign-in/out
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+
+  // MFA
+  mfaRequired: boolean;
+  resolveTotp: (code: string) => Promise<void>;
+  cancelMfa: () => void;
 
   refreshAuthClaims: () => Promise<void>;
   resendVerification: () => Promise<void>;
@@ -39,7 +48,7 @@ type AuthCtx = {
 const ADMIN_HOME = "/admin";
 const USER_HOME = "/(tabs)/scan";
 const SIGNIN_PATH = "/auth/sign-in";
-const VERIFY_PATH = "/auth/verify-email"; // ← change if your verify screen path is different
+const VERIFY_PATH = "/auth/verify-email";
 
 const AuthContext = createContext<AuthCtx | undefined>(undefined);
 
@@ -49,7 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
 
-  // prevent double routing during initial bootstrap
+  // MFA state
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+
   const bootRoutedRef = useRef(false);
 
   // Keep client user in sync
@@ -64,7 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u ?? null);
       setIsVerified(!!u?.emailVerified);
 
-      // Try to read custom claims (non-forced to avoid spamming refresh)
       if (u) {
         try {
           const token = await getIdTokenResult(u, false);
@@ -83,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsub;
   }, []);
 
-  // Centralized router
   const routeNow = (u: User | null, admin: boolean, verified: boolean) => {
     if (!u) {
       router.replace(SIGNIN_PATH);
@@ -100,10 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.replace(USER_HOME);
   };
 
-  // Route once when boot completes, and whenever user/admin/verified changes
   useEffect(() => {
     if (loading) return;
-    // Avoid flashing routes during first render
     if (!bootRoutedRef.current) {
       bootRoutedRef.current = true;
     }
@@ -115,15 +122,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[Auth.signIn] start", email);
       await signInWithEmailAndPassword(auth, email, password);
-      // force a refresh so we immediately see updated claims
       await refreshAuthClaims();
       routeNow(auth.currentUser, isAdmin, !!auth.currentUser?.emailVerified);
       console.log("[Auth.signIn] success");
+    } catch (err: any) {
+      if (err?.code === "auth/multi-factor-auth-required") {
+        // Peek at what’s enrolled
+        console.log("MFA required details:", err?.customData);
+        const resolver = getMultiFactorResolver(auth, err);
+        console.log(
+          "Hints:",
+          resolver.hints.map(h => ({
+            factorId: h.factorId,
+            uid: h.uid,
+            displayName: (h as any).displayName
+          }))
+        );
+
+        // Navigate to your MFA verify screen
+        // (adjust this path if different)
+        router.push("/auth/mfa-verify");
+      } else {
+        console.log("[Auth.signIn] error", err?.code, err?.message);
+        throw err;
+      }
+    }
+  };
+
+
+  const resolveTotp: AuthCtx["resolveTotp"] = async (code: string) => {
+    if (!mfaResolver) throw new Error("No MFA resolver available.");
+    // Find a TOTP factor among the enrolled hints
+    const totpHint = mfaResolver.hints.find(
+      (h) => (h as any).factorId === TotpMultiFactorGenerator.FACTOR_ID
+    );
+    if (!totpHint) {
+      throw new Error("This account has no TOTP factor. (It may be SMS-based MFA.)");
+    }
+    try {
+      const assertion = TotpMultiFactorGenerator.assertionForSignIn(totpHint.uid, code);
+      await mfaResolver.resolveSignIn(assertion);
+      setMfaResolver(null);
+      await refreshAuthClaims();
+      routeNow(auth.currentUser, isAdmin, !!auth.currentUser?.emailVerified);
     } catch (e: any) {
-      console.log("[Auth.signIn] error", e?.code, e?.message);
+      console.log("[Auth.resolveTotp] error", e?.code, e?.message);
       throw e;
     }
   };
+
+  const cancelMfa = () => setMfaResolver(null);
 
   const signUp: AuthCtx["signUp"] = async (email, password) => {
     try {
@@ -146,7 +194,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log("[Auth.signUp] profile create failed:", pe?.code, pe?.message);
       }
 
-      // Make sure claims/user object are fresh, then route (likely to verify screen)
       await refreshAuthClaims();
       routeNow(auth.currentUser, false, !!auth.currentUser?.emailVerified);
       console.log("[Auth.signUp] success");
@@ -162,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fbSignOut(auth);
       setIsAdmin(false);
       setIsVerified(false);
+      setMfaResolver(null);
       routeNow(null, false, false);
       console.log("[Auth.signOut] success");
     } catch (e: any) {
@@ -175,8 +223,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!u) return;
     try {
       console.log("[Auth.refreshAuthClaims] forcing token refresh");
-      await u.getIdToken(true); // refresh claims
-      await u.reload(); // refresh user (emailVerified)
+      await u.getIdToken(true);
+      await u.reload();
       const token = await getIdTokenResult(u, false);
       const admin = token.claims?.admin === true;
       setIsAdmin(admin);
@@ -210,10 +258,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      mfaRequired: !!mfaResolver,
+      resolveTotp,
+      cancelMfa,
       refreshAuthClaims,
       resendVerification,
     }),
-    [user, loading, isAdmin, isVerified]
+    [user, loading, isAdmin, isVerified, mfaResolver]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
