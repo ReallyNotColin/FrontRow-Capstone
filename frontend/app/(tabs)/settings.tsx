@@ -13,6 +13,7 @@ import { useFontSize } from "@/components/FontTheme";
 import { useAuth } from "@/auth/AuthProvider";
 import { db, auth } from "@/db/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   updatePassword,
   EmailAuthProvider,
@@ -128,107 +129,145 @@ export default function Screen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: activeColors.background }}>
+    <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
         <ThemedText type="title" style={{ color: activeColors.text }}>
           Settings
         </ThemedText>
       </ThemedView>
-
       <View style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-
-      {/* User Info */}
-      {userData && (
-        <ThemedView style={[styles.text, { paddingBottom: 15 }]}>
-          <ThemedText type="subtitle" style={{ color: activeColors.text, marginBottom: 8, fontWeight: "700" }}>
-            Your Info
-          </ThemedText>
-          <ThemedText style={{ color: activeColors.text }}>
-            <ThemedText style={{ color: activeColors.text, fontWeight: "600" }}>Email: </ThemedText>
-            {userData.email}
-          </ThemedText>
-        </ThemedView>
-      )}
-
-      <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
-
-      <ThemedView style={styles.text}>
-        {/* Dark Mode */}
-        <View style={styles.settingRow}>
-          <View style={styles.iconLabel}>
-            <IconSymbol name="moon.fill" color={activeColors.icon} size={24} />
-            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Dark Mode</ThemedText>
-          </View>
-          <Switch
-            value={isDarkMode}
-            onValueChange={setIsDarkMode}
-            trackColor={{ false: activeColors.switchTrack, true: activeColors.switchTrack }}
-            thumbColor={activeColors.switchThumb}
-          />
-        </View>
+      <ScrollView>
+        {/* User Info */}
+        {userData && (
+          <ThemedView style={[styles.text, { paddingBottom: 15 }]}>
+            <ThemedText type="subtitle" style={{ color: activeColors.text, marginTop: 16, marginBottom: 8, fontWeight: "700" }}>
+              Your Info
+            </ThemedText>
+            <ThemedText style={{ color: activeColors.text }}>
+              <ThemedText style={{ color: activeColors.text, fontWeight: "600" }}>Email: </ThemedText>
+              {userData.email}
+            </ThemedText>
+          </ThemedView>
+        )}
 
         <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
 
-        {/* Text Size */}
-        <View style={styles.settingRowDropdown}>
-          <View className="iconLabel" style={styles.iconLabel}>
-            <IconSymbol name="textformat.size" color={activeColors.icon} size={24} />
-            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Text Size</ThemedText>
-          </View>
-          <View style={styles.dropdownContainer}>
-            <Dropdown
-              label=""
-              placeholder="Medium"
-              options={textSizeOptions}
-              selectedValue={fontSize}
-              onValueChange={(selected) => {
-                if (Array.isArray(selected)) {
-                  setFontSize(selected[0] as "small" | "medium" | "large");
-                } else if (typeof selected === "string") {
-                  setFontSize(selected as "small" | "medium" | "large");
-                }
-              }}
-              primaryColor={activeColors.primary}
-              dropdownStyle={{
-                ...styles.dropdown,
-                backgroundColor: activeColors.background,
-                borderColor: activeColors.divider,
-              }}
-              dropdownTextStyle={{ color: activeColors.text }}
-              selectedItemStyle={{ color: activeColors.text }}
-              dropdownIconStyle={styles.hiddenIcon}
+        <ThemedView style={styles.text}>
+          {/* Dark Mode */}
+          <View style={styles.settingRow}>
+            <View style={styles.iconLabel}>
+              <IconSymbol name="moon.fill" color={activeColors.icon} size={24} />
+              <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Dark Mode</ThemedText>
+            </View>
+            <Switch
+              value={isDarkMode}
+              onValueChange={setIsDarkMode}
+              trackColor={{ false: activeColors.switchTrack, true: activeColors.switchTrack }}
+              thumbColor={activeColors.switchThumb}
             />
           </View>
-        </View>
 
-        <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
+          <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
 
-        {/* MFA */}
-        <View style={styles.settingRow}>
-          <View style={styles.iconLabel}>
-            <IconSymbol name="shield.checkerboard" color={activeColors.icon} size={24} />
-            <ThemedText style={[styles.labelText, { color: activeColors.text }]}>
-              Multi-Factor Authentication
-            </ThemedText>
+          {/* Text Size */}
+          <View style={styles.settingRowDropdown}>
+            <View className="iconLabel" style={styles.iconLabel}>
+              <IconSymbol name="textformat.size" color={activeColors.icon} size={24} />
+              <ThemedText style={[styles.labelText, { color: activeColors.text }]}>Text Size</ThemedText>
+            </View>
+            <View style={styles.dropdownContainer}>
+              <Dropdown
+                label=""
+                placeholder="Medium"
+                options={textSizeOptions}
+                selectedValue={fontSize}
+                onValueChange={(selected) => {
+                  if (Array.isArray(selected)) {
+                    setFontSize(selected[0] as "small" | "medium" | "large");
+                  } else if (typeof selected === "string") {
+                    setFontSize(selected as "small" | "medium" | "large");
+                  }
+                }}
+                primaryColor={activeColors.primary}
+                dropdownStyle={{
+                  ...styles.dropdown,
+                  backgroundColor: activeColors.backgroundTitle,
+                  borderColor: activeColors.divider,
+                }}
+                dropdownTextStyle={{ color: activeColors.text }}
+                selectedItemStyle={{ color: activeColors.text }}
+                dropdownIconStyle={styles.hiddenIcon}
+              />
+            </View>
           </View>
 
-          {checkingMfa ? (
-            <ActivityIndicator />
-          ) : totpEnrolled ? (
+          <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
+
+          {/* MFA */}
+          <View style={styles.settingRow}>
+            <View style={styles.iconLabel}>
+              <IconSymbol name="shield.checkerboard" color={activeColors.icon} size={24} />
+              <ThemedText style={[styles.labelText, { color: activeColors.text }]}>
+                Multi-Factor Authentication
+              </ThemedText>
+            </View>
+
+            {checkingMfa ? (
+              <ActivityIndicator />
+            ) : totpEnrolled ? (
+              <Pressable
+                disabled
+                style={[
+                  styles.primaryButtonOutline,
+                  { borderColor: activeColors.divider, opacity: 0.6 },
+                ]}
+              >
+                <ThemedText style={[styles.primaryText, { color: activeColors.text }]}>
+                  Enabled
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={goEnrollTotp}
+                style={({ pressed }) => [
+                  styles.primaryButtonOutline,
+                  {
+                    borderColor: activeColors.primary,
+                    backgroundColor: pressed ? `${activeColors.primary}22` : "transparent",
+                  },
+                ]}
+              >
+                <IconSymbol name="lock.shield" color={activeColors.primary} size={20} />
+                <ThemedText style={[styles.primaryText, { color: activeColors.primary, marginLeft: 8 }]}>
+                  Set up MFA
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
+
+          <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
+
+          {/* Buttons row */}
+          <View style={styles.accountButtonsRow}>
             <Pressable
-              disabled
-              style={[
-                styles.primaryButtonOutline,
-                { borderColor: activeColors.divider, opacity: 0.6 },
+              onPress={confirmSignOut}
+              disabled={signingOut}
+              style={({ pressed }) => [
+                styles.dangerButton,
+                {
+                  borderColor: dangerColor,
+                  backgroundColor: pressed ? `${dangerColor}22` : "transparent",
+                },
               ]}
             >
-              <ThemedText style={[styles.primaryText, { color: activeColors.text }]}>
-                Enabled
+              <IconSymbol name="rectangle.portrait.and.arrow.right" color={dangerColor} size={22} />
+              <ThemedText style={[styles.dangerText, { color: dangerColor, marginLeft: 8 }]}>
+                {signingOut ? "Signing out…" : "Sign Out"}
               </ThemedText>
             </Pressable>
-          ) : (
+
             <Pressable
-              onPress={goEnrollTotp}
+              onPress={() => setPasswordModalVisible(true)}
               style={({ pressed }) => [
                 styles.primaryButtonOutline,
                 {
@@ -237,93 +276,58 @@ export default function Screen() {
                 },
               ]}
             >
-              <IconSymbol name="lock.shield" color={activeColors.primary} size={20} />
+              <IconSymbol name="key.fill" color={activeColors.primary} size={20} />
               <ThemedText style={[styles.primaryText, { color: activeColors.primary, marginLeft: 8 }]}>
-                Set up MFA
+                Change Password
               </ThemedText>
             </Pressable>
-          )}
-        </View>
-
-        <View style={[styles.dividerThin, { backgroundColor: activeColors.divider }]} />
-
-        {/* Buttons row */}
-        <View style={styles.accountButtonsRow}>
-          <Pressable
-            onPress={confirmSignOut}
-            disabled={signingOut}
-            style={({ pressed }) => [
-              styles.dangerButton,
-              {
-                borderColor: dangerColor,
-                backgroundColor: pressed ? `${dangerColor}22` : "transparent",
-              },
-            ]}
-          >
-            <IconSymbol name="rectangle.portrait.and.arrow.right" color={dangerColor} size={22} />
-            <ThemedText style={[styles.dangerText, { color: dangerColor, marginLeft: 8 }]}>
-              {signingOut ? "Signing out…" : "Sign Out"}
-            </ThemedText>
-          </Pressable>
-
-          <Pressable
-            onPress={() => setPasswordModalVisible(true)}
-            style={({ pressed }) => [
-              styles.primaryButtonOutline,
-              {
-                borderColor: activeColors.primary,
-                backgroundColor: pressed ? `${activeColors.primary}22` : "transparent",
-              },
-            ]}
-          >
-            <IconSymbol name="key.fill" color={activeColors.primary} size={20} />
-            <ThemedText style={[styles.primaryText, { color: activeColors.primary, marginLeft: 8 }]}>
-              Change Password
-            </ThemedText>
-          </Pressable>
-        </View>
-      </ThemedView>
-
-      {/* Password Modal (unchanged) */}
-      <Modal visible={passwordModalVisible} transparent animationType="fade">
-        <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: activeColors.background }]}>
-            <ThemedText type="subtitle" style={{ color: activeColors.text, marginBottom: 12 }}>
-              Change Password
-            </ThemedText>
-            <TextInput
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              placeholder="Current password"
-              placeholderTextColor="#bbbbbb"
-              style={[styles.input, { borderColor: activeColors.divider, color: activeColors.text }]}
-            />
-            <TextInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              placeholder="New password"
-              placeholderTextColor="#bbbbbb"
-              style={[styles.input, { borderColor: activeColors.divider, color: activeColors.text }]}
-            />
-            <View style={styles.modalButtons}>
-              <Pressable onPress={() => setPasswordModalVisible(false)} style={[styles.button, { backgroundColor: activeColors.divider }]}>
-                <ThemedText style={{ color: activeColors.text }}>Cancel</ThemedText>
-              </Pressable>
-              <Pressable onPress={handlePasswordChange} disabled={loading} style={[styles.button, { backgroundColor: activeColors.primary }]}>
-                <ThemedText style={{ color: "white" }}>{loading ? "Saving…" : "Save"}</ThemedText>
-              </Pressable>
-            </View>
           </View>
-        </BlurView>
-      </Modal>
-    </ScrollView>
+        </ThemedView>
+
+        {/* Password Modal (unchanged) */}
+        <Modal visible={passwordModalVisible} transparent animationType="fade">
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: activeColors.background }]}>
+              <ThemedText type="subtitle" style={{ color: activeColors.text, marginBottom: 12 }}>
+                Change Password
+              </ThemedText>
+              <TextInput
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                placeholder="Current password"
+                placeholderTextColor="#bbbbbb"
+                style={[styles.input, { borderColor: activeColors.divider, color: activeColors.text }]}
+              />
+              <TextInput
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                placeholder="New password"
+                placeholderTextColor="#bbbbbb"
+                style={[styles.input, { borderColor: activeColors.divider, color: activeColors.text }]}
+              />
+              <View style={styles.modalButtons}>
+                <Pressable onPress={() => setPasswordModalVisible(false)} style={[styles.button, { backgroundColor: activeColors.divider }]}>
+                  <ThemedText style={{ color: activeColors.text }}>Cancel</ThemedText>
+                </Pressable>
+                <Pressable onPress={handlePasswordChange} disabled={loading} style={[styles.button, { backgroundColor: activeColors.primary }]}>
+                  <ThemedText style={{ color: "white" }}>{loading ? "Saving…" : "Save"}</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+          </BlurView>
+        </Modal>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   titleContainer: {
     paddingTop: 60,
     paddingBottom: 10,
@@ -331,7 +335,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    marginBottom: 16,
     width: "100%",
   },
   dividerThin: {

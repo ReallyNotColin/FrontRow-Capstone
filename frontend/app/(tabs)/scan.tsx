@@ -9,6 +9,7 @@ import { saveToHistory, saveToResults } from '@/db/history';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from "@react-navigation/native";
 import { useThemedColor } from '@/components/ThemedColor';
+import { LinearGradient } from "expo-linear-gradient";
 
 import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/db/firebaseConfig';
@@ -367,22 +368,24 @@ export default function ScanScreen() {
 
   if (!permission.granted) {
     return (
-      <ScrollView style={[styles.container,{backgroundColor: activeColors.background}]}>
-        <ThemedView style={[styles.titleContainer,{backgroundColor: activeColors.backgroundTitle}]}>
-          <ThemedText type="title" style={{ color: activeColors.text}}>
-            Scan
-          </ThemedText>
-        </ThemedView>
-        <ThemedView style={[styles.divider, {backgroundColor: activeColors.divider}]} />
-        <ThemedView style={styles.textContainer}>
-          <ThemedText style={{ color: activeColors.text}}>
-            We need your permission to access the camera in order to scan barcodes.
-          </ThemedText>
-          <View style={styles.buttonWrapper}>
-            <Button onPress={requestPermission} title="Grant Permission" />
-          </View>
-        </ThemedView>
-      </ScrollView>
+      <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+        <ScrollView style={[styles.container]}>
+          <ThemedView style={[styles.titleContainer,{backgroundColor: activeColors.backgroundTitle}]}>
+            <ThemedText type="title" style={{ color: activeColors.text}}>
+              Scan
+            </ThemedText>
+          </ThemedView>
+          <ThemedView style={[styles.divider, {backgroundColor: activeColors.divider}]} />
+          <ThemedView style={styles.textContainer}>
+            <ThemedText style={{ color: activeColors.text}}>
+              We need your permission to access the camera in order to scan barcodes.
+            </ThemedText>
+            <View style={styles.buttonWrapper}>
+              <Button onPress={requestPermission} title="Grant Permission" />
+            </View>
+          </ThemedView>
+        </ScrollView>
+      </LinearGradient>
     );
   }
 
@@ -547,6 +550,9 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },

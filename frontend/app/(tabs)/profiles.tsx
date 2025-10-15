@@ -9,6 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemedColor } from '@/components/ThemedColor';
+import { LinearGradient } from "expo-linear-gradient";
 
 import {
   onProfiles, onGroups,
@@ -269,431 +270,433 @@ const petCurrentOptions = useMemo(() => {
 
   /* ------------------ render ------------------ */
   return (
-    <View style={[styles.container, { backgroundColor: activeColors.background }]}>
-      <View style={styles.container}>
-        <ScrollView>
-          <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-            <ThemedText type="title" style={{ color: activeColors.text }}>
+    <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+      <View style={[styles.container]}>
+        <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+          <ThemedText type="title" style={{ color: activeColors.text }}>
               Profiles
             </ThemedText>
           </ThemedView>
           <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+        <View style={styles.container}>
+          <ScrollView>
+            {/* Individual Profiles */}
+            <View style={styles.section}>
+              <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Profiles</ThemedText>
 
-          {/* Individual Profiles */}
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Profiles</ThemedText>
-
-            {savedProfiles.length === 0 ? (
-              <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
-                No profiles saved yet.
-              </ThemedText>
-            ) : (
-              savedProfiles.map((profile) => (
-                <View
-                  key={profile.name}
-                  style={[
-                    styles.card,
-                    { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider, borderWidth: 1 },
-                  ]}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>{profile.name}</ThemedText>
-                    <TouchableOpacity onPress={() => handleDeleteProfile(profile.name)} style={{ marginRight: 10 }}>
-                      <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleEditProfile(profile)}>
-                      <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-
-                  <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 6 }]}>
-                    Allergens: {profile.allergens?.length ? profile.allergens.join(', ') : 'None'}
-                  </ThemedText>
-                  <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
-                    Intolerances: {profile.intolerances?.length ? profile.intolerances.join(', ') : 'None'}
-                  </ThemedText>
-                  <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
-                    Dietary: {profile.dietary?.length ? profile.dietary.join(', ') : 'None'}
-                  </ThemedText>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* Pet Profiles */}
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Pet Profiles</ThemedText>
-            {petProfiles.length === 0 ? (
-              <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
-                No pet profiles saved.
-              </ThemedText>
-            ) : (
-              petProfiles.map((pet) => (
-                <View
-                  key={pet.name}
-                  style={[
-                    styles.card,
-                    { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider, borderWidth: 1 },
-                  ]}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>
-                      {pet.name} • {pet.petType}
-                    </ThemedText>
-                    <TouchableOpacity onPress={() => handleDeletePet(pet.name)} style={{ marginRight: 10 }}>
-                      <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleEditPet(pet)}>
-                      <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-
-                  <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 6 }]}>
-                    Allergens: {pet.allergens?.length ? pet.allergens.join(', ') : 'None'}
-                  </ThemedText>
-                  <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
-                    Intolerances: {pet.intolerances?.length ? pet.intolerances.join(', ') : 'None'}
-                  </ThemedText>
-                  <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
-                    Dietary: {pet.dietary?.length ? pet.dietary.join(', ') : 'None'}
-                  </ThemedText>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* Group Profiles */}
-          <View style={styles.section}>
-            <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Group Profiles</ThemedText>
-
-            {Object.keys(groupProfiles).length === 0 ? (
-              <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
-                No group profiles saved.
-              </ThemedText>
-            ) : (
-              Object.entries(groupProfiles).map(([gName, members]) => (
-                <View
-                  key={gName}
-                  style={[
-                    styles.groupContainer,
-                    { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider },
-                  ]}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <ThemedText style={[styles.cardTitle, { color: activeColors.text }]}>{gName}</ThemedText>
-                    <TouchableOpacity onPress={() => handleDeleteGroup(gName)}>
-                      <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
-                    </TouchableOpacity>
-                  </View>
-
-                  {Array.isArray(members) && members.length > 0 ? (
-                    members.map((memberName, idx) => (
-                      <ThemedText
-                        key={`${gName}-${idx}`}
-                        style={[styles.groupMemberText, { color: activeColors.secondaryText }]}
-                      >
-                        • {memberName}
-                      </ThemedText>
-                    ))
-                  ) : (
-                    <ThemedText style={{ marginLeft: 10, fontStyle: 'italic' }}>No members</ThemedText>
-                  )}
-                </View>
-              ))
-            )}
-          </View>
-        </ScrollView>
-
-        {/* Floating add button */}
-        <View style={styles.buttonContainer}>
-          <Pressable
-            onPress={() => setprofileTypeModalVisible(true)}
-            style={[styles.button, { backgroundColor: '#007AFF' }]}
-          >
-            <Text style={styles.continueButtonText}>+</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Choose create type */}
-      <Modal transparent animationType="fade" visible={profileTypeModalVisible} onRequestClose={() => setprofileTypeModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Create New</Text>
-            <Pressable
-              style={styles.optionButton}
-              onPress={() => { setprofileNameModalVisible(true); setprofileTypeModalVisible(false); }}
-            >
-              <Text>Individual Profile</Text>
-            </Pressable>
-            <Pressable
-              style={styles.optionButton}
-              onPress={() => { setPetNameTypeModalVisible(true); setprofileTypeModalVisible(false); }}
-            >
-              <Text>Pet Profile</Text>
-            </Pressable>
-            <Pressable
-              style={styles.optionButton}
-              onPress={() => { setgProfileModalVisible(true); setprofileTypeModalVisible(false); }}
-            >
-              <Text>Group Profile</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Create Group */}
-      <Modal visible={gProfileModalVisible} transparent animationType="slide" onRequestClose={() => setgProfileModalVisible(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.title}>Create Group Profile</Text>
-            <TextInput style={styles.input} placeholder="Group Name" value={groupName} onChangeText={setgroupName} />
-            <Text style={styles.modalSubtitle}>Select Profiles to Include</Text>
-            <ScrollView style={{ maxHeight: 200 }}>
-              {individualProfiles.map((name) => {
-                const isSelected = groupMembers.includes(name);
-                return (
-                  <TouchableOpacity
-                    key={name}
-                    style={styles.checkboxRow}
-                    onPress={() => {
-                      setGroupMembers((prev) =>
-                        isSelected ? prev.filter((p) => p !== name) : [...prev, name]
-                      );
-                    }}
-                  >
-                    <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
-                    <Text style={styles.checkboxLabel}>{name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveGroup}>
-                <Text style={{ color: 'white' }}>Save Group</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setgProfileModalVisible(false)}>
-                <Text style={{ color: 'black' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Create Individual: ask for name */}
-      <Modal transparent visible={profileNameModalVisible} animationType="slide" onRequestClose={() => setprofileNameModalVisible(false)}>
-        <View style={styles.modalBackground}>
-          <View style={styles.modalView}>
-            <Text style={styles.nameText}>What is their name?</Text>
-            <TextInput style={styles.input} value={profileName} onChangeText={setprofileName} placeholder="Name" />
-            <Pressable
-              onPress={() => { setprofileprofileTypeModalVisible(true); setprofileNameModalVisible(false); }}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>Continue</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Create/Edit Individual: pick tags */}
-      <Modal transparent visible={profileprofileTypeModalVisible} animationType="fade" onRequestClose={() => setprofileprofileTypeModalVisible(false)}>
-        <View style={styles.modalBackground}>
-          <View style={styles.modalView}>
-            <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
-              <Text style={styles.nameText}>What is {profileName}'s dietary profile?</Text>
-            </Animated.View>
-
-            <Animated.View style={[styles.tagRow, { transform: [{ translateY: moveMenu }] }]}>
-              <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('allergens')}>
-                <Text style={styles.tagText}>Allergens</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('intolerances')}>
-                <Text style={styles.tagText}>Intolerances</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('dietary')}>
-                <Text style={styles.tagText}>Dietary</Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {activeTag && (
-              <Animated.View style={[styles.allergensMenuContainer, { opacity: menuOpacity }]}>
-                {/* make the options list scrollable */}
-                <ScrollView style={{ maxHeight: 260 }}>
-                  {currentOptions.map((o) => {
-                    const isChecked =
-                      (activeTag === 'allergens' ? selectedAllergens :
-                      activeTag === 'intolerances' ? selectedIntolerances : selectedDietary).includes(o);
-                    return (
-                      <TouchableOpacity key={o} onPress={() => toggleOption(o)} style={styles.checkboxRow}>
-                        <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                        <Text style={styles.checkboxLabel}>{o}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-
-                {/* pinned "Add custom" row */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-                  <TextInput
-                    value={customInput}
-                    onChangeText={setCustomInput}
-                    placeholder={`Add custom ${activeTag?.slice(0, -1) ?? 'item'}`}
-                    placeholderTextColor="#8a8a8a"
-                    style={[styles.input, { flex: 1, marginBottom: 0, fontSize:18 }]}
-                  />
-                  <Pressable
-                    onPress={() => {
-                      const v = customInput.trim();
-                      if (!v) return;
-                      // prevent dup in defaults ∪ current selections
-                      if (currentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
-                        setCustomInput("");
-                        return;
-                      }
-                      if (activeTag === 'allergens') setSelectedAllergens(prev => [...prev, v]);
-                      else if (activeTag === 'intolerances') setSelectedIntolerances(prev => [...prev, v]);
-                      else if (activeTag === 'dietary') setSelectedDietary(prev => [...prev, v]);
-                      setCustomInput("");
-                    }}
-                    style={[styles.secondaryButton, { marginLeft: 8 }]}
-                  >
-                    <Text style={styles.secondaryButtonText}>Add</Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
-            )}
-
-
-
-            <Pressable onPress={handleSaveProfile} style={[styles.secondaryButton, { marginTop: 12 }]}>
-              <Text style={styles.secondaryButtonText}>Save</Text>
-            </Pressable>
-            <Pressable onPress={() => setprofileprofileTypeModalVisible(false)} style={[styles.cancelButton, { alignSelf: 'center' }]}>
-              <Text style={{ color: 'black' }}>Cancel</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Create/Edit Pet: ask name & type */}
-      <Modal transparent visible={petNameTypeModalVisible} animationType="slide" onRequestClose={() => setPetNameTypeModalVisible(false)}>
-        <View style={styles.modalBackground}>
-          <View style={styles.modalView}>
-            <Text style={styles.nameText}>Pet info</Text>
-            <TextInput style={styles.input} placeholder="Pet Name" value={petName} onChangeText={setPetName} />
-            <Text style={[styles.modalSubtitle, { color: 'white', alignSelf: 'center' }]}>Type</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 10 }}>
-              {petTypeOptions.map((t) => {
-                const selected = petType === t;
-                return (
-                  <TouchableOpacity
-                    key={t}
-                    onPress={() => setPetType(t)}
+              {savedProfiles.length === 0 ? (
+                <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
+                  No profiles saved yet.
+                </ThemedText>
+              ) : (
+                savedProfiles.map((profile) => (
+                  <View
+                    key={profile.name}
                     style={[
-                      styles.pill,
-                      { backgroundColor: selected ? '#FFD54F' : '#eee', marginHorizontal: 6 },
+                      styles.card,
+                      { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider, borderWidth: 1 },
                     ]}
                   >
-                    <Text style={{ color: selected ? '#000' : '#333' }}>{t}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <Pressable
-              onPress={() => { setPetTagsModalVisible(true); setPetNameTypeModalVisible(false); }}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>Continue</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Create/Edit Pet: pick tags */}
-      <Modal transparent visible={petTagsModalVisible} animationType="fade" onRequestClose={() => setPetTagsModalVisible(false)}>
-        <View style={styles.modalBackground}>
-          <View style={styles.modalView}>
-            <Animated.View style={{ transform: [{ translateY: petMoveMenu }] }}>
-              <Text style={styles.nameText}>What is {petName}'s dietary profile?</Text>
-            </Animated.View>
-
-            <Animated.View style={[styles.tagRow, { transform: [{ translateY: petMoveMenu }] }]}>
-              <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('allergens')}>
-                <Text style={styles.tagText}>Allergens</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('intolerances')}>
-                <Text style={styles.tagText}>Intolerances</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('dietary')}>
-                <Text style={styles.tagText}>Dietary</Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-           {activePetTag && (
-              <Animated.View style={[styles.allergensMenuContainer, { opacity: petMenuOpacity }]}>
-                {/* scrollable list */}
-                <ScrollView style={{ maxHeight: 260 }}>
-                  {petCurrentOptions.map((o) => {
-                    const isChecked =
-                      (activePetTag === 'allergens' ? petSelectedAllergens :
-                      activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary).includes(o);
-                    return (
-                      <TouchableOpacity key={o} onPress={() => petToggleOption(o)} style={styles.checkboxRow}>
-                        <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                        <Text style={styles.checkboxLabel}>{o}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>{profile.name}</ThemedText>
+                      <TouchableOpacity onPress={() => handleDeleteProfile(profile.name)} style={{ marginRight: 10 }}>
+                        <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
                       </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                      <TouchableOpacity onPress={() => handleEditProfile(profile)}>
+                        <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
+                      </TouchableOpacity>
+                    </View>
 
-                {/* pinned "Add custom" row */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-                  <TextInput
-                    value={petCustomInput}
-                    onChangeText={setPetCustomInput}
-                    placeholder={`Add custom ${activePetTag?.slice(0, -1) ?? 'item'}`}
-                    placeholderTextColor="#8a8a8a"
-                    style={[styles.input, { flex: 1, marginBottom: 0 , fontSize:18}]}
-                  />
-                  <Pressable
-                    onPress={() => {
-                      const v = petCustomInput.trim();
-                      if (!v) return;
-                      if (petCurrentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
-                        setPetCustomInput("");
-                        return;
-                      }
-                      if (activePetTag === 'allergens') setPetSelectedAllergens(prev => [...prev, v]);
-                      else if (activePetTag === 'intolerances') setPetSelectedIntolerances(prev => [...prev, v]);
-                      else if (activePetTag === 'dietary') setPetSelectedDietary(prev => [...prev, v]);
-                      setPetCustomInput("");
-                    }}
-                    style={[styles.secondaryButton, { marginLeft: 8 }]}
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 6 }]}>
+                      Allergens: {profile.allergens?.length ? profile.allergens.join(', ') : 'None'}
+                    </ThemedText>
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
+                      Intolerances: {profile.intolerances?.length ? profile.intolerances.join(', ') : 'None'}
+                    </ThemedText>
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
+                      Dietary: {profile.dietary?.length ? profile.dietary.join(', ') : 'None'}
+                    </ThemedText>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Pet Profiles */}
+            <View style={styles.section}>
+              <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Pet Profiles</ThemedText>
+              {petProfiles.length === 0 ? (
+                <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
+                  No pet profiles saved.
+                </ThemedText>
+              ) : (
+                petProfiles.map((pet) => (
+                  <View
+                    key={pet.name}
+                    style={[
+                      styles.card,
+                      { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider, borderWidth: 1 },
+                    ]}
                   >
-                    <Text style={styles.secondaryButtonText}>Add</Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
-            )}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>
+                        {pet.name} • {pet.petType}
+                      </ThemedText>
+                      <TouchableOpacity onPress={() => handleDeletePet(pet.name)} style={{ marginRight: 10 }}>
+                        <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleEditPet(pet)}>
+                        <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
+                      </TouchableOpacity>
+                    </View>
 
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 6 }]}>
+                      Allergens: {pet.allergens?.length ? pet.allergens.join(', ') : 'None'}
+                    </ThemedText>
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
+                      Intolerances: {pet.intolerances?.length ? pet.intolerances.join(', ') : 'None'}
+                    </ThemedText>
+                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
+                      Dietary: {pet.dietary?.length ? pet.dietary.join(', ') : 'None'}
+                    </ThemedText>
+                  </View>
+                ))
+              )}
+            </View>
 
-            <Pressable onPress={handleSavePet} style={[styles.secondaryButton, { marginTop: 12 }]}>
-              <Text style={styles.secondaryButtonText}>Save Pet</Text>
-            </Pressable>
-            <Pressable onPress={() => setPetTagsModalVisible(false)} style={[styles.cancelButton, { alignSelf: 'center' }]}>
-              <Text style={{ color: 'black' }}>Cancel</Text>
+            {/* Group Profiles */}
+            <View style={styles.section}>
+              <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Group Profiles</ThemedText>
+
+              {Object.keys(groupProfiles).length === 0 ? (
+                <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
+                  No group profiles saved.
+                </ThemedText>
+              ) : (
+                Object.entries(groupProfiles).map(([gName, members]) => (
+                  <View
+                    key={gName}
+                    style={[
+                      styles.groupContainer,
+                      { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <ThemedText style={[styles.cardTitle, { color: activeColors.text }]}>{gName}</ThemedText>
+                      <TouchableOpacity onPress={() => handleDeleteGroup(gName)}>
+                        <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+
+                    {Array.isArray(members) && members.length > 0 ? (
+                      members.map((memberName, idx) => (
+                        <ThemedText
+                          key={`${gName}-${idx}`}
+                          style={[styles.groupMemberText, { color: activeColors.secondaryText }]}
+                        >
+                          • {memberName}
+                        </ThemedText>
+                      ))
+                    ) : (
+                      <ThemedText style={{ marginLeft: 10, fontStyle: 'italic' }}>No members</ThemedText>
+                    )}
+                  </View>
+                ))
+              )}
+            </View>
+          </ScrollView>
+
+          {/* Floating add button */}
+          <View style={styles.buttonContainer}>
+            <Pressable
+              onPress={() => setprofileTypeModalVisible(true)}
+              style={[styles.button, { backgroundColor: '#007AFF' }]}
+            >
+              <Text style={styles.continueButtonText}>+</Text>
             </Pressable>
           </View>
         </View>
-      </Modal>
-    </View>
+
+        {/* Choose create type */}
+        <Modal transparent animationType="fade" visible={profileTypeModalVisible} onRequestClose={() => setprofileTypeModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Create New</Text>
+              <Pressable
+                style={styles.optionButton}
+                onPress={() => { setprofileNameModalVisible(true); setprofileTypeModalVisible(false); }}
+              >
+                <Text>Individual Profile</Text>
+              </Pressable>
+              <Pressable
+                style={styles.optionButton}
+                onPress={() => { setPetNameTypeModalVisible(true); setprofileTypeModalVisible(false); }}
+              >
+                <Text>Pet Profile</Text>
+              </Pressable>
+              <Pressable
+                style={styles.optionButton}
+                onPress={() => { setgProfileModalVisible(true); setprofileTypeModalVisible(false); }}
+              >
+                <Text>Group Profile</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create Group */}
+        <Modal visible={gProfileModalVisible} transparent animationType="slide" onRequestClose={() => setgProfileModalVisible(false)}>
+          <View style={styles.overlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.title}>Create Group Profile</Text>
+              <TextInput style={styles.input} placeholder="Group Name" value={groupName} onChangeText={setgroupName} />
+              <Text style={styles.modalSubtitle}>Select Profiles to Include</Text>
+              <ScrollView style={{ maxHeight: 200 }}>
+                {individualProfiles.map((name) => {
+                  const isSelected = groupMembers.includes(name);
+                  return (
+                    <TouchableOpacity
+                      key={name}
+                      style={styles.checkboxRow}
+                      onPress={() => {
+                        setGroupMembers((prev) =>
+                          isSelected ? prev.filter((p) => p !== name) : [...prev, name]
+                        );
+                      }}
+                    >
+                      <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
+                      <Text style={styles.checkboxLabel}>{name}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveGroup}>
+                  <Text style={{ color: 'white' }}>Save Group</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setgProfileModalVisible(false)}>
+                  <Text style={{ color: 'black' }}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create Individual: ask for name */}
+        <Modal transparent visible={profileNameModalVisible} animationType="slide" onRequestClose={() => setprofileNameModalVisible(false)}>
+          <View style={styles.modalBackground}>
+            <View style={styles.modalView}>
+              <Text style={styles.nameText}>What is their name?</Text>
+              <TextInput style={styles.input} value={profileName} onChangeText={setprofileName} placeholder="Name" />
+              <Pressable
+                onPress={() => { setprofileprofileTypeModalVisible(true); setprofileNameModalVisible(false); }}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create/Edit Individual: pick tags */}
+        <Modal transparent visible={profileprofileTypeModalVisible} animationType="fade" onRequestClose={() => setprofileprofileTypeModalVisible(false)}>
+          <View style={styles.modalBackground}>
+            <View style={styles.modalView}>
+              <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
+                <Text style={styles.nameText}>What is {profileName}'s dietary profile?</Text>
+              </Animated.View>
+
+              <Animated.View style={[styles.tagRow, { transform: [{ translateY: moveMenu }] }]}>
+                <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('allergens')}>
+                  <Text style={styles.tagText}>Allergens</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('intolerances')}>
+                  <Text style={styles.tagText}>Intolerances</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('dietary')}>
+                  <Text style={styles.tagText}>Dietary</Text>
+                </TouchableOpacity>
+              </Animated.View>
+
+              {activeTag && (
+                <Animated.View style={[styles.allergensMenuContainer, { opacity: menuOpacity }]}>
+                  {/* make the options list scrollable */}
+                  <ScrollView style={{ maxHeight: 260 }}>
+                    {currentOptions.map((o) => {
+                      const isChecked =
+                        (activeTag === 'allergens' ? selectedAllergens :
+                        activeTag === 'intolerances' ? selectedIntolerances : selectedDietary).includes(o);
+                      return (
+                        <TouchableOpacity key={o} onPress={() => toggleOption(o)} style={styles.checkboxRow}>
+                          <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+                          <Text style={styles.checkboxLabel}>{o}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {/* pinned "Add custom" row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                    <TextInput
+                      value={customInput}
+                      onChangeText={setCustomInput}
+                      placeholder={`Add custom ${activeTag?.slice(0, -1) ?? 'item'}`}
+                      placeholderTextColor="#8a8a8a"
+                      style={[styles.input, { flex: 1, marginBottom: 0, fontSize:18 }]}
+                    />
+                    <Pressable
+                      onPress={() => {
+                        const v = customInput.trim();
+                        if (!v) return;
+                        // prevent dup in defaults ∪ current selections
+                        if (currentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
+                          setCustomInput("");
+                          return;
+                        }
+                        if (activeTag === 'allergens') setSelectedAllergens(prev => [...prev, v]);
+                        else if (activeTag === 'intolerances') setSelectedIntolerances(prev => [...prev, v]);
+                        else if (activeTag === 'dietary') setSelectedDietary(prev => [...prev, v]);
+                        setCustomInput("");
+                      }}
+                      style={[styles.secondaryButton, { marginLeft: 8 }]}
+                    >
+                      <Text style={styles.secondaryButtonText}>Add</Text>
+                    </Pressable>
+                  </View>
+                </Animated.View>
+              )}
+
+
+
+              <Pressable onPress={handleSaveProfile} style={[styles.secondaryButton, { marginTop: 12 }]}>
+                <Text style={styles.secondaryButtonText}>Save</Text>
+              </Pressable>
+              <Pressable onPress={() => setprofileprofileTypeModalVisible(false)} style={[styles.cancelButton, { alignSelf: 'center' }]}>
+                <Text style={{ color: 'black' }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create/Edit Pet: ask name & type */}
+        <Modal transparent visible={petNameTypeModalVisible} animationType="slide" onRequestClose={() => setPetNameTypeModalVisible(false)}>
+          <View style={styles.modalBackground}>
+            <View style={styles.modalView}>
+              <Text style={styles.nameText}>Pet info</Text>
+              <TextInput style={styles.input} placeholder="Pet Name" value={petName} onChangeText={setPetName} />
+              <Text style={[styles.modalSubtitle, { color: 'white', alignSelf: 'center' }]}>Type</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 10 }}>
+                {petTypeOptions.map((t) => {
+                  const selected = petType === t;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => setPetType(t)}
+                      style={[
+                        styles.pill,
+                        { backgroundColor: selected ? '#FFD54F' : '#eee', marginHorizontal: 6 },
+                      ]}
+                    >
+                      <Text style={{ color: selected ? '#000' : '#333' }}>{t}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <Pressable
+                onPress={() => { setPetTagsModalVisible(true); setPetNameTypeModalVisible(false); }}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Create/Edit Pet: pick tags */}
+        <Modal transparent visible={petTagsModalVisible} animationType="fade" onRequestClose={() => setPetTagsModalVisible(false)}>
+          <View style={styles.modalBackground}>
+            <View style={styles.modalView}>
+              <Animated.View style={{ transform: [{ translateY: petMoveMenu }] }}>
+                <Text style={styles.nameText}>What is {petName}'s dietary profile?</Text>
+              </Animated.View>
+
+              <Animated.View style={[styles.tagRow, { transform: [{ translateY: petMoveMenu }] }]}>
+                <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('allergens')}>
+                  <Text style={styles.tagText}>Allergens</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('intolerances')}>
+                  <Text style={styles.tagText}>Intolerances</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('dietary')}>
+                  <Text style={styles.tagText}>Dietary</Text>
+                </TouchableOpacity>
+              </Animated.View>
+
+            {activePetTag && (
+                <Animated.View style={[styles.allergensMenuContainer, { opacity: petMenuOpacity }]}>
+                  {/* scrollable list */}
+                  <ScrollView style={{ maxHeight: 260 }}>
+                    {petCurrentOptions.map((o) => {
+                      const isChecked =
+                        (activePetTag === 'allergens' ? petSelectedAllergens :
+                        activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary).includes(o);
+                      return (
+                        <TouchableOpacity key={o} onPress={() => petToggleOption(o)} style={styles.checkboxRow}>
+                          <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+                          <Text style={styles.checkboxLabel}>{o}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  {/* pinned "Add custom" row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                    <TextInput
+                      value={petCustomInput}
+                      onChangeText={setPetCustomInput}
+                      placeholder={`Add custom ${activePetTag?.slice(0, -1) ?? 'item'}`}
+                      placeholderTextColor="#8a8a8a"
+                      style={[styles.input, { flex: 1, marginBottom: 0 , fontSize:18}]}
+                    />
+                    <Pressable
+                      onPress={() => {
+                        const v = petCustomInput.trim();
+                        if (!v) return;
+                        if (petCurrentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
+                          setPetCustomInput("");
+                          return;
+                        }
+                        if (activePetTag === 'allergens') setPetSelectedAllergens(prev => [...prev, v]);
+                        else if (activePetTag === 'intolerances') setPetSelectedIntolerances(prev => [...prev, v]);
+                        else if (activePetTag === 'dietary') setPetSelectedDietary(prev => [...prev, v]);
+                        setPetCustomInput("");
+                      }}
+                      style={[styles.secondaryButton, { marginLeft: 8 }]}
+                    >
+                      <Text style={styles.secondaryButtonText}>Add</Text>
+                    </Pressable>
+                  </View>
+                </Animated.View>
+              )}
+
+
+              <Pressable onPress={handleSavePet} style={[styles.secondaryButton, { marginTop: 12 }]}>
+                <Text style={styles.secondaryButtonText}>Save Pet</Text>
+              </Pressable>
+              <Pressable onPress={() => setPetTagsModalVisible(false)} style={[styles.cancelButton, { alignSelf: 'center' }]}>
+                <Text style={{ color: 'black' }}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  gradient: {flex: 1,},
   titleContainer: { paddingTop: 60, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, marginBottom: 16, width: '100%' },
 

@@ -10,6 +10,7 @@ import { useThemedColor } from "@/components/ThemedColor";
 import { useFocusEffect } from "@react-navigation/native";
 import { onHistory, deleteHistory } from "@/db/history"; // ⬅️ live subscription API
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "@/db/firebaseConfig";
@@ -174,129 +175,131 @@ export default function Screen() {
   );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: activeColors.background }]}>
-      <ThemedView
-        style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}
-      >
+    <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
         <ThemedText type="title" style={{ color: activeColors.text }}>
           History
         </ThemedText>
       </ThemedView>
       <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-
-      <ThemedView style={styles.text}>
-        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
-          Harmful
-        </ThemedText>
-        {harmful.length === 0 ? (
-          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
-            No harmful foods found.
+      <ScrollView style={[styles.container]}>
+        <ThemedView style={styles.text}>
+          <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
+            Harmful
           </ThemedText>
-        ) : (
-          harmful.map(renderEntry)
-        )}
+          {harmful.length === 0 ? (
+            <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
+              No harmful foods found.
+            </ThemedText>
+          ) : (
+            harmful.map(renderEntry)
+          )}
 
-        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
-          Not Harmful
-        </ThemedText>
-        {notHarmful.length === 0 ? (
-          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
-            No safe foods logged yet.
+          <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
+            Not Harmful
           </ThemedText>
-        ) : (
-          notHarmful.map(renderEntry)
-        )}
-      </ThemedView>
-      
-      {/* Product Details Modal */}
-      <Modal 
-        animationType="slide" 
-        transparent 
-        visible={modalVisible} 
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <ThemedText type="title" style={{ color: activeColors.text }}>
-                Product Details
-              </ThemedText>
-              <TouchableOpacity 
-                onPress={() => setModalVisible(false)} 
-                style={{ marginLeft: 8 }}
-              >
-                <Ionicons name="close-circle" size={24} color={activeColors.text} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScroll}>
-              {selectedFoodDetails ? (
-                <View style={{ gap: 12 }}>
-                  <View style={styles.detailsRow}>
-                    {/* Product Title */}
-                    <View style={styles.imagePlaceholder}></View>
-                    <View style={styles.detailsColumn}>
-                      <ThemedText style={{ color: activeColors.text, fontWeight: "700", fontSize: 18, maxWidth: 200}}>
-                        { selectedFoodDetails.name}
-                      </ThemedText>
-                      <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
-                        <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
-                          by{" "}
-                        </ThemedText>
-                      { selectedFoodDetails.brand_name}
-                    </ThemedText>
-                    </View>
-                  </View>
-
-                  {/* Barcode */}
-                  {selectedFoodDetails.barcode && (
-                    <ThemedText style={{ color: activeColors.text }}>
-                      <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
-                        Barcode:{" "}
-                      </ThemedText>
-                      {selectedFoodDetails.barcode}
-                    </ThemedText>
-                  )}
-
-                  {/* Ingredients */}
-                  {selectedFoodDetails.ingredients && (
-                    <ThemedText style={{ color: activeColors.text }}>
-                      <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
-                        Ingredients:{" "}
-                      </ThemedText>
-                      {selectedFoodDetails.ingredients}
-                    </ThemedText>
-                  )}
-
-                  {/* Allergens/Warnings */}
-                  <ThemedText style={{ color: activeColors.text }}>
-                    <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
-                      Warnings:{" "}
-                    </ThemedText>
-                    {selectedFoodDetails.food?.food_attributes?.allergens?.allergen?.filter(
-                      (a: any) => a.value !== "0"
-                    ).length 
-                      ? selectedFoodDetails.food.food_attributes.allergens.allergen
-                          .filter((a: any) => a.value !== "0")
-                          .map((a: any) => a.name)
-                          .join(", ")
-                      : "None"}
-                  </ThemedText>
-                </View>
-              ) : (
-                <ThemedText style={{ color: activeColors.secondaryText }}>
-                  Loading product details...
+          {notHarmful.length === 0 ? (
+            <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
+              No safe foods logged yet.
+            </ThemedText>
+          ) : (
+            notHarmful.map(renderEntry)
+          )}
+        </ThemedView>
+        
+        {/* Product Details Modal */}
+        <Modal 
+          animationType="slide" 
+          transparent 
+          visible={modalVisible} 
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <ThemedText type="title" style={{ color: activeColors.text }}>
+                  Product Details
                 </ThemedText>
-              )}
-            </ScrollView>
-          </View>
-        </BlurView>
-      </Modal>
-    </ScrollView>
+                <TouchableOpacity 
+                  onPress={() => setModalVisible(false)} 
+                  style={{ marginLeft: 8 }}
+                >
+                  <Ionicons name="close-circle" size={24} color={activeColors.text} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalScroll}>
+                {selectedFoodDetails ? (
+                  <View style={{ gap: 12 }}>
+                    <View style={styles.detailsRow}>
+                      {/* Product Title */}
+                      <View style={styles.imagePlaceholder}></View>
+                      <View style={styles.detailsColumn}>
+                        <ThemedText style={{ color: activeColors.text, fontWeight: "700", fontSize: 18, maxWidth: 200}}>
+                          { selectedFoodDetails.name}
+                        </ThemedText>
+                        <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
+                          <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
+                            by{" "}
+                          </ThemedText>
+                        { selectedFoodDetails.brand_name}
+                      </ThemedText>
+                      </View>
+                    </View>
+
+                    {/* Barcode */}
+                    {selectedFoodDetails.barcode && (
+                      <ThemedText style={{ color: activeColors.text }}>
+                        <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
+                          Barcode:{" "}
+                        </ThemedText>
+                        {selectedFoodDetails.barcode}
+                      </ThemedText>
+                    )}
+
+                    {/* Ingredients */}
+                    {selectedFoodDetails.ingredients && (
+                      <ThemedText style={{ color: activeColors.text }}>
+                        <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
+                          Ingredients:{" "}
+                        </ThemedText>
+                        {selectedFoodDetails.ingredients}
+                      </ThemedText>
+                    )}
+
+                    {/* Allergens/Warnings */}
+                    <ThemedText style={{ color: activeColors.text }}>
+                      <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
+                        Warnings:{" "}
+                      </ThemedText>
+                      {selectedFoodDetails.food?.food_attributes?.allergens?.allergen?.filter(
+                        (a: any) => a.value !== "0"
+                      ).length 
+                        ? selectedFoodDetails.food.food_attributes.allergens.allergen
+                            .filter((a: any) => a.value !== "0")
+                            .map((a: any) => a.name)
+                            .join(", ")
+                        : "None"}
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <ThemedText style={{ color: activeColors.secondaryText }}>
+                    Loading product details...
+                  </ThemedText>
+                )}
+              </ScrollView>
+            </View>
+          </BlurView>
+        </Modal>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {},
+  gradient: {
+    flex: 1,
+  },
   titleContainer: {
     paddingTop: 60,
     paddingBottom: 10,
@@ -304,7 +307,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    marginBottom: 16,
     width: "100%",
   },
   text: {

@@ -4,28 +4,30 @@ type TextSize = 'small' | 'medium' | 'large';
 
 const colors = {
     light: {
+        gradientBackground: ['#C6E9DD','#f0f0f0','#f0f0f0','#CAE5EE'] as const,
         background: '#f0f0f0',
         backgroundTitle: '#ffffff',
-        text: '#000000',
-        secondaryText: '#555555',
+        text: '#212D39',
+        secondaryText: '#555E67',
         buttonText: '#ffffff',
         divider: '#c7c7ccff',
-        icon: '#000000',
-        switchTrack: '#767577',
-        switchThumb: '#60A5FA',
-        primary: '#60A5FA',
+        icon: '#212D39',
+        switchTrack: '#555E67',
+        switchThumb: '#27778E',
+        primary: '#27778E',
     },
     dark: {
-        background: '#121212',
-        backgroundTitle: '#0a0a0aff',
+        gradientBackground: ['#06261dff','#0C1924','#0C1924','#06222bff'] as const,
+        background: '#0C1924',
+        backgroundTitle: '#0A121B',
         text: '#E0E0E0',
-        secondaryText: '#B0B0B0',
+        secondaryText: '#96a4b1',
         buttonText: '#ffffff',
-        divider: '#333333',
+        divider: '#212D39',
         icon: '#E0E0E0',
         switchTrack: '#3A3A3A',
-        switchThumb: '#60A5FA',  // light blue thumb in dark mode
-        primary: '#60A5FA',      // light blue primary color
+        switchThumb: '#239dbe',  // light blue thumb in dark mode
+        primary: '#239dbe',      // light blue primary color
     },
 };
 

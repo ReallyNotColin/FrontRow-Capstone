@@ -7,6 +7,7 @@ import { saveToHistory } from '@/db/history';
 import { searchCustomEntries } from '@/db/customFoods';
 import { useThemedColor } from '@/components/ThemedColor';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from "expo-linear-gradient";
 
 // Firestore
 import { collection, getDocs, query, where, limit, doc, getDoc, onSnapshot } from "firebase/firestore";
@@ -538,169 +539,172 @@ export default function AutocompleteScreen() {
   };
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: activeColors.background }]}>
-      <FlatList
-        data={combinedSuggestions}
-        keyExtractor={(item, index) => `${item.id ?? item.name}-${item.source}-${index}`}
-        renderItem={renderSuggestion}
-        style={styles.list}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 24 }}
-        ListHeaderComponent={
-          <>
-            <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-              <ThemedText type="title" style={{ color: activeColors.text }}>Search</ThemedText>
-            </ThemedView>
-            <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-            <ThemedView style={[styles.innerContainer, { backgroundColor: activeColors.background }]}>
-              <TextInput
-                placeholder="Start typing a food name or barcode..."
-                placeholderTextColor={activeColors.secondaryText}
-                value={queryText}
-                onChangeText={handleInputChange}
-                keyboardType="default"
-                style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
-              />
+    <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+      <ThemedView style={[styles.container]}>
+        <FlatList
+          data={combinedSuggestions}
+          keyExtractor={(item, index) => `${item.id ?? item.name}-${item.source}-${index}`}
+          renderItem={renderSuggestion}
+          style={styles.list}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 24 }}
+          ListHeaderComponent={
+            <>
+              <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+                <ThemedText type="title" style={{ color: activeColors.text }}>Search</ThemedText>
+              </ThemedView>
+              <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+              <ThemedView style={[styles.innerContainer]}>
+                <TextInput
+                  placeholder="Start typing a food name or barcode..."
+                  placeholderTextColor={activeColors.secondaryText}
+                  value={queryText}
+                  onChangeText={handleInputChange}
+                  keyboardType="default"
+                  style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
+                />
 
-              {/* Filters trigger + dropdown (unchanged) */}
-              <Pressable onPress={() => setFiltersOpen(v => !v)} style={[styles.filtersTrigger, { borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}>
-                <Text style={{ color: activeColors.text, fontWeight: '600' }}>
-                  Filters {filtersOpen ? '▴' : '▾'}
-                </Text>
-                {(filters.allergens.peanut || filters.allergens.soy || filters.customTerms.length > 0) && (
-                  <Text style={{ color: activeColors.secondaryText, marginTop: 4, fontSize: 12 }}>
-                    Active: {[filters.allergens.peanut ? 'Peanut' : null, filters.allergens.soy ? 'Soy' : null, ...filters.customTerms.map(t => `“${t}”`)].filter(Boolean).join(', ')}
+                {/* Filters trigger + dropdown (unchanged) */}
+                <Pressable onPress={() => setFiltersOpen(v => !v)} style={[styles.filtersTrigger, { borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}>
+                  <Text style={{ color: activeColors.text, fontWeight: '600' }}>
+                    Filters {filtersOpen ? '▴' : '▾'}
                   </Text>
-                )}
-              </Pressable>
+                  {(filters.allergens.peanut || filters.allergens.soy || filters.customTerms.length > 0) && (
+                    <Text style={{ color: activeColors.secondaryText, marginTop: 4, fontSize: 12 }}>
+                      Active: {[filters.allergens.peanut ? 'Peanut' : null, filters.allergens.soy ? 'Soy' : null, ...filters.customTerms.map(t => `“${t}”`)].filter(Boolean).join(', ')}
+                    </Text>
+                  )}
+                </Pressable>
 
-              {filtersOpen && (
-                <View style={styles.filtersBox}>
-                  <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Allergens</Text>
-                  <View style={styles.toggleRow}>
-                    <Pressable onPress={() => toggleAllergen('peanut')} style={[styles.toggle, filters.allergens.peanut ? styles.toggleOn : styles.toggleOff]}>
-                      <Text style={filters.allergens.peanut ? styles.toggleTextOn : styles.toggleTextOff}>Peanut</Text>
-                    </Pressable>
-                    <Pressable onPress={() => toggleAllergen('soy')} style={[styles.toggle, filters.allergens.soy ? styles.toggleOn : styles.toggleOff]}>
-                      <Text style={filters.allergens.soy ? styles.toggleTextOn : styles.toggleTextOff}>Soy</Text>
-                    </Pressable>
-                  </View>
-
-                  <View style={styles.customSection}>
-                    <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Custom filters</Text>
-                    <View style={styles.customRow}>
-                      <TextInput
-                        placeholder="Type a word (e.g., sesame)"
-                        placeholderTextColor={activeColors.secondaryText}
-                        value={customInput}
-                        onChangeText={setCustomInput}
-                        onSubmitEditing={addCustomTerm}
-                        style={[styles.customInput, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
-                      />
-                      <Pressable style={styles.addButton} onPress={addCustomTerm}>
-                        <Text style={styles.addButtonText}>Add</Text>
+                {filtersOpen && (
+                  <View style={styles.filtersBox}>
+                    <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Allergens</Text>
+                    <View style={styles.toggleRow}>
+                      <Pressable onPress={() => toggleAllergen('peanut')} style={[styles.toggle, filters.allergens.peanut ? styles.toggleOn : styles.toggleOff]}>
+                        <Text style={filters.allergens.peanut ? styles.toggleTextOn : styles.toggleTextOff}>Peanut</Text>
+                      </Pressable>
+                      <Pressable onPress={() => toggleAllergen('soy')} style={[styles.toggle, filters.allergens.soy ? styles.toggleOn : styles.toggleOff]}>
+                        <Text style={filters.allergens.soy ? styles.toggleTextOn : styles.toggleTextOff}>Soy</Text>
                       </Pressable>
                     </View>
 
-                    {filters.customTerms.length > 0 && (
-                      <View style={styles.chipsRow}>
-                        {filters.customTerms.map(term => (
-                          <View key={term} style={styles.chip}>
-                            <Text style={styles.chipText}>{term}</Text>
-                            <Pressable onPress={() => removeCustomTerm(term)} style={styles.chipClose}>
-                              <Text style={styles.chipCloseText}>✕</Text>
-                            </Pressable>
-                          </View>
-                        ))}
+                    <View style={styles.customSection}>
+                      <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Custom filters</Text>
+                      <View style={styles.customRow}>
+                        <TextInput
+                          placeholder="Type a word (e.g., sesame)"
+                          placeholderTextColor={activeColors.secondaryText}
+                          value={customInput}
+                          onChangeText={setCustomInput}
+                          onSubmitEditing={addCustomTerm}
+                          style={[styles.customInput, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
+                        />
+                        <Pressable style={styles.addButton} onPress={addCustomTerm}>
+                          <Text style={styles.addButtonText}>Add</Text>
+                        </Pressable>
                       </View>
-                    )}
 
-                    <Text style={[styles.filtersHint, { color: activeColors.secondaryText }]}>
-                      Custom filters match if the term appears in either the ingredients or warning fields. Multiple terms match any.
-                    </Text>
+                      {filters.customTerms.length > 0 && (
+                        <View style={styles.chipsRow}>
+                          {filters.customTerms.map(term => (
+                            <View key={term} style={styles.chip}>
+                              <Text style={styles.chipText}>{term}</Text>
+                              <Pressable onPress={() => removeCustomTerm(term)} style={styles.chipClose}>
+                                <Text style={styles.chipCloseText}>✕</Text>
+                              </Pressable>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+
+                      <Text style={[styles.filtersHint, { color: activeColors.secondaryText }]}>
+                        Custom filters match if the term appears in either the ingredients or warning fields. Multiple terms match any.
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
 
-              {noResults && (
-                <Text style={[styles.noResultsText, { color: activeColors.secondaryText }]}>
-                  No results found. Try a different search term or adjust filters.
-                </Text>
-              )}
-            </ThemedView>
-          </>
-        }
-        ListFooterComponent={
-          <View style={{ paddingHorizontal: 24 }}>
-            <Pressable
-              style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-              onPress={() => navigation.navigate('create-custom-entry' as never)}
-            >
-              <Text style={styles.buttonText}>Create Custom Entry</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-              onPress={() => navigation.navigate('custom-entries-list' as never)}
-            >
-              <Text style={styles.buttonText}>View Custom Entries</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
-              onPress={() => navigation.navigate('create-ticket' as never)}
-            >
-              <Text style={styles.buttonText}>Create Product Request Ticket</Text>
-            </Pressable>
-          </View>
-        }
-      />
-
-      {/* NEW: Profiles picker modal (mirrors Scan) */}
-      <Modal animationType="slide" transparent visible={pickerVisible} onRequestClose={() => setPickerVisible(false)}>
-        <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
-          <View style={styles.profileModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Profiles</Text>
+                {noResults && (
+                  <Text style={[styles.noResultsText, { color: activeColors.secondaryText }]}>
+                    No results found. Try a different search term or adjust filters.
+                  </Text>
+                )}
+              </ThemedView>
+            </>
+          }
+          ListFooterComponent={
+            <View style={{ paddingHorizontal: 24 }}>
+              <Pressable
+                style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+                onPress={() => navigation.navigate('create-custom-entry' as never)}
+              >
+                <Text style={styles.buttonText}>Create Custom Entry</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+                onPress={() => navigation.navigate('custom-entries-list' as never)}
+              >
+                <Text style={styles.buttonText}>View Custom Entries</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+                onPress={() => navigation.navigate('create-ticket' as never)}
+              >
+                <Text style={styles.buttonText}>Create Product Request Ticket</Text>
+              </Pressable>
             </View>
+          }
+        />
 
-            <ScrollView style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-              {profiles.map((p, i) => (
+        {/* NEW: Profiles picker modal (mirrors Scan) */}
+        <Modal animationType="slide" transparent visible={pickerVisible} onRequestClose={() => setPickerVisible(false)}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+            <View style={styles.profileModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Profiles</Text>
+              </View>
+
+              <ScrollView style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+                {profiles.map((p, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.ppItem}
+                    onPress={async () => {
+                      setPickerVisible(false);
+                      if (pendingCompare) {
+                        const { displayName, product, warningsString } = pendingCompare;
+                        setPendingCompare(null);
+                        await runCompareAndHistory(displayName, product, warningsString, p.data, p.name);
+                      }
+                    }}
+                  >
+                    <Text style={styles.ppItemText}>{p.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={styles.modalActions}>
                 <TouchableOpacity
-                  key={i}
-                  style={styles.ppItem}
-                  onPress={async () => {
+                  style={styles.actionButton}
+                  onPress={() => {
                     setPickerVisible(false);
-                    if (pendingCompare) {
-                      const { displayName, product, warningsString } = pendingCompare;
-                      setPendingCompare(null);
-                      await runCompareAndHistory(displayName, product, warningsString, p.data, p.name);
-                    }
+                    setPendingCompare(null);
                   }}
                 >
-                  <Text style={styles.ppItemText}>{p.name}</Text>
+                  <Text style={styles.actionButtonText}>Cancel</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => {
-                  setPickerVisible(false);
-                  setPendingCompare(null);
-                }}
-              >
-                <Text style={styles.actionButtonText}>Cancel</Text>
-              </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        </BlurView>
-      </Modal>
-    </ThemedView>
+          </BlurView>
+        </Modal>
+      </ThemedView>
+    </LinearGradient>
   );
 }
 
 /** ---------- styles (kept your existing ones; added a few for profile modal) ---------- */
 const styles = StyleSheet.create({
+  gradient: {flex: 1,},
   container: { flex: 1, backgroundColor: 'transparent' },
   titleContainer: { paddingTop: 60, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, backgroundColor: '#E5E5EA', marginBottom: 16, width: '100%' },
