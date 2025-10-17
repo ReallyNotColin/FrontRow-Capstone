@@ -33,12 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.reviewTicket = void 0;
+exports.scanNutritionFromImage = exports.reviewTicket = void 0;
 // backend/functions/src/index.ts
 const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
+// 🔽 NEW: Google Cloud Vision client for OCR
+const vision_1 = require("@google-cloud/vision");
 admin.initializeApp();
 const db = admin.firestore();
+// Initialize a single Vision client instance (uses default service account)
+const vision = new vision_1.ImageAnnotatorClient();
+/* ----------------------------- Helpers (existing) ----------------------------- */
 function assertAdmin(auth) {
     if (!auth) {
         throw new https_1.HttpsError("unauthenticated", "Auth required.");
@@ -108,6 +113,7 @@ function ticketToProductFields(t) {
         _publishedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 }
+/* -------------------------- Existing callable (kept) -------------------------- */
 exports.reviewTicket = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
     assertAdmin(request.auth);
     const data = (request.data || {});
@@ -188,4 +194,140 @@ exports.reviewTicket = (0, https_1.onCall)({ region: "us-central1" }, async (req
     batch.delete(ticketRef);
     await batch.commit();
     return { ok: true, action, ticketId, productId: productsRef.id };
+});
+/* ------------------------- NEW: OCR callable (Vision) ------------------------- */
+/**
+ * Callable: scanNutritionFromImage
+ * Input: { imageBase64: string }
+ * Output: { rawText: string, fields: Partial<TicketDoc> }
+ *
+ * Notes:
+ * - Uses DOCUMENT_TEXT_DETECTION for dense text (nutrition labels).
+ * - Keep payloads reasonable (consider resizing on-device).
+ */
+exports.scanNutritionFromImage = (0, https_1.onCall)({ region: "us-central1", cors: true, maxInstances: 5 }, async (request) => {
+    try {
+        const imageBase64 = request.data?.imageBase64;
+        if (!imageBase64 || typeof imageBase64 !== "string") {
+            throw new https_1.HttpsError("invalid-argument", "imageBase64 is required.");
+        }
+        // OCR
+        const [result] = await vision.documentTextDetection({
+            image: { content: Buffer.from(imageBase64, "base64") },
+        });
+        const rawText = result.fullTextAnnotation?.text ?? "";
+        if (!rawText) {
+            return { rawText: "", fields: {} };
+        }
+        // --- Heuristic parsing (improved for per-serving vs per-container) ---
+        /**
+         * Strategy
+         * 1) Normalize common OCR issues (O->0 before units/percents).
+         * 2) Collapse spaces, keep newlines to keep row structure.
+         * 3) For each label, grab the **first** numeric+unit occurrence
+         *    after the label (that corresponds to "Per serving" on US labels).
+         */
+        function normalizeOcr(s) {
+            // Fix "Og"/"Omg"/"Om cg" type mistakes and % DV zeros
+            let t = s
+                .replace(/(?<=\s|^)[Oo](?=\s*%)/g, "0") // "O%" -> "0%"
+                .replace(/(?<=\s|^)O(?=\s*g\b)/g, "0") // "Og" -> "0g"
+                .replace(/(?<=\s|^)O(?=\s*mg\b)/g, "0") // "Omg" -> "0mg"
+                .replace(/(?<=\s|^)O(?=\s*mcg\b)/g, "0") // "Omcg" -> "0mcg"
+                .replace(/(?<=\s|^)O(?=\s*IU\b)/g, "0"); // "OIU" -> "0 IU"
+            // Standardize “Total Carb.” vs “Total Carbohydrate”
+            t = t.replace(/Total\s*Carb\./gi, "Total Carbohydrate");
+            return t;
+        }
+        const text = normalizeOcr(rawText || "")
+            .replace(/[^\S\r\n]+/g, " ") // collapse spaces but keep newlines
+            .trim();
+        function firstNumberAfter(label, units) {
+            // Find the label, then the first number (optionally with unit) that follows.
+            const idx = text.search(label);
+            if (idx === -1)
+                return "";
+            const slice = text.slice(idx); // from label onward (captures per-serving first)
+            // number like "<1", "1", "1.2"
+            const num = "(?:<\\s*1|\\d+(?:\\.\\d+)?)";
+            const unit = units && units.length ? `\\s*(?:${units.join("|")})\\b` : "";
+            const re = new RegExp(`${num}${unit}`, "i");
+            const m = slice.match(re);
+            return m?.[0] ?? "";
+        }
+        function coerceNumberStr(s) {
+            if (!s)
+                return "";
+            const trimmed = s.replace(/\s+/g, "");
+            if (/^<\s*1$/i.test(trimmed) || /^<1/.test(trimmed))
+                return "0.5"; // normalize "<1" → "0.5"
+            // strip units if somehow included
+            const n = trimmed.replace(/(mg|mcg|g|iu)$/i, "");
+            return n;
+        }
+        const fields = {};
+        // Calories usually appear as a bare number; take the first after "Calories"
+        fields.calories = coerceNumberStr(firstNumberAfter(/Calories/i));
+        // Fats
+        fields.fat = coerceNumberStr(firstNumberAfter(/Total\s*Fat/i, ["g"]));
+        fields.saturated_fat = coerceNumberStr(firstNumberAfter(/Saturated\s*Fat/i, ["g"]));
+        fields.trans_fat = coerceNumberStr(firstNumberAfter(/Trans\s*Fat/i, ["g"]));
+        fields.monounsaturated_fat = coerceNumberStr(firstNumberAfter(/Monounsaturated\s*Fat/i, ["g"]));
+        fields.polyunsaturated_fat = coerceNumberStr(firstNumberAfter(/Polyunsaturated\s*Fat/i, ["g"]));
+        // Cholesterol / Sodium
+        fields.cholesterol = coerceNumberStr(firstNumberAfter(/Cholesterol/i, ["mg"]));
+        fields.sodium = coerceNumberStr(firstNumberAfter(/Sodium/i, ["mg"]));
+        // Carbs + Fiber + Sugars
+        fields.carbohydrate = coerceNumberStr(firstNumberAfter(/Total\s*Carbohydrate/i, ["g"]));
+        fields.fiber = coerceNumberStr(firstNumberAfter(/Dietary\s*Fiber|Fiber/i, ["g"]));
+        /**
+         * Sugars lines can be:
+         *   "Total Sugars <1g" and "Incl. Added Sugars 0g"
+         * Take the first number after "Total Sugars" and after "Added Sugars".
+         */
+        fields.sugar = coerceNumberStr(firstNumberAfter(/Total\s*Sugars/i, ["g"]));
+        fields.added_sugars = coerceNumberStr(firstNumberAfter(/Added\s*Sugars/i, ["g"]));
+        // Protein
+        fields.protein = coerceNumberStr(firstNumberAfter(/Protein/i, ["g"]));
+        // Vitamins & Minerals
+        fields.vitamin_d = coerceNumberStr(firstNumberAfter(/Vitamin\s*D/i, ["mcg", "IU", "iu", "MCG"]));
+        fields.calcium = coerceNumberStr(firstNumberAfter(/Calcium/i, ["mg"]));
+        fields.iron = coerceNumberStr(firstNumberAfter(/Iron/i, ["mg"]));
+        fields.potassium = coerceNumberStr(firstNumberAfter(/Potassium/i, ["mg"]));
+        // Serving
+        {
+            const m = text.match(/Serving\s*size\s*([^\n]+)/i) ||
+                text.match(/Serving\s*size[:\s]*([^\n]+)/i);
+            fields.serving = m ? m[1].trim() : "";
+        }
+        // Servings per container (robust for "3 servings per container")
+        {
+            // Try strict “servings per container: <…>”
+            let m = text.match(/servings?\s*per\s*container[:\s]*([^\n]+)/i);
+            let amt = m ? m[1] : "";
+            // If not captured, search anywhere for "<number> servings per container"
+            if (!amt) {
+                m = text.match(/(\d+(?:\.\d+)?)\s*servings?\s*per\s*container/i);
+                amt = m ? m[1] : "";
+            }
+            fields.serving_amount = (amt || "").toString().replace(/[^\d.]/g, "").trim();
+        }
+        // Ingredients / allergen warnings (not present in this label, but keep)
+        {
+            const ing = text.match(/ingredients?[:\s]*([\s\S]*?)(?:\n\n|may contain|contains|allergens?)/i) ||
+                text.match(/ingredients?[:\s]*([\s\S]*)$/i);
+            fields.ingredients = ing ? ing[1].replace(/\s+/g, " ").trim() : "";
+            const warn = text.match(/(may contain|contains)[:\s]*([^\n]+)/i) ||
+                text.match(/allergens?[:\s]*([^\n]+)/i);
+            fields.warning = warn
+                ? (warn[2] || warn[1]).replace(/^(may contain|contains)[:\s]*/i, "").trim()
+                : "";
+        }
+        return { rawText, fields };
+    }
+    catch (err) {
+        // Convert unknown errors to HttpsError for consistent client handling
+        const message = err?.message || "OCR failed";
+        throw new https_1.HttpsError("internal", message);
+    }
 });
