@@ -46,23 +46,4 @@ export { auth };
 // 3) Firestore
 export const db = getFirestore(app);
 
-//  Firestore emulator (dev only)
-import { connectFirestoreEmulator } from "firebase/firestore";
-
-if (__DEV__) {
-  const DEFAULT_DB_HOST = Platform.OS === "android" ? "10.0.2.2" : "localhost";
-  const DB_HOST = process.env.EXPO_PUBLIC_EMULATOR_HOST || DEFAULT_DB_HOST;
-  connectFirestoreEmulator(db, DB_HOST, 8080);
-  console.log(`[Firebase] Connected to Firestore emulator at http://${DB_HOST}:8080`);
-}
-
-// 4) Functions
-export const functions = getFunctions(app, "us-central1");
-
-import { connectFunctionsEmulator } from "firebase/functions";
-if (__DEV__) {
-  const DEFAULT_EMU_HOST = Platform.OS === "android" ? "10.0.2.2" : "localhost";
-  const EMU_HOST = process.env.EXPO_PUBLIC_EMULATOR_HOST || DEFAULT_EMU_HOST;
-  connectFunctionsEmulator(functions, EMU_HOST, 5001);
-  console.log(`[Firebase] Connected to Functions emulator at http://${EMU_HOST}:5001`);
-}
+export const functions = getFunctions(app, 'us-central1');
