@@ -428,6 +428,11 @@ const handleSaveGroup = async () => {
         <Modal visible={gProfileModalVisible} transparent animationType="fade" onRequestClose={() => setgProfileModalVisible(false)}>
           <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={[styles.modalContent]}>
+                <View style={styles.headerBackRow}>
+                  <Pressable onPress={() => setgProfileModalVisible(false)}>
+                    <ThemedText style={[styles.headerBackText, {color:'white'}]}>&lt; Back</ThemedText>
+                  </Pressable>
+              </View>
               <ThemedText type="subtitle" style={styles.modalTitle}>Create Group Profile</ThemedText>
               <TextInput style={[styles.input]} placeholder="Group Name" value={groupName} onChangeText={setgroupName} />
                 <ScrollView style={{ maxHeight: 275 }}>
@@ -719,7 +724,7 @@ const styles = StyleSheet.create({
   optionButton: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, width: '100%', marginTop: 10, alignItems: 'center' },
 
   overlay: { flex: 1, backgroundColor: '#00000099', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#fff', borderRadius: 10, padding: 20, maxHeight: '90%', marginHorizontal: 25, },
+  modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20, maxHeight: '90%', marginHorizontal: 25, },
   modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
 
   modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)' },
