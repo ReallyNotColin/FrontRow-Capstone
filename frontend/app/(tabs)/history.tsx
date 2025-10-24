@@ -325,9 +325,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   actionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#27778E',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
+    marginTop: 6,
     borderRadius: 10,
     alignItems: 'center',
   },

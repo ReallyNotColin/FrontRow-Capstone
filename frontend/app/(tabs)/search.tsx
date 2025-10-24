@@ -502,7 +502,7 @@ export default function AutocompleteScreen() {
 
                 {!!item.ingredients && (
                   <View>
-                  <ThemedText style={[styles.ingredientsText, { color: activeColors.text }]} numberOfLines={4}>
+                  <ThemedText style={[styles.ingredientsText, { color: activeColors.text }]} >
                     <ThemedText style={[styles.metaLabel, { color: activeColors.secondaryText }]}>Ingredients: </ThemedText>
                     {item.ingredients}
                   </ThemedText>
@@ -631,7 +631,7 @@ export default function AutocompleteScreen() {
                 )}
 
                 {noResults && (
-                  <ThemedText style={[styles.noResultsText, { color: activeColors.secondaryText }]}>
+                  <ThemedText type = "default" style={[styles.noResultsText, { color: activeColors.secondaryText }]}>
                     No results found. Try a different search term or adjust filters.
                   </ThemedText>
                 )}
@@ -667,7 +667,7 @@ export default function AutocompleteScreen() {
           <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.profileModal}>
               <View style={styles.modalHeader}>
-                <ThemedText style={styles.modalTitle}>Profiles</ThemedText>
+                <ThemedText type = "title" style={styles.modalTitle}>Profiles</ThemedText>
               </View>
 
               <ScrollView style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   toggleRow: { flexDirection: 'row', gap: 8 },
   toggle: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1 },
   toggleOff: { backgroundColor: '#f0f0f0', borderColor: '#d0d0d0' },
-  toggleOn: { backgroundColor: '#007BFF', borderColor: '#007BFF' },
+  toggleOn: { backgroundColor: '#27778E', borderColor: '#27778E' },
   toggleTextOff: { color: '#666' },
   toggleTextOn: { color: '#fff' },
 
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   list: { flex: 1, backgroundColor: 'transparent' },
   suggestionCard: { flexDirection: 'column', padding: 12, borderColor: '#ccc', borderWidth: 1, borderRadius: 8, marginBottom: 10, backgroundColor: 'transparent' },
   suggestionText: {marginBottom: 10 },
-  viewButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#007BFF', borderRadius: 6 },
+  viewButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#27778E', borderRadius: 6 },
   buttonText: { color: 'white' },
 
   detailsBox: { marginTop: 10, backgroundColor: '#f4f4f4', borderRadius: 6, padding: 10, borderColor: '#ddd', borderWidth: 1, position: 'relative' },
@@ -751,20 +751,20 @@ const styles = StyleSheet.create({
   imagePlaceholder: { width: 96, height: 96, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' },
   imagePlaceholderText: { fontSize: 12, color: '#777', textAlign: 'center', paddingHorizontal: 6 },
   detailsCol: { flex: 1, minWidth: 0 },
-  prodTitle: { fontWeight: '600', fontSize: 16, marginBottom: 6 },
+  prodTitle: { fontWeight: '600', marginBottom: 6 },
   metaRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 6, flexWrap: 'wrap' },
-  metaLabel: { fontSize: 12, marginRight: 6 },
-  metaValue: { fontSize: 14 },
-  ingredientsText: { marginTop: 2, fontSize: 13, lineHeight: 18 },
+  metaLabel: { marginRight: 6 },
+  metaValue: { },
+  ingredientsText: { marginTop: 2, lineHeight: 18 },
 
   detailsText: { color: '#333' },
   allergenContainer: { marginTop: 10 },
   allergenBlockWrapper: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   allergenBlock: { backgroundColor: '#FF4D4D', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginRight: 8, marginBottom: 8 },
-  allergenText: { color: 'white', fontSize: 12 },
+  allergenText: { color: 'white' },
 
   detailsButtonsRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
-  primaryBtn: { backgroundColor: '#FF7F50', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  primaryBtn: { backgroundColor: '#c23b22', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
   primaryBtnText: { color: 'white', fontWeight: '600' },
   secondaryBtn: { backgroundColor: '#e5e5e5', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
   secondaryBtnText: { color: '#222', fontWeight: '600' },
@@ -773,13 +773,13 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   profileModal: { backgroundColor: 'white', borderRadius: 20, width: '90%', maxHeight: '80%', overflow: 'hidden' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  modalTitle: {fontWeight: 'bold', color: '#333' },
   modalActions: { padding: 20, borderTopWidth: 1, borderTopColor: '#e0e0e0' },
-  actionButton: { backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center' },
-  actionButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  actionButton: { backgroundColor: '#27778E', padding: 15, borderRadius: 10, alignItems: 'center' },
+  actionButtonText: { color: 'white', fontWeight: '600' },
 
   ppItem: { paddingVertical: 10, marginBottom: 5, borderWidth: 1, borderRadius: 10, alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#ddd' },
-  ppItemText: { fontSize: 16, fontWeight: '500' },
+  ppItemText: {fontWeight: '500', color: "#212D39" },
 
-  noResultsText: { textAlign: 'center', marginTop: 12, fontSize: 14 },
+  noResultsText: { textAlign: 'center', marginTop: 12},
 });

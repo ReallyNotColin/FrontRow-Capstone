@@ -409,7 +409,7 @@ const petCurrentOptions = useMemo(() => {
           <View style={styles.buttonContainer}>
             <Pressable
               onPress={() => setprofileTypeModalVisible(true)}
-              style={[styles.button, { backgroundColor: '#007AFF' }]}
+              style={[styles.button, { backgroundColor: '#27778E' }]}
             >
               <Text style={styles.continueButtonText}>+</Text>
             </Pressable>
@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
 
   buttonContainer: { position: 'absolute', right: 16, alignItems: 'flex-end', bottom: Platform.OS === 'ios' ? 95 : 16, backgroundColor: 'transparent' },
   button: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
-  continueButtonText: { fontSize: 28 },
+  continueButtonText: { color: "#fff", fontSize: 50, fontWeight:800, marginBottom: 4.25 },
 
   section: {paddingHorizontal: 25, paddingVertical: 12},
   sectionTitle: { fontWeight: 'bold', marginBottom: 12},
