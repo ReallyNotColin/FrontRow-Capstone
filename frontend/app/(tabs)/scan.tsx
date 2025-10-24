@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from "@react-navigation/native";
 import { useThemedColor } from '@/components/ThemedColor';
 import { LinearGradient } from "expo-linear-gradient";
+import LottieView from 'lottie-react-native';
 
 import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/db/firebaseConfig';
@@ -532,7 +533,20 @@ async function runCompareGroupMixed(
           <ThemedText style={styles.hintText}>Place barcode here</ThemedText>
         </View>
 
-        {loadingDetails && <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>}
+        {loadingDetails && (
+          <View style={styles.loadingOverlay}>
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={styles.lottieContainer}>
+              <LottieView
+                source={require('@/assets/images/loading.json')}
+                autoPlay
+                loop
+                style={{ width: 150, height: 150 }}
+              />
+            </View>
+          </View>
+        )}
+
       </View>
 
       {/* Results modal */}
@@ -900,7 +914,24 @@ hintText: {
   color: 'white',
   fontWeight: 'bold',
   textAlign: 'center',
-}
+},
+
+loadingOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 9999, 
+},
+
+lottieContainer: {
+    width: 160,
+    height: 160,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+  },
 
 
 });
