@@ -20,6 +20,7 @@ import { router } from "expo-router";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "@/db/firebaseConfig";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { ThemedText } from '@/components/ThemedText';
 
 type TicketPayload = {
   added_sugars: string;
@@ -56,7 +57,7 @@ type TicketPayload = {
 };
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Text style={styles.label}>{children}</Text>
+  <ThemedText style={styles.label}>{children}</ThemedText>
 );
 
 const Field = ({
@@ -375,13 +376,13 @@ export default function CreateTicketScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: "#fafafaff" }} 
     >
       <View style={{ flex: 1 }}>
         {/* Scan anchor button (top-right) */}
         <View style={styles.scanAnchor}>
           <Pressable style={styles.scanBtn} onPress={openScanMenu}>
-            <Text style={styles.scanBtnText}>Scan</Text>
+            <ThemedText style={styles.scanBtnText}>Scan</ThemedText>
           </Pressable>
         </View>
 
@@ -396,11 +397,11 @@ export default function CreateTicketScreen() {
             <View pointerEvents="box-none" style={{ flex: 1 }}>
               <View style={styles.menuCard}>
                 <Pressable style={styles.menuItem} onPress={onScanFromCamera}>
-                  <Text style={styles.menuItemText}>Use Camera</Text>
+                  <ThemedText style={styles.menuItemText}>Use Camera</ThemedText>
                 </Pressable>
                 <View style={styles.menuDivider} />
                 <Pressable style={styles.menuItem} onPress={onScanFromPhotos}>
-                  <Text style={styles.menuItemText}>Use from Photos</Text>
+                  <ThemedText style={styles.menuItemText}>Use from Photos</ThemedText>
                 </Pressable>
               </View>
             </View>
@@ -477,8 +478,8 @@ export default function CreateTicketScreen() {
         </Modal>
 
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Create Product Ticket</Text>
-          <Text style={styles.subtitle}>Please provide as much information as you can.</Text>
+          <ThemedText type = 'subtitle' style={styles.title}>Create Product Ticket</ThemedText>
+          <ThemedText type = 'default' style={styles.subtitle}>Please provide as much information as you can.</ThemedText>
 
           {/* Core identity */}
           <Field
@@ -533,7 +534,7 @@ export default function CreateTicketScreen() {
 
           {/* Nutrition (per serving) */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>Nutrition (per serving)</Text>
+            <ThemedText type = "header" style={styles.sectionHeaderText}>Nutrition (per serving)</ThemedText>
           </View>
           <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 110" keyboardType="numeric" />
           <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 0.5" keyboardType="numeric" />
@@ -555,17 +556,17 @@ export default function CreateTicketScreen() {
 
           {/* Derived preview */}
           <View style={{ marginTop: 10, marginBottom: 18 }}>
-            <Text style={styles.readonlyLabel}>Derived fields (auto):</Text>
-            <Text style={styles.readonlyText}>name_lower: {name_lower || "—"}</Text>
-            <Text style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</Text>
+            <ThemedText style={styles.readonlyLabel}>Derived fields (auto):</ThemedText>
+            <ThemedText style={styles.readonlyText}>name_lower: {name_lower || "—"}</ThemedText>
+            <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
           </View>
 
           <Pressable style={[styles.submitBtn, submitting && { opacity: 0.7 }]} onPress={onSubmit} disabled={submitting}>
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Ticket</Text>}
+            {submitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Submit Ticket</ThemedText>}
           </Pressable>
 
           <Pressable style={styles.cancelBtn} onPress={() => router.back()}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
           </Pressable>
 
           <View style={{ height: 24 }} />
@@ -576,12 +577,13 @@ export default function CreateTicketScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
+  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24, marginTop:16 },
+  title: { fontWeight: "700", marginBottom: 6, color: '#212D39' },
   subtitle: { color: "#555", marginBottom: 16 },
-  label: { fontWeight: "600", marginBottom: 6 },
+  label: { color: "#364452ff", fontWeight: "600", marginBottom: 6 },
   input: {
     borderWidth: 1,
+    fontSize:17.5,
     borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -590,11 +592,11 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 80, textAlignVertical: "top" },
   sectionHeader: { marginTop: 8, marginBottom: 8 },
-  sectionHeaderText: { fontWeight: "700", fontSize: 16 },
+  sectionHeaderText: { color: "#364452ff", fontWeight: "700" },
   readonlyLabel: { fontWeight: "600", marginBottom: 4, color: "#555" },
   readonlyText: { color: "#777" },
   submitBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#27778E",
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",
@@ -604,7 +606,7 @@ const styles = StyleSheet.create({
   cancelBtn: { alignSelf: "center", paddingVertical: 10, paddingHorizontal: 12, marginTop: 8 },
   cancelText: { color: "#444", fontWeight: "600" },
   // Scan menu / overlay
-  scanAnchor: { position: "absolute", right: 16, top: 40, zIndex: 1 },
+  scanAnchor: { position: "absolute", right: 16, top: 60, zIndex: 1 },
   scanBtn: { backgroundColor: "#1f2937", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12 },
   scanBtnText: { color: "#fff", fontWeight: "700" },
   menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.12)" },
