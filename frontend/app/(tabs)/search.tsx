@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, TextInput, Text, StyleSheet, Pressable, FlatList, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet, Pressable, FlatList, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -473,61 +473,65 @@ export default function AutocompleteScreen() {
     };
 
     return (
-      <View style={[styles.suggestionCard, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
-        <Text style={[styles.suggestionText, { color: activeColors.text }]}>
+      <View style={[styles.suggestionCard, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider, marginTop:5 ,marginHorizontal: 25 }]}>
+        <ThemedText type="header" style={[styles.suggestionText, { color: activeColors.text }]}>
           {item.brand_name ? `${item.brand_name} — ${item.name}` : item.name}
-          {item.barcode ? `  ·  ${item.barcode}` : ''}{item.source === 'custom' && ' (Custom)'}
-        </Text>
+        </ThemedText>
+        <ThemedText type="default" style={[styles.suggestionText, { color: activeColors.secondaryText }]}>
+          {item.barcode ? `Barcode:${item.barcode}` : ''}{item.source === 'custom' && ' (Custom)'}
+        </ThemedText>
 
         <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
-          <Text style={styles.buttonText}>View</Text>
+          <ThemedText style={styles.buttonText}>View</ThemedText>
         </Pressable>
 
         {expandedIndex === index && selectedFoodDetails && (
           <View style={[styles.detailsBox, { backgroundColor: activeColors.backgroundTitle, borderColor: 'transparent' }]}>
             <View style={styles.detailsRow}>
-              <View style={styles.imagePlaceholder}><Text style={styles.imagePlaceholderText}>Put image here</Text></View>
+              <View style={styles.imagePlaceholder}><ThemedText style={styles.imagePlaceholderText}>Put image here</ThemedText></View>
 
               <View style={styles.detailsCol}>
-                <Text style={[styles.prodTitle, { color: activeColors.text }]}>
+                <ThemedText style={[styles.prodTitle, { color: activeColors.text }]}>
                   {item.brand_name ? `${item.brand_name} — ${item.name}` : item.name}
-                </Text>
+                </ThemedText>
 
                 <View style={styles.metaRow}>
-                  <Text style={[styles.metaLabel, { color: activeColors.secondaryText }]}>Barcode:</Text>
-                  <Text style={[styles.metaValue, { color: activeColors.text }]}>{item.barcode ?? '—'}</Text>
+                  <ThemedText style={[styles.metaLabel, { color: activeColors.secondaryText }]}>Barcode:</ThemedText>
+                  <ThemedText style={[styles.metaValue, { color: activeColors.text }]}>{item.barcode ?? '—'}</ThemedText>
                 </View>
 
                 {!!item.ingredients && (
-                  <Text style={[styles.ingredientsText, { color: activeColors.text }]} numberOfLines={4}>
-                    <Text style={[styles.metaLabel, { color: activeColors.secondaryText }]}>Ingredients: </Text>
+                  <View>
+                  <ThemedText style={[styles.ingredientsText, { color: activeColors.text }]} >
+                    <ThemedText style={[styles.metaLabel, { color: activeColors.secondaryText }]}>Ingredients: </ThemedText>
                     {item.ingredients}
-                  </Text>
+                  </ThemedText>
+                  </View>
                 )}
 
                 {warnings?.length ? (
                   <View style={styles.allergenContainer}>
-                    <Text style={[styles.detailsText, { color: activeColors.text }]}>Warnings:</Text>
+                    <ThemedText style={[styles.detailsText, { color: activeColors.text }]}>Warnings:</ThemedText>
                     <View style={styles.allergenBlockWrapper}>
                       {warnings.map((a: any, i: number) => (
                         <View key={i} style={styles.allergenBlock}>
-                          <Text style={styles.allergenText}>{a.name}</Text>
+                          <ThemedText style={styles.allergenText}>{a.name}</ThemedText>
                         </View>
                       ))}
                     </View>
                   </View>
                 ) : (
-                  <Text style={[styles.detailsText, { color: activeColors.secondaryText, marginTop: 6 }]}>
+                  <ThemedText style={[styles.detailsText, { color: activeColors.secondaryText, marginTop: 6 }]}>
                     No warnings found
-                  </Text>
+                  </ThemedText>
                 )}
 
                 <View style={styles.detailsButtonsRow}>
                   <Pressable onPress={() => setExpandedIndex(null)} style={[styles.secondaryBtn]}>
-                    <Text style={styles.secondaryBtnText}>Collapse</Text>
+                    <ThemedText style={styles.secondaryBtnText}>Collapse</ThemedText>
                   </Pressable>
                   <Pressable style={styles.primaryBtn} onPress={handleCompare}>
-                    <Text style={styles.primaryBtnText}>Compare with My Profile</Text>
+                    <ThemedText style={styles.primaryBtnText}>Compare with My Profile</ThemedText>
                   </Pressable>
                 </View>
               </View>
@@ -541,6 +545,10 @@ export default function AutocompleteScreen() {
   return (
     <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <ThemedView style={[styles.container]}>
+        <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+          <ThemedText type="title" style={{ color: activeColors.text }}>Search</ThemedText>
+        </ThemedView>
+      <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
         <FlatList
           data={combinedSuggestions}
           keyExtractor={(item, index) => `${item.id ?? item.name}-${item.source}-${index}`}
@@ -550,10 +558,6 @@ export default function AutocompleteScreen() {
           contentContainerStyle={{ paddingBottom: 24 }}
           ListHeaderComponent={
             <>
-              <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-                <ThemedText type="title" style={{ color: activeColors.text }}>Search</ThemedText>
-              </ThemedView>
-              <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
               <ThemedView style={[styles.innerContainer]}>
                 <TextInput
                   placeholder="Start typing a food name or barcode..."
@@ -561,35 +565,37 @@ export default function AutocompleteScreen() {
                   value={queryText}
                   onChangeText={handleInputChange}
                   keyboardType="default"
-                  style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
+                  style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle, fontSize: 19}]}
                 />
 
                 {/* Filters trigger + dropdown (unchanged) */}
                 <Pressable onPress={() => setFiltersOpen(v => !v)} style={[styles.filtersTrigger, { borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}>
-                  <Text style={{ color: activeColors.text, fontWeight: '600' }}>
+                  <ThemedText style={{ color: activeColors.text, fontWeight: '600' }}>
                     Filters {filtersOpen ? '▴' : '▾'}
-                  </Text>
+                  </ThemedText>
                   {(filters.allergens.peanut || filters.allergens.soy || filters.customTerms.length > 0) && (
-                    <Text style={{ color: activeColors.secondaryText, marginTop: 4, fontSize: 12 }}>
-                      Active: {[filters.allergens.peanut ? 'Peanut' : null, filters.allergens.soy ? 'Soy' : null, ...filters.customTerms.map(t => `“${t}”`)].filter(Boolean).join(', ')}
-                    </Text>
+                    <View style={{ marginTop: 4 }}>
+                      <ThemedText style={{ color: activeColors.secondaryText, marginTop: 4, fontSize: 12 }}>
+                        Active: {[filters.allergens.peanut ? 'Peanut' : null, filters.allergens.soy ? 'Soy' : null, ...filters.customTerms.map(t => `“${t}”`)].filter(Boolean).join(', ')}
+                      </ThemedText>
+                    </View>
                   )}
                 </Pressable>
 
                 {filtersOpen && (
                   <View style={styles.filtersBox}>
-                    <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Allergens</Text>
+                    <ThemedText type = 'small' style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Allergens</ThemedText>
                     <View style={styles.toggleRow}>
                       <Pressable onPress={() => toggleAllergen('peanut')} style={[styles.toggle, filters.allergens.peanut ? styles.toggleOn : styles.toggleOff]}>
-                        <Text style={filters.allergens.peanut ? styles.toggleTextOn : styles.toggleTextOff}>Peanut</Text>
+                        <ThemedText style={filters.allergens.peanut ? styles.toggleTextOn : styles.toggleTextOff}>Peanut</ThemedText>
                       </Pressable>
                       <Pressable onPress={() => toggleAllergen('soy')} style={[styles.toggle, filters.allergens.soy ? styles.toggleOn : styles.toggleOff]}>
-                        <Text style={filters.allergens.soy ? styles.toggleTextOn : styles.toggleTextOff}>Soy</Text>
+                        <ThemedText style={filters.allergens.soy ? styles.toggleTextOn : styles.toggleTextOff}>Soy</ThemedText>
                       </Pressable>
                     </View>
 
                     <View style={styles.customSection}>
-                      <Text style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Custom filters</Text>
+                      <ThemedText type = 'small' style={[styles.filtersLabel, { color: activeColors.secondaryText }]}>Custom filters</ThemedText>
                       <View style={styles.customRow}>
                         <TextInput
                           placeholder="Type a word (e.g., sesame)"
@@ -597,10 +603,10 @@ export default function AutocompleteScreen() {
                           value={customInput}
                           onChangeText={setCustomInput}
                           onSubmitEditing={addCustomTerm}
-                          style={[styles.customInput, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}
+                          style={[styles.customInput, { color: activeColors.text, borderColor: activeColors.divider, fontSize: 19, backgroundColor: activeColors.backgroundTitle }]}
                         />
                         <Pressable style={styles.addButton} onPress={addCustomTerm}>
-                          <Text style={styles.addButtonText}>Add</Text>
+                          <ThemedText style={styles.addButtonText}>Add</ThemedText>
                         </Pressable>
                       </View>
 
@@ -608,49 +614,49 @@ export default function AutocompleteScreen() {
                         <View style={styles.chipsRow}>
                           {filters.customTerms.map(term => (
                             <View key={term} style={styles.chip}>
-                              <Text style={styles.chipText}>{term}</Text>
+                              <ThemedText style={styles.chipText}>{term}</ThemedText>
                               <Pressable onPress={() => removeCustomTerm(term)} style={styles.chipClose}>
-                                <Text style={styles.chipCloseText}>✕</Text>
+                                <ThemedText style={styles.chipCloseText}>✕</ThemedText>
                               </Pressable>
                             </View>
                           ))}
                         </View>
                       )}
 
-                      <Text style={[styles.filtersHint, { color: activeColors.secondaryText }]}>
+                      <ThemedText type = 'small' style={[styles.filtersHint, { color: activeColors.secondaryText }]}>
                         Custom filters match if the term appears in either the ingredients or warning fields. Multiple terms match any.
-                      </Text>
+                      </ThemedText>
                     </View>
                   </View>
                 )}
 
                 {noResults && (
-                  <Text style={[styles.noResultsText, { color: activeColors.secondaryText }]}>
+                  <ThemedText type = "default" style={[styles.noResultsText, { color: activeColors.secondaryText }]}>
                     No results found. Try a different search term or adjust filters.
-                  </Text>
+                  </ThemedText>
                 )}
               </ThemedView>
             </>
           }
           ListFooterComponent={
-            <View style={{ paddingHorizontal: 24 }}>
+            <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
               <Pressable
-                style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+                style={[styles.viewButton, { marginBottom: 10, alignSelf: 'center' }]}
                 onPress={() => navigation.navigate('create-custom-entry' as never)}
               >
-                <Text style={styles.buttonText}>Create Custom Entry</Text>
+                <ThemedText style={styles.buttonText}>Create Custom Entry</ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+                style={[styles.viewButton, { marginBottom: 10, alignSelf: 'center' }]}
                 onPress={() => navigation.navigate('custom-entries-list' as never)}
               >
-                <Text style={styles.buttonText}>View Custom Entries</Text>
+                <ThemedText style={styles.buttonText}>View Custom Entries</ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.viewButton, { marginTop: 10, alignSelf: 'center' }]}
+                style={[styles.viewButton, { marginBottom: 10, alignSelf: 'center' }]}
                 onPress={() => navigation.navigate('create-ticket' as never)}
               >
-                <Text style={styles.buttonText}>Create Product Request Ticket</Text>
+                <ThemedText style={styles.buttonText}>Create Product Request Ticket</ThemedText>
               </Pressable>
             </View>
           }
@@ -661,7 +667,7 @@ export default function AutocompleteScreen() {
           <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.profileModal}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Profiles</Text>
+                <ThemedText type = "title" style={styles.modalTitle}>Profiles</ThemedText>
               </View>
 
               <ScrollView style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
@@ -678,7 +684,7 @@ export default function AutocompleteScreen() {
                       }
                     }}
                   >
-                    <Text style={styles.ppItemText}>{p.name}</Text>
+                    <ThemedText style={styles.ppItemText}>{p.name}</ThemedText>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -691,7 +697,7 @@ export default function AutocompleteScreen() {
                     setPendingCompare(null);
                   }}
                 >
-                  <Text style={styles.actionButtonText}>Cancel</Text>
+                  <ThemedText style={styles.actionButtonText}>Cancel</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -707,18 +713,18 @@ const styles = StyleSheet.create({
   gradient: {flex: 1,},
   container: { flex: 1, backgroundColor: 'transparent' },
   titleContainer: { paddingTop: 60, paddingBottom: 10, paddingHorizontal: 24 },
-  divider: { height: 2, backgroundColor: '#E5E5EA', marginBottom: 16, width: '100%' },
-  innerContainer: { paddingHorizontal: 24, backgroundColor: 'transparent' },
+  divider: { height: 2, backgroundColor: '#E5E5EA', width: '100%' },
+  innerContainer: { marginTop:16, paddingHorizontal: 24, backgroundColor: 'transparent' },
   input: { borderWidth: 1, borderColor: '#888', padding: 8, borderRadius: 6, backgroundColor: 'transparent' },
 
   // Filters
   filtersTrigger: { marginTop: 10, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderRadius: 8 },
   filtersBox: { marginTop: 8, padding: 12, borderWidth: 1, borderColor: '#ccc', borderRadius: 10, backgroundColor: 'transparent' },
-  filtersLabel: { fontSize: 12, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 },
+  filtersLabel: { marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 },
   toggleRow: { flexDirection: 'row', gap: 8 },
   toggle: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1 },
   toggleOff: { backgroundColor: '#f0f0f0', borderColor: '#d0d0d0' },
-  toggleOn: { backgroundColor: '#007BFF', borderColor: '#007BFF' },
+  toggleOn: { backgroundColor: '#27778E', borderColor: '#27778E' },
   toggleTextOff: { color: '#666' },
   toggleTextOn: { color: '#fff' },
 
@@ -732,12 +738,12 @@ const styles = StyleSheet.create({
   chipText: { marginRight: 6, color: '#333' },
   chipClose: { padding: 2 },
   chipCloseText: { color: '#666', fontSize: 12 },
-  filtersHint: { marginTop: 8, fontSize: 12 },
+  filtersHint: { marginTop: 8},
 
   list: { flex: 1, backgroundColor: 'transparent' },
   suggestionCard: { flexDirection: 'column', padding: 12, borderColor: '#ccc', borderWidth: 1, borderRadius: 8, marginBottom: 10, backgroundColor: 'transparent' },
-  suggestionText: { fontSize: 16, marginBottom: 8 },
-  viewButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#007BFF', borderRadius: 6 },
+  suggestionText: {marginBottom: 10 },
+  viewButton: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#27778E', borderRadius: 6 },
   buttonText: { color: 'white' },
 
   detailsBox: { marginTop: 10, backgroundColor: '#f4f4f4', borderRadius: 6, padding: 10, borderColor: '#ddd', borderWidth: 1, position: 'relative' },
@@ -745,20 +751,20 @@ const styles = StyleSheet.create({
   imagePlaceholder: { width: 96, height: 96, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' },
   imagePlaceholderText: { fontSize: 12, color: '#777', textAlign: 'center', paddingHorizontal: 6 },
   detailsCol: { flex: 1, minWidth: 0 },
-  prodTitle: { fontWeight: '600', fontSize: 16, marginBottom: 6 },
+  prodTitle: { fontWeight: '600', marginBottom: 6 },
   metaRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 6, flexWrap: 'wrap' },
-  metaLabel: { fontSize: 12, marginRight: 6 },
-  metaValue: { fontSize: 14 },
-  ingredientsText: { marginTop: 2, fontSize: 13, lineHeight: 18 },
+  metaLabel: { marginRight: 6 },
+  metaValue: { },
+  ingredientsText: { marginTop: 2, lineHeight: 18 },
 
   detailsText: { color: '#333' },
   allergenContainer: { marginTop: 10 },
   allergenBlockWrapper: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 },
   allergenBlock: { backgroundColor: '#FF4D4D', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginRight: 8, marginBottom: 8 },
-  allergenText: { color: 'white', fontSize: 12 },
+  allergenText: { color: 'white' },
 
   detailsButtonsRow: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
-  primaryBtn: { backgroundColor: '#FF7F50', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  primaryBtn: { backgroundColor: '#c23b22', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
   primaryBtnText: { color: 'white', fontWeight: '600' },
   secondaryBtn: { backgroundColor: '#e5e5e5', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
   secondaryBtnText: { color: '#222', fontWeight: '600' },
@@ -767,13 +773,13 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   profileModal: { backgroundColor: 'white', borderRadius: 20, width: '90%', maxHeight: '80%', overflow: 'hidden' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  modalTitle: {fontWeight: 'bold', color: '#333' },
   modalActions: { padding: 20, borderTopWidth: 1, borderTopColor: '#e0e0e0' },
-  actionButton: { backgroundColor: '#007AFF', padding: 15, borderRadius: 10, alignItems: 'center' },
-  actionButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  actionButton: { backgroundColor: '#27778E', padding: 15, borderRadius: 10, alignItems: 'center' },
+  actionButtonText: { color: 'white', fontWeight: '600' },
 
   ppItem: { paddingVertical: 10, marginBottom: 5, borderWidth: 1, borderRadius: 10, alignItems: 'center', backgroundColor: '#ffffff', borderColor: '#ddd' },
-  ppItemText: { fontSize: 16, fontWeight: '500' },
+  ppItemText: {fontWeight: '500', color: "#212D39" },
 
-  noResultsText: { textAlign: 'center', marginTop: 12, fontSize: 14 },
+  noResultsText: { textAlign: 'center', marginTop: 12},
 });

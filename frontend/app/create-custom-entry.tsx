@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, TextInput, Pressable, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SectionedMultiSelect from 'react-native-sectioned-multi-select';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as SQLite from 'expo-sqlite';
 import { saveToHistory } from '@/db/history';
 import { initCustomDb, getCustomDb } from '@/db/customFoods';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { useThemedColor } from '@/components/ThemedColor';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 
 // NOTE: Extend this list, OR refer to an existing database of allergens
 const allergenOptions = [
@@ -144,6 +150,9 @@ export default function CreateCustomEntryScreen() {
   const route = useRoute();
   const editingEntry = route.params?.entry;
 
+  const { isDarkMode, colors } = useThemedColor();
+  const activeColors = isDarkMode ? colors.dark : colors.light;
+
   const [foodName, setFoodName] = useState('');
   const [barcode, setBarcode] = useState('');
   const [selectedAllergens, setSelectedAllergens] = useState([]);
@@ -216,67 +225,112 @@ export default function CreateCustomEntryScreen() {
   }; // END of handleSave() 
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{editingEntry ? 'Edit' : 'Create'} Custom Entry</Text>
-
-      <TextInput
-        placeholder="Food name"
-        value={foodName}
-        onChangeText={setFoodName}
-        style={styles.input}
-      />
-
+  <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+    <ThemedView style={[styles.container]}>
+      <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/search')}>
+            <Ionicons name="arrow-back" size={28} color={activeColors.text} />
+          </TouchableOpacity>
+          <ThemedText type="subtitle" style={{ color: activeColors.text }}>
+            {editingEntry ? 'Edit' : 'Create'} Custom Entry
+          </ThemedText>
+        </View>
+      </ThemedView>
+      <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
       
-      <TextInput
-        // SPRINT 3: Updated placeholder and keyboard type
-        placeholder="Barcode (EAN-13 / UPC-A / UPC-E)"
-        value={barcode}
-        onChangeText={setBarcode}
-        keyboardType="number-pad"
-        style={styles.input}
-      />
+      <ThemedView style={styles.innerContainer}>
+        <TextInput
+          placeholder="Food name"
+          placeholderTextColor={activeColors.secondaryText}
+          value={foodName}
+          onChangeText={setFoodName}
+          style={[styles.input, { 
+            color: activeColors.text, 
+            borderColor: activeColors.divider, 
+            backgroundColor: activeColors.backgroundTitle,
+            fontSize: 19,
+            padding: 12,
+          }]}
+        />
 
+        <TextInput
+          placeholder="Barcode (EAN-13 / UPC-A / UPC-E)"
+          placeholderTextColor={activeColors.secondaryText}
+          value={barcode}
+          onChangeText={setBarcode}
+          keyboardType="number-pad"
+          style={[styles.input, { 
+            color: activeColors.text, 
+            borderColor: activeColors.divider, 
+            backgroundColor: activeColors.backgroundTitle,
+            fontSize: 19,
+            padding: 12,
+          }]}
+        />
 
-      <SectionedMultiSelect
-        items={allergenOptions}
-        uniqueKey="id"
-        selectText="Select Harmful Ingredients"
-        onSelectedItemsChange={setSelectedAllergens}
-        selectedItems={selectedAllergens}
-        confirmText="Confirm"
-        showDropDowns={false}
-        IconRenderer={Icon}
-        styles={{ chipContainer: { backgroundColor: '#ff8080' } }}
-      />
+        <SectionedMultiSelect
+          items={allergenOptions}
+          uniqueKey="id"
+          selectText="Select Harmful Ingredients"
+          onSelectedItemsChange={setSelectedAllergens}
+          selectedItems={selectedAllergens}
+          confirmText="Confirm"
+          showDropDowns={false}
+          IconRenderer={Icon}
+          type = "default"
+          styles={{ 
+            chipContainer: { backgroundColor: '#ff8080' },
+            chipText: { color: activeColors.text }, 
+            selectToggleText: { color: activeColors.text },
+            itemText: { color: activeColors.text },
+            subItemText: { color: activeColors.text },
+            confirmText: { color: activeColors.text },
+            searchTextInput: { color: activeColors.text },
+            selectedItemText: { color: activeColors.text }, 
+          }}
+        />
 
-      <Pressable style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.buttonText}>{editingEntry ? 'Update Entry' : 'Save Entry'}</Text>
-      </Pressable>
-    </View>
-  );
+        <Pressable style={styles.saveButton} onPress={handleSave}>
+          <ThemedText style={styles.buttonText}>
+            {editingEntry ? 'Update Entry' : 'Save Entry'}
+          </ThemedText>
+        </Pressable>
+      </ThemedView>
+    </ThemedView>
+  </LinearGradient>
+);
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 20,
+  titleContainer: {
+    paddingTop: 70,
+    paddingBottom: 10,
+    paddingHorizontal: 24,
+  },
+  divider: {
+    height: 2,
+    width: '100%',
+  },
+  innerContainer: {
+    padding: 24,
+    backgroundColor: 'transparent',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#888',
     borderRadius: 6,
-    padding: 12,
     marginBottom: 16,
   },
   saveButton: {
     marginTop: 24,
-    backgroundColor: '#007BFF',
+    backgroundColor: '#27778E',
     paddingVertical: 12,
     borderRadius: 6,
     alignItems: 'center',

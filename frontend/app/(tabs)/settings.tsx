@@ -40,7 +40,7 @@ export default function Screen() {
   const [totpEnrolled, setTotpEnrolled] = useState<boolean>(false);
 
   const activeColors = isDarkMode ? colors.dark : colors.light;
-  const dangerColor = isDarkMode ? "#ff453a" : "#ff3b30";
+  const sizeMultiplier = fontSize === 'medium' ? 1.25 : fontSize === 'large' ? 1.5 : 1;
 
   const textSizeOptions = [
     { label: "Small", value: "small" },
@@ -178,7 +178,7 @@ export default function Screen() {
             <View style={styles.dropdownContainer}>
               <Dropdown
                 label=""
-                placeholder="Medium"
+                placeholder="Small"
                 options={textSizeOptions}
                 selectedValue={fontSize}
                 onValueChange={(selected) => {
@@ -194,8 +194,14 @@ export default function Screen() {
                   backgroundColor: activeColors.backgroundTitle,
                   borderColor: activeColors.divider,
                 }}
-                dropdownTextStyle={{ color: activeColors.text }}
-                selectedItemStyle={{ color: activeColors.text }}
+                placeholderStyle={{
+                  color: activeColors.text,
+                  fontSize: 20,
+                }}
+                selectedItemStyle={{ 
+                  color: activeColors.text,
+                  fontSize: 16 * sizeMultiplier,
+                }}
                 dropdownIconStyle={styles.hiddenIcon}
               />
             </View>
@@ -255,13 +261,13 @@ export default function Screen() {
               style={({ pressed }) => [
                 styles.dangerButton,
                 {
-                  borderColor: dangerColor,
-                  backgroundColor: pressed ? `${dangerColor}22` : "transparent",
+                  borderColor: activeColors.red,
+                  backgroundColor: pressed ? `${activeColors.red}22` : "transparent",
                 },
               ]}
             >
-              <IconSymbol name="rectangle.portrait.and.arrow.right" color={dangerColor} size={22} />
-              <ThemedText style={[styles.dangerText, { color: dangerColor, marginLeft: 8 }]}>
+              <IconSymbol name="rectangle.portrait.and.arrow.right" color={activeColors.red} size={22} />
+              <ThemedText style={[styles.dangerText, { color: activeColors.red, marginLeft: 8 }]}>
                 {signingOut ? "Signing out…" : "Sign Out"}
               </ThemedText>
             </Pressable>
@@ -353,6 +359,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 6,
+    flexWrap: "wrap",
+    gap: 8,
   },
   settingRowDropdown: {
     flexDirection: "row",
@@ -372,7 +380,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
   dropdown: {
-    width: 91,
+    minWidth: 91,
     minHeight: 40,
     alignItems: "center",
     borderWidth: 1,
@@ -411,6 +419,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 12,
+    flexWrap: "wrap",
+    gap: 10,
   },
 
   modalOverlay: {

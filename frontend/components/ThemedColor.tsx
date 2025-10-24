@@ -15,6 +15,8 @@ const colors = {
         switchTrack: '#555E67',
         switchThumb: '#27778E',
         primary: '#27778E',
+        red: '#c23b22',
+        green: '#477629'
     },
     dark: {
         gradientBackground: ['#06261dff','#0C1924','#0C1924','#06222bff'] as const,
@@ -28,6 +30,8 @@ const colors = {
         switchTrack: '#3A3A3A',
         switchThumb: '#239dbe',  // light blue thumb in dark mode
         primary: '#239dbe',      // light blue primary color
+        red: '#c23b22',
+        green: '#477629'
     },
 };
 

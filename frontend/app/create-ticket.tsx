@@ -17,6 +17,8 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "@/db/firebaseConfig";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { ThemedText } from '@/components/ThemedText';
 
 type TicketPayload = {
   // Product fields (strings to mirror Products)
@@ -56,7 +58,7 @@ type TicketPayload = {
 };
 
 const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Text style={styles.label}>{children}</Text>
+  <ThemedText style={styles.label}>{children}</ThemedText>
 );
 
 const Field = ({
@@ -295,13 +297,13 @@ export default function CreateTicketScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: "#fafafaff" }} 
     >
       <View style={{ flex: 1 }}>
         {/* Scan anchor button (top-right) */}
         <View style={styles.scanAnchor}>
           <Pressable style={styles.scanBtn} onPress={openScanMenu}>
-            <Text style={styles.scanBtnText}>Scan</Text>
+            <ThemedText style={styles.scanBtnText}>Scan</ThemedText>
           </Pressable>
         </View>
 
@@ -337,14 +339,78 @@ export default function CreateTicketScreen() {
           </Pressable>
         </Modal>
 
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
+        {/* DEBUG MODAL: inspect OCR output */}
+        <Modal
+          visible={debugModalOpen}
+          animationType="slide"
+          onRequestClose={() => setDebugModalOpen(false)}
         >
-          <Text style={styles.title}>Create Product Ticket</Text>
-          <Text style={styles.subtitle}>
-            Please provide as much information as you can.
-          </Text>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#fff",
+              paddingTop: Platform.OS === "ios" ? 60 : 40, // <-- Safe-area top
+              paddingBottom: 40,                            // <-- So Close button isn’t hidden
+            }}
+          >
+            <View
+              style={{
+                paddingHorizontal: 16,
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</Text>
+              <Pressable
+                onPress={() => setDebugModalOpen(false)}
+                style={{
+                  backgroundColor: "#007AFF",
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "600" }}>Close</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingBottom: 60, // <-- lets you scroll past bottom content
+              }}
+              showsVerticalScrollIndicator={true}
+            >
+              <Text style={{ fontWeight: "700", marginBottom: 6 }}>Fields</Text>
+              <Text
+                style={{
+                  fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+                  fontSize: 13,
+                }}
+              >
+                {JSON.stringify(lastScan?.fields ?? {}, null, 2)}
+              </Text>
+
+              <View style={{ height: 20 }} />
+
+              <Text style={{ fontWeight: "700", marginBottom: 6 }}>Raw Text</Text>
+              <Text
+                style={{
+                  fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+                  fontSize: 13,
+                }}
+              >
+                {lastScan?.rawText || ""}
+              </Text>
+            </ScrollView>
+          </View>
+        </Modal>
+
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <ThemedText type = 'subtitle' style={styles.title}>Create Product Ticket</ThemedText>
+          <ThemedText type = 'default' style={styles.subtitle}>Please provide as much information as you can.</ThemedText>
 
           {/* Core identity */}
           <Field
@@ -399,7 +465,7 @@ export default function CreateTicketScreen() {
 
           {/* Nutrition (per serving) */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>Nutrition (per serving)</Text>
+            <ThemedText type = "header" style={styles.sectionHeaderText}>Nutrition (per serving)</ThemedText>
           </View>
           <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 340" keyboardType="numeric" />
           <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 19" keyboardType="numeric" />
@@ -421,9 +487,9 @@ export default function CreateTicketScreen() {
 
           {/* Derived preview */}
           <View style={{ marginTop: 10, marginBottom: 18 }}>
-            <Text style={styles.readonlyLabel}>Derived fields (auto):</Text>
-            <Text style={styles.readonlyText}>name_lower: {name_lower || "—"}</Text>
-            <Text style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</Text>
+            <ThemedText style={styles.readonlyLabel}>Derived fields (auto):</ThemedText>
+            <ThemedText style={styles.readonlyText}>name_lower: {name_lower || "—"}</ThemedText>
+            <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
           </View>
 
           <Pressable
@@ -431,11 +497,11 @@ export default function CreateTicketScreen() {
             onPress={onSubmit}
             disabled={submitting}
           >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Submit Ticket</Text>}
+            {submitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Submit Ticket</ThemedText>}
           </Pressable>
 
           <Pressable style={styles.cancelBtn} onPress={() => router.back()}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
           </Pressable>
 
           <View style={{ height: 24 }} />
@@ -446,12 +512,13 @@ export default function CreateTicketScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 6 },
+  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24, marginTop:16 },
+  title: { fontWeight: "700", marginBottom: 6, color: '#212D39' },
   subtitle: { color: "#555", marginBottom: 16 },
-  label: { fontWeight: "600", marginBottom: 6 },
+  label: { color: "#364452ff", fontWeight: "600", marginBottom: 6 },
   input: {
     borderWidth: 1,
+    fontSize:17.5,
     borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -460,11 +527,11 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 80, textAlignVertical: "top" },
   sectionHeader: { marginTop: 8, marginBottom: 8 },
-  sectionHeaderText: { fontWeight: "700", fontSize: 16 },
+  sectionHeaderText: { color: "#364452ff", fontWeight: "700" },
   readonlyLabel: { fontWeight: "600", marginBottom: 4, color: "#555" },
   readonlyText: { color: "#777" },
   submitBtn: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#27778E",
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: "center",

@@ -6,7 +6,7 @@ import { useFontSize } from '@/components/FontTheme';
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link' | 'header'| 'small';
 };
 
 export function ThemedText({
@@ -32,9 +32,11 @@ export function ThemedText({
       style={[
         { color },
         type === 'default' ? getScaledStyle(styles.default) : undefined,
+        type === 'small' ? getScaledStyle(styles.small) : undefined,
         type === 'title' ? getScaledStyle(styles.title) : undefined,
         type === 'defaultSemiBold' ? getScaledStyle(styles.defaultSemiBold) : undefined,
         type === 'subtitle' ? getScaledStyle(styles.subtitle) : undefined,
+        type === 'header' ? getScaledStyle(styles.header) : undefined,
         type === 'link' ? getScaledStyle(styles.link) : undefined,
         style,
       ]}
@@ -48,9 +50,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
+  small: {
+    fontSize: 12,
+    lineHeight: 24,
+  },
   defaultSemiBold: {
     fontSize: 16,
-    lineHeight: 24,
     fontWeight: '600',
   },
   title: {
@@ -65,6 +70,10 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 20,
+    fontWeight: 'bold',
+  },
+  header: {
+    fontSize: 16,
     fontWeight: 'bold',
   },
   link: {

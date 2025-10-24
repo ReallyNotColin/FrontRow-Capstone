@@ -403,8 +403,9 @@ export default function ScanScreen() {
 
       <View style={styles.overlay}>
         <View style={styles.scanBox} />
-        <Text style={styles.text}> </Text>
-        <ThemedText style={styles.text}>Place barcode here</ThemedText>
+        <View style={styles.hintBox}>
+          <ThemedText style={styles.hintText}>Place barcode here</ThemedText>
+        </View>
 
         {loadingDetails && <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>}
       </View>
@@ -603,11 +604,13 @@ const styles = StyleSheet.create({
     alignItems: 'center' },
 
   scanBox: { 
-    width: 300, 
-    height: 200, 
-    borderWidth: 4, 
-    borderColor: 'white', 
-    borderRadius: 10, 
+    width: 275, 
+    height: 175, 
+    borderWidth: 3, 
+    borderColor: 'white',
+    borderStyle: 'dashed',  
+    borderRadius: 10,
+    marginBottom: 15, 
     backgroundColor: 'transparent' },
 
   // results modal
@@ -752,4 +755,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500'
   },
+
+  hintBox: {
+  backgroundColor: 'rgba(39, 119, 142, 0.8)',
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 20,
+  alignSelf: 'center',
+},
+
+hintText: {
+  color: 'white',
+  fontWeight: 'bold',
+  textAlign: 'center',
+}
+
 });
