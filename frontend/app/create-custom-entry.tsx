@@ -30,8 +30,7 @@ const allergenOptions = [
   { id: 'MSG', name: 'MSG' },
 ];
 
-// Helper functions for barcode normalization and validation
-
+// ---------- barcode helpers ----------
 const onlyDigits = (s: string) => (s || '').replace(/\D+/g, '');
 
 function ean13CheckDigit(first12: string): string {
@@ -42,12 +41,12 @@ function ean13CheckDigit(first12: string): string {
   }
   const mod = sum % 10;
   return mod === 0 ? '0' : String(10 - mod);
-} // END of ean13CheckDigit()
+}
 
 function isValidEAN13(ean: string): boolean {
   if (!/^\d{13}$/.test(ean)) return false;
   return ean[12] === ean13CheckDigit(ean.slice(0, 12));
-}// END of isValidEAN13()
+}
 
 function upcaCheckDigit(first11: string): string {
   let sumOdd = 0, sumEven = 0;
@@ -58,13 +57,12 @@ function upcaCheckDigit(first11: string): string {
   const total = sumOdd * 3 + sumEven;
   const mod = total % 10;
   return mod === 0 ? '0' : String(10 - mod);
-} // END of upcaCheckDigit()
+}
 
 function isValidUPCA(upcA: string): boolean {
   if (!/^\d{12}$/.test(upcA)) return false;
   return upcA[11] === upcaCheckDigit(upcA.slice(0, 11));
-} // END of isValidUPCA()
-
+}
 
 function upceToUpca(upceRaw: string): string | null {
   const s = onlyDigits(upceRaw);
@@ -77,7 +75,7 @@ function upceToUpca(upceRaw: string): string | null {
   } else {
     ns = s[0];
     if (ns !== '0' && ns !== '1') return null;
-    body = s.slice(1, 7); 
+    body = s.slice(1, 7);
   }
 
   const a = body[0], b = body[1], c = body[2], d = body[3], e = body[4], n = body[5];
@@ -100,39 +98,31 @@ function upceToUpca(upceRaw: string): string | null {
     product      = '0000' + n;
   }
 
-  const upcNoCheck = ns + manufacturer + product; // 11 digits total
+  const upcNoCheck = ns + manufacturer + product; // 11 digits
   const check = upcaCheckDigit(upcNoCheck);
-  return upcNoCheck + check; // 12 digits total
+  return upcNoCheck + check; // 12 digits
 }
-
 
 function upcaToEan13(upcA: string): string | null {
   if (!/^\d{12}$/.test(upcA)) return null;
-  const first12 = ('0' + upcA).slice(0, 12); // leading 0 + first 11 data digits of UPC-A
+  const first12 = ('0' + upcA).slice(0, 12);
   const eanCheck = ean13CheckDigit(first12);
-  return first12 + eanCheck; // 13 digits total
+  return first12 + eanCheck;
 }
 
-
-
-// This function calls the above helper functions to normalize any of the three barcode types to EAN-13
+// Normalize any supported code to EAN-13
 function normalizeToEan13(input: string): { ean13: string, variant: 'EAN-13'|'UPC-A'|'UPC-E' } | null {
-  
-  // cleans the input (the barcode) to only digits to process into a barcode type
   const digits = onlyDigits(input);
 
-  // 13 digits == validate EAN-13 
   if (digits.length === 13 && isValidEAN13(digits)) {
     return { ean13: digits, variant: 'EAN-13' };
   }
 
-  // 12 digits == validate UPC-A and convert
   if (digits.length === 12 && isValidUPCA(digits)) {
     const ean = upcaToEan13(digits);
     if (ean) return { ean13: ean, variant: 'UPC-A' };
   }
 
-  // 8 || 6 digits == treat as UPC-E, expand to UPC-A, THEN to EAN-13
   if (digits.length === 8 || digits.length === 6) {
     const upcA = upceToUpca(digits);
     if (upcA && isValidUPCA(upcA)) {
@@ -141,21 +131,20 @@ function normalizeToEan13(input: string): { ean13: string, variant: 'EAN-13'|'UP
     }
   }
 
-  return null; 
-} // END of normalizeToEan13()
-
+  return null;
+}
 
 export default function CreateCustomEntryScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const editingEntry = route.params?.entry;
+  const editingEntry: any = (route as any).params?.entry;
 
   const { isDarkMode, colors } = useThemedColor();
   const activeColors = isDarkMode ? colors.dark : colors.light;
 
   const [foodName, setFoodName] = useState('');
   const [barcode, setBarcode] = useState('');
-  const [selectedAllergens, setSelectedAllergens] = useState([]);
+  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -164,18 +153,27 @@ export default function CreateCustomEntryScreen() {
     init();
   }, []);
 
-
   useEffect(() => {
     if (editingEntry) {
       setFoodName(editingEntry.food_name || '');
       setBarcode(editingEntry.barcode || '');
       setSelectedAllergens(
-        editingEntry.allergens?.split(',').map(a => a.trim()) || []
+        editingEntry.allergens?.split(',').map((a: string) => a.trim()) || []
       );
     }
   }, [editingEntry]);
 
-  // SPRINT 3: Updated handleSave to support multiple barcode types
+  const goBackToSearch = () => {
+    // Prefer a real back if we navigated here from Search; otherwise go straight to Search.
+    // Adjust the route name if your Search route differs.
+    // @ts-ignore
+    if (navigation.canGoBack && navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('search' as never);
+    // For Expo Router nested tabs, you might instead do:
+    // navigation.navigate('(tabs)' as never, { screen: 'search' } as never);
+  };
+
+  // Save handler
   const handleSave = async () => {
     const cleanedName = foodName.trim();
     const norm = normalizeToEan13(barcode);
@@ -204,8 +202,8 @@ export default function CreateCustomEntryScreen() {
       if (editingEntry?.id) {
         await customDb.runAsync(
           `UPDATE custom_entries 
-          SET food_name = ?, barcode = ?, allergens = ? 
-          WHERE id = ?`,
+           SET food_name = ?, barcode = ?, allergens = ? 
+           WHERE id = ?`,
           [cleanedName, normalized13, allergenString, editingEntry.id]
         );
         Alert.alert('Updated', 'Custom entry updated!');
@@ -222,9 +220,10 @@ export default function CreateCustomEntryScreen() {
       console.error(error);
       Alert.alert('Error', 'Failed to save entry.');
     }
-  }; // END of handleSave() 
+  };
 
   return (
+<<<<<<< Updated upstream
   <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
     <ThemedView style={[styles.container]}>
       <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
@@ -290,6 +289,42 @@ export default function CreateCustomEntryScreen() {
             selectedItemText: { color: activeColors.text }, 
           }}
         />
+=======
+    <View style={styles.container}>
+      {/* NEW: Back to Search */}
+      <Pressable onPress={goBackToSearch} style={[styles.backButton, { alignSelf: 'flex-start', marginTop: 40 }]}>
+        <Text style={styles.backButtonText}>{'\u2039'} Back </Text>
+      </Pressable>
+
+      <Text style={styles.title}>{editingEntry ? 'Edit' : 'Create'} Custom Entry</Text>
+
+      <TextInput
+        placeholder="Food name"
+        value={foodName}
+        onChangeText={setFoodName}
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="Barcode (EAN-13 / UPC-A / UPC-E)"
+        value={barcode}
+        onChangeText={setBarcode}
+        keyboardType="number-pad"
+        style={styles.input}
+      />
+
+      <SectionedMultiSelect
+        items={allergenOptions}
+        uniqueKey="id"
+        selectText="Select Harmful Ingredients"
+        onSelectedItemsChange={(items) => setSelectedAllergens(items as string[])}
+        selectedItems={selectedAllergens}
+        confirmText="Confirm"
+        showDropDowns={false}
+        IconRenderer={Icon}
+        styles={{ chipContainer: { backgroundColor: '#ff8080' } }}
+      />
+>>>>>>> Stashed changes
 
         <Pressable style={styles.saveButton} onPress={handleSave}>
           <ThemedText style={styles.buttonText}>
@@ -310,6 +345,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
+<<<<<<< Updated upstream
   titleContainer: {
     paddingTop: 70,
     paddingBottom: 10,
@@ -322,6 +358,26 @@ const styles = StyleSheet.create({
   innerContainer: {
     padding: 24,
     backgroundColor: 'transparent',
+=======
+  // NEW: back button
+  backButton: {
+    marginTop: 20,
+    padding: 6,
+    backgroundColor: '#007BFF',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 12,
+  },
+
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 20,
+    paddingTop: 20,
+>>>>>>> Stashed changes
   },
   input: {
     borderWidth: 1,

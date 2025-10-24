@@ -1,174 +1,197 @@
-// src/db/Profiles.ts
-import { auth, db } from "@/db/firebaseConfig";
+// db/Profiles.ts
 import {
-  collection, doc, setDoc, deleteDoc, onSnapshot,
-  query, orderBy, serverTimestamp, type Unsubscribe
-} from "firebase/firestore";
+  collection, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc,
+  deleteDoc, where, serverTimestamp, FirestoreDataConverter
+} from 'firebase/firestore';
+import { db, auth } from '@/db/firebaseConfig';
 
-/* ----------------- helpers ----------------- */
-function requireUid(): string {
-  const u = auth.currentUser;
-  if (!u) throw new Error("Profiles: no signed-in user.");
-  return u.uid;
-}
-function userDoc() {
-  return doc(db, "users", requireUid());
-}
-function profilesCol() {
-  return collection(userDoc(), "profiles");
-}
-function groupsCol() {
-  return collection(userDoc(), "groups");
-}
-function petsCol() {
-  return collection(userDoc(), "pets"); // <— pet profiles live here
-}
+/** ───────── Types ───────── */
 
-/* ----------------- types ----------------- */
-export type ProfileDoc = {
+export type SavedProfile = {
   name: string;
   allergens: string[];
   intolerances: string[];
   dietary: string[];
-  createdAt?: any;
+  updatedAt?: any; // Timestamp
+};
+
+export type SavedPetProfile = {
+  name: string;
+  petType: string;         // e.g. "Dog" | "Cat"
+  allergens: string[];
   updatedAt?: any;
 };
 
-export type PetProfileDoc = ProfileDoc & {
-  petType: string; // e.g., "Dog", "Cat"
+export type GroupMember =
+  | { name: string; kind: 'human' }
+  | { name: string; kind: 'pet' };
+
+export type SavedGroup = {
+  name: string;
+  members: GroupMember[]; // NEW: typed members
+  updatedAt?: any;
 };
 
-/* ----------------- individual profiles ----------------- */
-export function onProfiles(cb: (rows: ProfileDoc[]) => void): Unsubscribe {
-  const q = query(profilesCol(), orderBy("name"));
-  return onSnapshot(q, (snap) => {
-    const rows: ProfileDoc[] = snap.docs.map((d) => {
-      const data = d.data() as any;
-      return {
-        name: (data?.name ?? d.id) as string,
-        allergens: Array.isArray(data?.allergens) ? data.allergens : [],
-        intolerances: Array.isArray(data?.intolerances) ? data.intolerances : [],
-        dietary: Array.isArray(data?.dietary) ? data.dietary : [],
-        createdAt: data?.createdAt,
-        updatedAt: data?.updatedAt,
-      };
-    });
-    cb(rows);
+/** ───────── Utils ───────── */
+
+function requireUid(): string {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error('[Profiles] No signed-in user');
+  return uid;
+}
+
+function ucol(uid: string, sub: 'profiles'|'groups'|'pets') {
+  return collection(db, 'users', uid, sub);
+}
+
+/** ───────── Converters (optional) ───────── */
+
+const profileConv: FirestoreDataConverter<SavedProfile> = {
+  toFirestore(p) { return p as any; },
+  fromFirestore(snap, options) {
+    const d = snap.data(options) as any;
+    return {
+      name: d.name ?? snap.id,
+      allergens: Array.isArray(d.allergens) ? d.allergens : [],
+      intolerances: Array.isArray(d.intolerances) ? d.intolerances : [],
+      dietary: Array.isArray(d.dietary) ? d.dietary : [],
+      updatedAt: d.updatedAt ?? null,
+    };
+  },
+};
+
+const groupConv: FirestoreDataConverter<SavedGroup> = {
+  toFirestore(g) { return g as any; },
+  fromFirestore(snap, options) {
+    const d = snap.data(options) as any;
+    let members: GroupMember[] = [];
+
+    // Legacy: members as string[]
+    if (Array.isArray(d.members) && d.members.length && typeof d.members[0] === 'string') {
+      members = (d.members as string[]).map(n => ({ name: n, kind: 'human' as const }));
+    }
+
+    // New: members as typed objects
+    if (Array.isArray(d.members) && d.members.length && typeof d.members[0] === 'object') {
+      members = d.members.map((m: any) => ({
+        name: String(m.name ?? ''),
+        kind: m.kind === 'pet' ? 'pet' as const : 'human' as const,
+      }));
+    }
+
+    return {
+      name: d.name ?? snap.id,
+      members,
+      updatedAt: d.updatedAt ?? null,
+    };
+  },
+};
+
+
+const petConv: FirestoreDataConverter<SavedPetProfile> = {
+  toFirestore(p) { return p as any; },
+  fromFirestore(snap, options) {
+    const d = snap.data(options) as any;
+    // IMPORTANT: ignore legacy pet fields (intolerances/dietary) if present
+    return {
+      name: d.name ?? snap.id,
+      petType: d.petType ?? 'Dog',
+      allergens: Array.isArray(d.allergens) ? d.allergens : [],
+      updatedAt: d.updatedAt ?? null,
+    };
+  },
+};
+
+/** ───────── Individuals ───────── */
+
+export function onProfiles(cb: (rows: SavedProfile[]) => void) {
+  const uid = requireUid();
+  const q = query(ucol(uid, 'profiles').withConverter(profileConv), orderBy('name'));
+  const unsub = onSnapshot(q, (snap) => {
+    cb(snap.docs.map(d => d.data()));
   });
+  return unsub;
 }
 
 export async function saveProfileFS(
   name: string,
   allergens: string[],
   intolerances: string[],
-  dietary: string[]
+  dietary: string[],
 ) {
-  const trimmed = name.trim();
-  if (!trimmed) throw new Error("Profile name is required.");
-  const ref = doc(profilesCol(), trimmed);
-  await setDoc(
-    ref,
-    {
-      name: trimmed,
-      allergens: Array.isArray(allergens) ? allergens : [],
-      intolerances: Array.isArray(intolerances) ? intolerances : [],
-      dietary: Array.isArray(dietary) ? dietary : [],
-      updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const uid = requireUid();
+  const ref = doc(ucol(uid, 'profiles'), name);
+  await setDoc(ref, {
+    name,
+    allergens,
+    intolerances,
+    dietary,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 }
 
 export async function deleteProfileFS(name: string) {
-  const trimmed = name.trim();
-  if (!trimmed) return;
-  await deleteDoc(doc(profilesCol(), trimmed));
+  const uid = requireUid();
+  await deleteDoc(doc(ucol(uid, 'profiles'), name));
 }
 
-/* ----------------- group profiles ----------------- */
-export async function saveGroupProfile(groupName: string, members: string[]) {
-  const trimmed = groupName.trim();
-  if (!trimmed) throw new Error("Group name is required.");
-  const ref = doc(groupsCol(), trimmed);
-  await setDoc(
-    ref,
-    {
-      name: trimmed,
-      members: Array.isArray(members) ? members : [],
-      updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
-}
+/** ───────── Groups ───────── */
 
-export async function deleteGroupProfile(groupName: string) {
-  const trimmed = groupName.trim();
-  if (!trimmed) return;
-  await deleteDoc(doc(groupsCol(), trimmed));
-}
-
-export function onGroups(cb: (groups: Record<string, string[]>) => void): Unsubscribe {
-  const q = query(groupsCol(), orderBy("name"));
+export function onGroups(cb: (rows: Record<string, GroupMember[]>) => void) {
+  const uid = requireUid();
+  const q = query(ucol(uid, 'groups').withConverter(groupConv), orderBy('name'));
   return onSnapshot(q, (snap) => {
-    const map: Record<string, string[]> = {};
-    snap.docs.forEach((d) => {
-      const data = d.data() as any;
-      const name = (data?.name ?? d.id) as string;
-      map[name] = Array.isArray(data?.members) ? data.members : [];
-    });
+    const map: Record<string, GroupMember[]> = {};
+    for (const d of snap.docs) {
+      const g = d.data();
+      map[g.name] = g.members ?? [];
+    }
     cb(map);
   });
 }
 
-/* ----------------- pet profiles (NEW) ----------------- */
-export function onPetProfiles(cb: (rows: PetProfileDoc[]) => void): Unsubscribe {
-  const q = query(petsCol(), orderBy("name"));
+export async function saveGroupProfile(name: string, members: GroupMember[]) {
+  const uid = requireUid();
+  const ref = doc(ucol(uid, 'groups'), name);
+  await setDoc(ref, { name, members, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+
+export async function deleteGroupProfile(name: string) {
+  const uid = requireUid();
+  await deleteDoc(doc(ucol(uid, 'groups'), name));
+}
+
+/** ───────── Pets (ALLERGENS ONLY) ───────── */
+
+export function onPetProfiles(cb: (rows: SavedPetProfile[]) => void) {
+  const uid = requireUid();
+  const q = query(ucol(uid, 'pets').withConverter(petConv), orderBy('name'));
   return onSnapshot(q, (snap) => {
-    const rows: PetProfileDoc[] = snap.docs.map((d) => {
-      const data = d.data() as any;
-      return {
-        name: (data?.name ?? d.id) as string,
-        petType: (data?.petType ?? "") as string,
-        allergens: Array.isArray(data?.allergens) ? data.allergens : [],
-        intolerances: Array.isArray(data?.intolerances) ? data.intolerances : [],
-        dietary: Array.isArray(data?.dietary) ? data.dietary : [],
-        createdAt: data?.createdAt,
-        updatedAt: data?.updatedAt,
-      };
-    });
-    cb(rows);
+    cb(snap.docs.map(d => d.data()));
   });
 }
 
+/**
+ * Save or update a pet profile (ALLERGENS ONLY).
+ * This replaces the old signature that accepted intolerances/dietary.
+ */
 export async function savePetProfile(
   name: string,
   petType: string,
   allergens: string[],
-  intolerances: string[],
-  dietary: string[]
 ) {
-  const trimmed = name.trim();
-  if (!trimmed) throw new Error("Pet name is required.");
-  const ref = doc(petsCol(), trimmed); // use name as doc id for easy edit/delete
-  await setDoc(
-    ref,
-    {
-      name: trimmed,
-      petType: petType.trim(),
-      allergens: Array.isArray(allergens) ? allergens : [],
-      intolerances: Array.isArray(intolerances) ? intolerances : [],
-      dietary: Array.isArray(dietary) ? dietary : [],
-      updatedAt: serverTimestamp(),
-      createdAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  const uid = requireUid();
+  const ref = doc(ucol(uid, 'pets'), name);
+  await setDoc(ref, {
+    name,
+    petType,
+    allergens,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 }
 
 export async function deletePetProfile(name: string) {
-  const trimmed = name.trim();
-  if (!trimmed) return;
-  await deleteDoc(doc(petsCol(), trimmed));
+  const uid = requireUid();
+  await deleteDoc(doc(ucol(uid, 'pets'), name));
 }

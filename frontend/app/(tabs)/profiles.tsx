@@ -24,7 +24,11 @@ type SavedProfile = {
   intolerances: string[];
   dietary: string[];
 };
-type SavedPetProfile = SavedProfile & { petType: string };
+type SavedPetProfile = {
+  name: string;
+  petType: string;
+  allergens: string[];
+};
 
 type TagTab = 'allergens' | 'intolerances' | 'dietary' | null;
 
@@ -46,13 +50,14 @@ export default function Profile() {
   const [profileName, setprofileName] = useState('');
   const [groupName, setgroupName] = useState('');
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
+  const [groupPetMembers, setGroupPetMembers] = useState<string[]>([]);
 
   // Pet form
   const [petName, setPetName] = useState('');
   const petTypeOptions = useMemo(() => ['Dog', 'Cat'], []);
   const [petType, setPetType] = useState<string>('Dog');
 
-  // options
+  // options (HUMAN)
   const allergenOptions = useMemo(
     () => ['Milk', 'Lactose', 'Egg', 'Fish', 'Gluten', 'Nuts', 'Peanuts', 'Shellfish', 'Soy', 'Sesame'],
     []
@@ -66,6 +71,12 @@ export default function Profile() {
     []
   );
 
+  // PET options (fixed allergens only)
+  const petAllergenOptions = useMemo(
+    () => ['Beef','Chicken','Lamb','Dairy','Eggs','Wheat','Corn','Soy','Fish'],
+    []
+  );
+
   // individual selections
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
@@ -73,12 +84,8 @@ export default function Profile() {
   const [activeTag, setActiveTag] = useState<TagTab>(null);
   const [customInput, setCustomInput] = useState(""); // text box for adding custom items
 
-  // pet selections (separate so editing person vs pet doesn't clash)
+  // pet selections (ONLY allergens now)
   const [petSelectedAllergens, setPetSelectedAllergens] = useState<string[]>([]);
-  const [petSelectedIntolerances, setPetSelectedIntolerances] = useState<string[]>([]);
-  const [petSelectedDietary, setPetSelectedDietary] = useState<string[]>([]);
-  const [activePetTag, setActivePetTag] = useState<TagTab>(null);
-  const [petCustomInput, setPetCustomInput] = useState("");
 
   /* ------------------ live data ------------------ */
   const [savedProfiles, setSavedProfiles] = useState<SavedProfile[]>([]);
@@ -97,13 +104,6 @@ export default function Profile() {
     Animated.sequence([
       Animated.timing(moveMenu, { toValue: -10, duration: 250, useNativeDriver: true }),
       Animated.timing(menuOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
-  };
-  const openPetTagMenu = (tab: TagTab) => {
-    setActivePetTag(tab);
-    Animated.sequence([
-      Animated.timing(petMoveMenu, { toValue: -10, duration: 250, useNativeDriver: true }),
-      Animated.timing(petMenuOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
   };
 
@@ -144,34 +144,40 @@ export default function Profile() {
   };
 
   /* ------------------ CRUD (groups) ------------------ */
-  const handleSaveGroup = async () => {
-    try {
-      await saveGroupProfile(groupName.trim(), groupMembers);
-      setgroupName(''); setGroupMembers([]); setgProfileModalVisible(false);
-    } catch (e) { console.error(e); }
-  };
-  const handleDeleteGroup = async (name: string) => {
-    try { await deleteGroupProfile(name); } catch (e) { console.error(e); }
-  };
+const handleSaveGroup = async () => {
+  try {
+    // Convert to typed members
+    const typed = [
+      ...groupMembers.map((name) => ({ name, kind: 'human' as const })),
+      ...groupPetMembers.map((name) => ({ name, kind: 'pet' as const })),
+    ];
+    await saveGroupProfile(groupName.trim(), typed);
+
+    // reset
+    setgroupName('');
+    setGroupMembers([]);
+    setGroupPetMembers([]);
+    setgProfileModalVisible(false);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 
   /* ------------------ CRUD (pets) ------------------ */
   const handleSavePet = async () => {
     try {
+      // simplified API: savePetProfile(name, petType, allergens)
       await savePetProfile(
         petName.trim(),
         petType,
-        petSelectedAllergens,
-        petSelectedIntolerances,
-        petSelectedDietary
+        petSelectedAllergens
       );
       // reset
       setPetTagsModalVisible(false);
       setPetName('');
       setPetType('Dog');
       setPetSelectedAllergens([]);
-      setPetSelectedIntolerances([]);
-      setPetSelectedDietary([]);
-      setActivePetTag(null);
       petMoveMenu.setValue(0);
       petMenuOpacity.setValue(0);
     } catch (e) { console.error('Failed to save pet', e); }
@@ -183,9 +189,6 @@ export default function Profile() {
     setPetName(pet.name);
     setPetType(pet.petType || 'Dog');
     setPetSelectedAllergens(pet.allergens ?? []);
-    setPetSelectedIntolerances(pet.intolerances ?? []);
-    setPetSelectedDietary(pet.dietary ?? []);
-    setActivePetTag('allergens');
     setPetTagsModalVisible(true);
     petMoveMenu.setValue(-10);
     petMenuOpacity.setValue(1);
@@ -199,28 +202,27 @@ export default function Profile() {
       setGroupMembers((prev) => prev.filter((n) => profiles.some((p) => p.name === n)));
     });
     const unsubGroups = onGroups((groupsMap) => setGroupProfiles(groupsMap));
-    const unsubPets = onPetProfiles((rows) => setPetProfiles(rows));
+    const unsubPets = onPetProfiles((rows) => setPetProfiles(rows as SavedPetProfile[]));
     return () => { unsubProfiles(); unsubGroups(); unsubPets(); };
   }, []);
 
   useFocusEffect(useCallback(() => { return () => {}; }, []));
 
-  /* ------------------ current list helpers ------------------ */
-const currentOptions = useMemo(() => {
-  const base =
-    activeTag === 'allergens' ? allergenOptions :
-    activeTag === 'intolerances' ? intoleranceOptions :
-    activeTag === 'dietary' ? dietaryOptions : [];
+  /* ------------------ current list helpers (human) ------------------ */
+  const currentOptions = useMemo(() => {
+    const base =
+      activeTag === 'allergens' ? allergenOptions :
+      activeTag === 'intolerances' ? intoleranceOptions :
+      activeTag === 'dietary' ? dietaryOptions : [];
 
-  const selected =
-    activeTag === 'allergens' ? selectedAllergens :
-    activeTag === 'intolerances' ? selectedIntolerances :
-    activeTag === 'dietary' ? selectedDietary : [];
+    const selected =
+      activeTag === 'allergens' ? selectedAllergens :
+      activeTag === 'intolerances' ? selectedIntolerances :
+      activeTag === 'dietary' ? selectedDietary : [];
 
-  const extra = selected.filter(s => !base.includes(s));
-  return [...base, ...extra].sort((a, b) => a.localeCompare(b));
-}, [activeTag, allergenOptions, intoleranceOptions, dietaryOptions, selectedAllergens, selectedIntolerances, selectedDietary]);
-
+    const extra = selected.filter(s => !base.includes(s));
+    return [...base, ...extra].sort((a, b) => a.localeCompare(b));
+  }, [activeTag, allergenOptions, intoleranceOptions, dietaryOptions, selectedAllergens, selectedIntolerances, selectedDietary]);
 
   const currentSelected = useMemo(() => {
     if (activeTag === 'allergens') return selectedAllergens;
@@ -237,47 +239,34 @@ const currentOptions = useMemo(() => {
     else if (activeTag === 'dietary') setSelectedDietary(next);
   };
 
-  // Pets variant
-const petCurrentOptions = useMemo(() => {
-  const base =
-    activePetTag === 'allergens' ? allergenOptions :
-    activePetTag === 'intolerances' ? intoleranceOptions :
-    activePetTag === 'dietary' ? dietaryOptions : [];
-
-  const selected =
-    activePetTag === 'allergens' ? petSelectedAllergens :
-    activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary;
-
-  const extra = selected.filter(s => !base.includes(s));
-  return [...base, ...extra].sort((a, b) => a.localeCompare(b));
-}, [activePetTag, allergenOptions, intoleranceOptions, dietaryOptions, petSelectedAllergens, petSelectedIntolerances, petSelectedDietary]);
-
-
-  const petCurrentSelected = useMemo(() => {
-    if (activePetTag === 'allergens') return petSelectedAllergens;
-    if (activePetTag === 'intolerances') return petSelectedIntolerances;
-    if (activePetTag === 'dietary') return petSelectedDietary;
-    return [];
-  }, [activePetTag, petSelectedAllergens, petSelectedIntolerances, petSelectedDietary]);
-
+  /* ------------------ PET list helpers (allergens only) ------------------ */
+  const petCurrentOptions = petAllergenOptions;
+  const petCurrentSelected = petSelectedAllergens;
   const petToggleOption = (o: string) => {
     const s = petCurrentSelected;
     const next = s.includes(o) ? s.filter((x) => x !== o) : [...s, o];
-    if (activePetTag === 'allergens') setPetSelectedAllergens(next);
-    else if (activePetTag === 'intolerances') setPetSelectedIntolerances(next);
-    else if (activePetTag === 'dietary') setPetSelectedDietary(next);
+    setPetSelectedAllergens(next);
   };
 
   /* ------------------ render ------------------ */
   return (
-    <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+    <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <View style={[styles.container]}>
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+<<<<<<< Updated upstream
             <ThemedText type="title" style={{ color: activeColors.text }}>
                 Profiles
             </ThemedText>
           </ThemedView>
           <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+=======
+          <ThemedText type="title" style={{ color: activeColors.text }}>
+            Profiles
+          </ThemedText>
+        </ThemedView>
+        <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+
+>>>>>>> Stashed changes
         <View style={styles.container}>
           <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
             {/* Individual Profiles */}
@@ -352,12 +341,7 @@ const petCurrentOptions = useMemo(() => {
                     <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 6 }]}>
                       Allergens: {pet.allergens?.length ? pet.allergens.join(', ') : 'None'}
                     </ThemedText>
-                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
-                      Intolerances: {pet.intolerances?.length ? pet.intolerances.join(', ') : 'None'}
-                    </ThemedText>
-                    <ThemedText style={[styles.cardDetails, { color: activeColors.secondaryText, marginTop: 2 }]}>
-                      Dietary: {pet.dietary?.length ? pet.dietary.join(', ') : 'None'}
-                    </ThemedText>
+                    {/* Intolerances/Dietary removed for pets */}
                   </View>
                 ))
               )}
@@ -388,12 +372,12 @@ const petCurrentOptions = useMemo(() => {
                     </View>
 
                     {Array.isArray(members) && members.length > 0 ? (
-                      members.map((memberName, idx) => (
+                      members.map((m, idx) => (
                         <ThemedText
                           key={`${gName}-${idx}`}
                           style={[styles.groupMemberText, { color: activeColors.secondaryText }]}
                         >
-                          • {memberName}
+                          • {m.name} {m.kind === 'pet' ? '🐾' : ''}
                         </ThemedText>
                       ))
                     ) : (
@@ -420,6 +404,11 @@ const petCurrentOptions = useMemo(() => {
         <Modal transparent animationType="fade" visible={profileTypeModalVisible} onRequestClose={() => setprofileTypeModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
+              <View style={styles.headerBackRow}>
+                <Pressable onPress={() => setprofileTypeModalVisible(false)}>
+                  <Text style={styles.headerBackText}>&lt; Back</Text>
+                </Pressable>
+              </View>
               <Text style={styles.modalTitle}>Create New</Text>
               <Pressable
                 style={styles.optionButton}
@@ -468,6 +457,26 @@ const petCurrentOptions = useMemo(() => {
                     </TouchableOpacity>
                   );
                 })}
+                <Text style={[styles.modalSubtitle, { marginTop: 12 }]}>Add Pet Profiles</Text>
+                </ScrollView>
+                <ScrollView style={{ maxHeight: 200 }}>
+                  {petProfiles.map((pet) => {
+                    const isSelected = groupPetMembers.includes(pet.name);
+                    return (
+                      <TouchableOpacity
+                        key={pet.name}
+                        style={styles.checkboxRow}
+                        onPress={() => {
+                          setGroupPetMembers((prev) =>
+                            isSelected ? prev.filter((n) => n !== pet.name) : [...prev, pet.name]
+                          );
+                        }}
+                      >
+                        <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
+                        <Text style={styles.checkboxLabel}>{pet.name} • {pet.petType}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
               </ScrollView>
 
               <View style={styles.modalActions}>
@@ -485,7 +494,18 @@ const petCurrentOptions = useMemo(() => {
         {/* Create Individual: ask for name */}
         <Modal transparent visible={profileNameModalVisible} animationType="slide" onRequestClose={() => setprofileNameModalVisible(false)}>
           <View style={styles.modalBackground}>
+            <View style={styles.headerBackRow}>
+              <Pressable onPress={() => setprofileNameModalVisible(false)}>
+                <Text style={styles.headerBackText}>&lt; Back</Text>
+              </Pressable>
+            </View>
             <View style={styles.modalView}>
+              <View style={styles.headerBackRow}>
+                <Pressable onPress={() => setprofileNameModalVisible(false)}>
+                  <Text style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</Text>
+                </Pressable>
+              </View>
+
               <Text style={styles.nameText}>What is their name?</Text>
               <TextInput style={styles.input} value={profileName} onChangeText={setprofileName} placeholder="Name" />
               <Pressable
@@ -502,6 +522,12 @@ const petCurrentOptions = useMemo(() => {
         <Modal transparent visible={profileprofileTypeModalVisible} animationType="fade" onRequestClose={() => setprofileprofileTypeModalVisible(false)}>
           <View style={styles.modalBackground}>
             <View style={styles.modalView}>
+              <View style={styles.headerBackRow}>
+                <Pressable onPress={() => setprofileprofileTypeModalVisible(false)}>
+                  <Text style={[styles.headerBackText, {color:'white'}]}>&lt; Back</Text>
+                </Pressable>
+              </View>
+
               <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
                 <Text style={styles.nameText}>What is {profileName}'s dietary profile?</Text>
               </Animated.View>
@@ -520,7 +546,6 @@ const petCurrentOptions = useMemo(() => {
 
               {activeTag && (
                 <Animated.View style={[styles.allergensMenuContainer, { opacity: menuOpacity }]}>
-                  {/* make the options list scrollable */}
                   <ScrollView style={{ maxHeight: 260 }}>
                     {currentOptions.map((o) => {
                       const isChecked =
@@ -535,7 +560,7 @@ const petCurrentOptions = useMemo(() => {
                     })}
                   </ScrollView>
 
-                  {/* pinned "Add custom" row */}
+                  {/* pinned "Add custom" row (still available for HUMAN profiles) */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
                     <TextInput
                       value={customInput}
@@ -566,8 +591,6 @@ const petCurrentOptions = useMemo(() => {
                 </Animated.View>
               )}
 
-
-
               <Pressable onPress={handleSaveProfile} style={[styles.secondaryButton, { marginTop: 12 }]}>
                 <Text style={styles.secondaryButtonText}>Save</Text>
               </Pressable>
@@ -582,6 +605,12 @@ const petCurrentOptions = useMemo(() => {
         <Modal transparent visible={petNameTypeModalVisible} animationType="slide" onRequestClose={() => setPetNameTypeModalVisible(false)}>
           <View style={styles.modalBackground}>
             <View style={styles.modalView}>
+              <View style={styles.headerBackRow}>
+                <Pressable onPress={() => setPetNameTypeModalVisible(false)}>
+                  <Text style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</Text>
+                </Pressable>
+              </View>
+
               <Text style={styles.nameText}>Pet info</Text>
               <TextInput style={styles.input} placeholder="Pet Name" value={petName} onChangeText={setPetName} />
               <Text style={[styles.modalSubtitle, { color: 'white', alignSelf: 'center' }]}>Type</Text>
@@ -603,7 +632,7 @@ const petCurrentOptions = useMemo(() => {
                 })}
               </View>
               <Pressable
-                onPress={() => { setPetTagsModalVisible(true); setPetNameTypeModalVisible(false); }}
+                onPress={() => { setPetTagsModalVisible(true); setPetNameTypeModalVisible(false); petMenuOpacity.setValue(1)}}
                 style={styles.secondaryButton}
               >
                 <Text style={styles.secondaryButtonText}>Continue</Text>
@@ -612,74 +641,39 @@ const petCurrentOptions = useMemo(() => {
           </View>
         </Modal>
 
-        {/* Create/Edit Pet: pick tags */}
+        {/* Create/Edit Pet: pick tags (ALLERGENS ONLY) */}
         <Modal transparent visible={petTagsModalVisible} animationType="fade" onRequestClose={() => setPetTagsModalVisible(false)}>
           <View style={styles.modalBackground}>
             <View style={styles.modalView}>
+              <View style={styles.headerBackRow}>
+                <Pressable onPress={() => setPetTagsModalVisible(false)}>
+                  <Text style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</Text>
+                </Pressable>
+              </View>
+
               <Animated.View style={{ transform: [{ translateY: petMoveMenu }] }}>
-                <Text style={styles.nameText}>What is {petName}'s dietary profile?</Text>
+                <Text style={styles.nameText}>What is {petName}'s allergen profile?</Text>
               </Animated.View>
 
-              <Animated.View style={[styles.tagRow, { transform: [{ translateY: petMoveMenu }] }]}>
-                <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('allergens')}>
-                  <Text style={styles.tagText}>Allergens</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('intolerances')}>
-                  <Text style={styles.tagText}>Intolerances</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.tagButton} onPress={() => openPetTagMenu('dietary')}>
-                  <Text style={styles.tagText}>Dietary</Text>
-                </TouchableOpacity>
+              {/* Allergens checklist (no tabs, no custom add) */}
+              <Animated.View style={[styles.allergensMenuContainer, { opacity: petMenuOpacity }]}>
+                <ScrollView style={{ maxHeight: 260 }}>
+                  {petAllergenOptions.map((o) => {
+                    const isChecked = petSelectedAllergens.includes(o);
+                    return (
+                      <TouchableOpacity key={o} onPress={() => {
+                        const next = isChecked
+                          ? petSelectedAllergens.filter(x => x !== o)
+                          : [...petSelectedAllergens, o];
+                        setPetSelectedAllergens(next);
+                      }} style={styles.checkboxRow}>
+                        <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
+                        <Text style={styles.checkboxLabel}>{o}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </Animated.View>
-
-            {activePetTag && (
-                <Animated.View style={[styles.allergensMenuContainer, { opacity: petMenuOpacity }]}>
-                  {/* scrollable list */}
-                  <ScrollView style={{ maxHeight: 260 }}>
-                    {petCurrentOptions.map((o) => {
-                      const isChecked =
-                        (activePetTag === 'allergens' ? petSelectedAllergens :
-                        activePetTag === 'intolerances' ? petSelectedIntolerances : petSelectedDietary).includes(o);
-                      return (
-                        <TouchableOpacity key={o} onPress={() => petToggleOption(o)} style={styles.checkboxRow}>
-                          <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                          <Text style={styles.checkboxLabel}>{o}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  {/* pinned "Add custom" row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-                    <TextInput
-                      value={petCustomInput}
-                      onChangeText={setPetCustomInput}
-                      placeholder={`Add custom ${activePetTag?.slice(0, -1) ?? 'item'}`}
-                      placeholderTextColor="#8a8a8a"
-                      style={[styles.input, { flex: 1, marginBottom: 0 , fontSize:18}]}
-                    />
-                    <Pressable
-                      onPress={() => {
-                        const v = petCustomInput.trim();
-                        if (!v) return;
-                        if (petCurrentOptions.some(x => x.toLowerCase() === v.toLowerCase())) {
-                          setPetCustomInput("");
-                          return;
-                        }
-                        if (activePetTag === 'allergens') setPetSelectedAllergens(prev => [...prev, v]);
-                        else if (activePetTag === 'intolerances') setPetSelectedIntolerances(prev => [...prev, v]);
-                        else if (activePetTag === 'dietary') setPetSelectedDietary(prev => [...prev, v]);
-                        setPetCustomInput("");
-                      }}
-                      style={[styles.secondaryButton, { marginLeft: 8 }]}
-                    >
-                      <Text style={styles.secondaryButtonText}>Add</Text>
-                    </Pressable>
-                  </View>
-                </Animated.View>
-              )}
-
-
               <Pressable onPress={handleSavePet} style={[styles.secondaryButton, { marginTop: 12 }]}>
                 <Text style={styles.secondaryButtonText}>Save Pet</Text>
               </Pressable>
@@ -696,7 +690,7 @@ const petCurrentOptions = useMemo(() => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  gradient: {flex: 1,},
+  gradient: { flex: 1 },
   titleContainer: { paddingTop: 60, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, width: '100%' },
 
@@ -749,14 +743,21 @@ const styles = StyleSheet.create({
 
   secondaryButton: { backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center' },
   secondaryButtonText: { color: '#000', fontWeight: '600' },
-  saveButton: {
-  backgroundColor: '#4CAF50',
-  padding: 10,
-  borderRadius: 6,
-  },
+  saveButton: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 6 },
   cancelButton: { padding: 10 },
 
   // Pet UI
   pill: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20 },
   modalSubtitle: { fontSize: 14, marginTop: 6, marginBottom: 8 },
+
+  // Back buttons (absolute)
+  headerBackRow: {
+    position: "absolute",
+    left: 16,
+    top: -50,
+  },
+  headerBackText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
 });

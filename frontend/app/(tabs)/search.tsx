@@ -17,7 +17,9 @@ import { db, auth } from "@/db/firebaseConfig";
 import {
   compareProductToProfile,
   buildProductFromFirestoreDoc,
-  type ProductDoc
+  type ProductDoc,
+  compareProductAgainstPetProfile,
+  type PetProfileInput
 } from '@/db/compare';
 
 /** ---------- existing helpers (unchanged) ---------- */
@@ -62,6 +64,48 @@ const digitsOnly = (s: string) => (s ?? "").replace(/\D/g,"");
 function barcodeVariants(raw: string): string[] { const d=digitsOnly(raw); const out=new Set<string>(); if(!d) return []; out.add(d); if(d.length===12) out.add("0"+d); else if(d.length===13&&d.startsWith("0")) out.add(d.slice(1)); else if(d.length>13){ out.add(d.slice(0,13)); out.add(d.slice(0,12)); } return Array.from(out); }
 function matchesBarcodeClientSide(itemBarcode: string|undefined, qDigits: string): boolean { const id=digitsOnly(itemBarcode??""); if(!id||!qDigits) return false; if(id===qDigits) return true; if(qDigits.length>=8&&id.startsWith(qDigits)) return true; return false; }
 
+function summarizePetCompare(
+  displayName: string,
+  result: ReturnType<typeof compareProductAgainstPetProfile>,
+  profileName: string
+) {
+  if (result.matches.length === 0) return '';
+  const parts = result.matches.map(
+    m => `${m.allergen} via ${m.matchedBy}${m.evidence ? ` (“${m.evidence}”)` : ''}`
+  );
+  return `${parts.join('; ')} [Profile: ${profileName}]`;
+}
+
+const runCompareAndHistoryPet = async (
+  displayName: string,
+  product: ProductDoc,
+  warningsString: string,
+  petProfile: { name: string; data: { allergens: string[] } }
+) => {
+  const pet: PetProfileInput = {
+    name: petProfile.name,
+    petType: 'Unknown',
+    allergens: Array.isArray(petProfile.data?.allergens) ? petProfile.data.allergens : [],
+  };
+
+  const result = compareProductAgainstPetProfile(
+    {
+      barcode: product.barcode,
+      brand_name: product.brand_name,
+      food_name: product.food_name,
+      ingredients: product.ingredientsRaw,
+      warning: product.warningRaw,
+    },
+    pet
+  );
+
+  const label = summarizePetCompare(displayName, result, petProfile.name);
+
+  try { await saveToHistory(displayName, warningsString, label); }
+  catch (e) { console.error('[search] Error saving pet compare to history:', e); }
+};
+
+
 /** ---------- Filters (unchanged) ---------- */
 type AllergenFilters = { peanut: boolean; soy: boolean };
 type FilterState = { allergens: AllergenFilters; customTerms: string[]; };
@@ -88,6 +132,51 @@ type ProfileChoice = {
   data: { allergens: string[]; intolerances: string[]; dietary: string[] };
 };
 
+type GroupChoice = {
+  name: string;
+  members: any[]; // legacy: string[] of human names OR typed: [{name, kind}]
+};
+
+type GroupMemberTyped = { name: string; kind: 'human' | 'pet' };
+
+/** Run a mixed (human + pet) compare for a group */
+async function runCompareGroupMixed(
+  displayName: string,
+  product: ProductDoc,
+  warningsString: string,
+  groupName: string,
+  groupMembers: GroupMemberTyped[],
+  allHumanProfiles: { name: string; data: ProfileChoice['data'] }[],
+  allPetProfiles: { name: string; data: { allergens: string[] } }[],
+  runCompareAndHistory: (
+    displayName: string,
+    product: ProductDoc,
+    warningsString: string,
+    profileData: ProfileChoice['data'] | null,
+    profileName: string | null
+  ) => Promise<void>
+) {
+  const humanNames = groupMembers.filter(m => m.kind === 'human').map(m => m.name);
+  const petNames   = groupMembers.filter(m => m.kind === 'pet').map(m => m.name);
+
+  const humanProfiles = allHumanProfiles.filter(p => humanNames.includes(p.name));
+  const petProfiles   = allPetProfiles.filter(p => petNames.includes(p.name));
+
+  // Humans: run compare per profile (simple & compatible with your current compareProductToProfile usage)
+  for (const hp of humanProfiles) {
+    await runCompareAndHistory(displayName, product, warningsString, hp.data, hp.name);
+  }
+
+  // Pets: reuse your pet helper
+  for (const pp of petProfiles) {
+    await runCompareAndHistoryPet(displayName, product, warningsString, {
+      name: pp.name,
+      data: { allergens: pp.data.allergens ?? [] },
+    });
+  }
+}
+
+
 export default function AutocompleteScreen() {
   const { isDarkMode, colors } = useThemedColor();
   const activeColors = isDarkMode ? colors.dark : colors.light;
@@ -101,6 +190,9 @@ export default function AutocompleteScreen() {
 
   // Profiles (live)
   const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
+  const [pets, setPets] = useState<ProfileChoice[]>([]);
+  const [groups, setGroups] = useState<GroupChoice[]>([]);
+  const [selectedKind, setSelectedKind] = useState<'human'|'pet'|'group'|null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingCompare, setPendingCompare] = useState<{
     product: ProductDoc;
@@ -137,6 +229,62 @@ export default function AutocompleteScreen() {
     });
     return unsub;
   }, []);
+
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    const ref = collection(db, 'users', uid, 'pets');
+    const unsub = onSnapshot(ref, (snap) => {
+      const arr: ProfileChoice[] = [];
+      let idx = 1;
+      snap.forEach(docSnap => {
+        const d = docSnap.data() as any;
+        arr.push({
+          id: docSnap.id,
+          name: d.name || `Pet ${idx++}`,
+          data: {
+            allergens: Array.isArray(d.allergens) ? d.allergens : [],
+            intolerances: [],   // no longer used for pets
+            dietary: [],        // no longer used for pets
+          },
+        });
+      });
+      setPets(arr);
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const ref = collection(db, 'users', uid, 'groups');
+  const unsub = onSnapshot(ref, (snap) => {
+    const arr: GroupChoice[] = [];
+    snap.forEach(d => {
+      const data = d.data() as any;
+      const name = data.name ?? d.id;
+
+      // Normalize members: legacy strings → human, typed keeps kind
+      let members: GroupMemberTyped[] = [];
+      if (Array.isArray(data.members)) {
+        if (data.members.length && typeof data.members[0] === 'string') {
+          members = (data.members as string[]).map(n => ({ name: n, kind: 'human' as const }));
+        } else {
+          members = data.members.map((m: any) => ({
+            name: String(m?.name ?? ''),
+            kind: m?.kind === 'pet' ? 'pet' : 'human',
+          }));
+        }
+      }
+      arr.push({ name, members });
+    });
+    arr.sort((a, b) => a.name.localeCompare(b.name));
+    setGroups(arr);
+  });
+  return unsub;
+}, []);
+
+
 
   /** Saved filter helpers (unchanged UI handlers) */
   const addCustomTerm = () => {
@@ -179,19 +327,63 @@ export default function AutocompleteScreen() {
     }
   };
 
-  const ensureProfileThenCompare = async (
-    displayName: string,
-    product: ProductDoc,
-    warningsString: string
-  ) => {
-    if (profiles.length <= 1) {
-      const chosen = profiles[0] ?? null;
-      await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
-    } else {
+const ensureProfileThenCompare = async (
+  displayName: string,
+  product: ProductDoc,
+  warningsString: string
+) => {
+  const poolCount = profiles.length + pets.length + groups.length;
+
+  if (poolCount <= 1) {
+    const chosen =
+      profiles[0] ??
+      pets[0] ??
+      (groups[0] ? ({ kind: 'group', ...groups[0] } as any) : null);
+
+    if (!chosen) {
       setPendingCompare({ displayName, product, warningsString });
       setPickerVisible(true);
+      return;
     }
-  };
+
+    // If the single choice is a group, run mixed compare
+    if ((chosen as any).kind === 'group') {
+      const g = chosen as unknown as GroupChoice;
+
+      // Build lookup lists from current state
+      const humanList = profiles.map(p => ({ name: p.name, data: p.data }));
+      const petList   = pets.map(p => ({ name: p.name, data: { allergens: p.data.allergens ?? [] } }));
+
+      await runCompareGroupMixed(
+        displayName,
+        product,
+        warningsString,
+        g.name,
+        g.members as GroupMemberTyped[],
+        humanList,
+        petList,
+        runCompareAndHistory
+      );
+      return;
+    }
+
+    // Single non-group: use pet or human path
+    if (pets.find(p => p.id === (chosen as any).id)) {
+      await runCompareAndHistoryPet(displayName, product, warningsString, {
+        name: (chosen as any).name,
+        data: { allergens: (chosen as any).data.allergens ?? [] },
+      });
+    } else {
+      await runCompareAndHistory(displayName, product, warningsString, (chosen as any).data, (chosen as any).name);
+    }
+    return;
+  }
+
+  // Multiple choices → show picker
+  setPendingCompare({ displayName, product, warningsString });
+  setPickerVisible(true);
+};
+
 
   /** ----------- your (existing) search pipeline below, unchanged except where noted ----------- */
 
@@ -687,6 +879,58 @@ export default function AutocompleteScreen() {
                     <ThemedText style={styles.ppItemText}>{p.name}</ThemedText>
                   </TouchableOpacity>
                 ))}
+              <Text style={{ fontWeight: '700', marginTop: 12, marginBottom: 6 }}>Pet Profiles:</Text>
+              {pets.map((pet, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={styles.ppItem}
+                  onPress={async () => {
+                    setPickerVisible(false);
+                    if (pendingCompare) {
+                      const { displayName, product, warningsString } = pendingCompare;
+                      setPendingCompare(null);
+                      await runCompareAndHistoryPet(displayName, product, warningsString, { name: pet.name, data: { allergens: pet.data.allergens ?? [] } });
+                    }
+                  }}
+                >
+                  <Text style={styles.ppItemText}>{pet.name}</Text>
+                </TouchableOpacity>
+              ))}
+              <Text style={{ fontWeight: '700', marginTop: 12, marginBottom: 6 }}>Groups:</Text>
+                {groups.length === 0 ? (
+                  <Text style={{ color: '#666', fontStyle: 'italic', marginBottom: 6 }}>No groups</Text>
+                ) : (
+                  groups.map((g, i) => (
+                    <TouchableOpacity
+                      key={`g-${i}`}
+                      style={styles.ppItem}
+                      onPress={async () => {
+                        setPickerVisible(false);
+                        if (pendingCompare) {
+                          const { displayName, product, warningsString } = pendingCompare;
+                          setPendingCompare(null);
+
+                          const humanList = profiles.map(p => ({ name: p.name, data: p.data }));
+                          const petList   = pets.map(p => ({ name: p.name, data: { allergens: p.data.allergens ?? [] } }));
+
+                          await runCompareGroupMixed(
+                            displayName,
+                            product,
+                            warningsString,
+                            g.name,
+                            (g.members ?? []) as GroupMemberTyped[],
+                            humanList,
+                            petList,
+                            runCompareAndHistory
+                          );
+                        }
+                      }}
+                    >
+                      <Text style={styles.ppItemText}>{g.name}</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
+
               </ScrollView>
 
               <View style={styles.modalActions}>

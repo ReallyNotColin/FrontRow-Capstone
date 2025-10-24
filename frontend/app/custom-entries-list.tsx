@@ -39,7 +39,7 @@ export default function CustomEntriesListScreen() {
           style: 'destructive',
           onPress: async () => {
             await deleteCustomEntry(id);
-            await loadEntries(); // Refresh the list
+            await loadEntries();
           },
         },
       ]
@@ -47,8 +47,13 @@ export default function CustomEntriesListScreen() {
   };
 
   const handleEdit = (entry) => {
-    navigation.navigate('create-custom-entry', { entry });
-   };
+    navigation.navigate('create-custom-entry' as never, { entry } as never);
+  };
+
+  const goBackToSearch = () => {
+    if (navigation.canGoBack && navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('search' as never);
+  };
 
     const renderItem = ({ item }) => (
     <View style={[styles.entryCard, { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider }]}>
@@ -76,6 +81,7 @@ export default function CustomEntriesListScreen() {
   );
 
   return (
+<<<<<<< Updated upstream
     <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <ThemedView style={styles.container}>
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
@@ -99,6 +105,23 @@ export default function CustomEntriesListScreen() {
         />
       </ThemedView>
     </LinearGradient>
+=======
+    <View style={styles.container}>
+      {/* NEW: Back to Search */}
+      <Pressable onPress={goBackToSearch} style={[styles.backButton, { alignSelf: 'flex-start', marginTop: 40 }]}>
+        <Text style={styles.backButtonText}>{'\u2039'} Back </Text>
+      </Pressable>
+
+      <Text style={styles.title}>Your Custom Entries</Text>
+
+      <FlatList
+        data={entries}
+        keyExtractor={(item) => `${item.id}`}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+      />
+    </View>
+>>>>>>> Stashed changes
   );
 }
 
@@ -107,6 +130,7 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
+<<<<<<< Updated upstream
   container: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -120,6 +144,13 @@ const styles = StyleSheet.create({
     height: 2,
     width: '100%',
     marginBottom: 16,
+=======
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    marginTop: 12,
+>>>>>>> Stashed changes
   },
   list: {
     paddingHorizontal: 24,
@@ -157,4 +188,21 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
   },
+<<<<<<< Updated upstream
 });
+=======
+
+  // already in your file, reused:
+  backButton: {
+    marginTop: 20,
+    padding: 6,
+    backgroundColor: '#007BFF',
+    borderRadius: 3,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 12,
+  },
+});
+>>>>>>> Stashed changes

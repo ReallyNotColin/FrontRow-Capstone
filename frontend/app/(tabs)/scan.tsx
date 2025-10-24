@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/db/firebaseConfig';
 
-import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc } from '@/db/compare';
+import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc, compareProductAgainstPetProfile, type PetProfileInput } from '@/db/compare';
 
 type ProfileChoice = {
   id: string;
@@ -65,7 +65,17 @@ function convertUPCEtoUPCA(upce: string): string {
   const checkDigit = calculateCheckDigit(upca11);
   return upca11 + checkDigit;
 }
-
+function summarizePetCompare(
+  displayName: string,
+  result: ReturnType<typeof compareProductAgainstPetProfile>,
+  profileName: string
+) {
+  if (result.matches.length === 0) return '';
+  const parts = result.matches.map(
+    m => `${m.allergen} via ${m.matchedBy}${m.evidence ? ` (“${m.evidence}”)` : ''}`
+  );
+  return `${parts.join('; ')} [Profile: ${profileName}]`;
+}
 const parseWarning = (warning?: string) => {
   if (!warning) return [];
   return warning
@@ -258,6 +268,72 @@ export default function ScanScreen() {
     setModalVisible(true);
   };
 
+  const runCompareAndHistoryPet = async (
+  displayName: string,
+  product: ProductDoc,
+  warningsString: string,
+  petProfile: { name: string; data: { allergens: string[] } }
+) => {
+  // Build the shape expected by the pet compare
+  const pet: PetProfileInput = {
+    name: petProfile.name,
+    petType: 'Unknown', // optional, not used by compare
+    allergens: Array.isArray(petProfile.data?.allergens) ? petProfile.data.allergens : [],
+  };
+
+  const result = compareProductAgainstPetProfile(
+    {
+      barcode: product.barcode,
+      brand_name: product.brand_name,
+      food_name: product.food_name,
+      ingredients: product.ingredientsRaw, // buildProductFromFirestoreDoc already normalizes
+      warning: product.warningRaw,
+    },
+    pet
+  );
+
+  const label = summarizePetCompare(displayName, result, petProfile.name);
+
+  try { await saveToHistory(displayName, warningsString, label); }
+  catch (e) { console.error('[scan] Error saving pet compare to history:', e); }
+
+  try { await saveToResults(displayName, warningsString, label); }
+  catch (e) { console.error('[scan] Error saving pet compare to results:', e); }
+
+  setCompareLines(label ? label.split('; ') : []);
+  setModalVisible(true);
+};
+
+type GroupMemberTyped = { name: string; kind: 'human' | 'pet' };
+
+async function runCompareGroupMixed(
+  displayName: string,
+  product: ProductDoc,
+  warningsString: string,
+  groupMembers: GroupMemberTyped[],
+  allHumanProfiles: { name: string; data: any }[],
+  allPetProfiles: { name: string; data: { allergens: string[] } }[],
+  runHuman: (displayName: string, product: ProductDoc, warningsString: string, members: any[], groupName: string | null) => Promise<void>,
+  runPetOne: (displayName: string, product: ProductDoc, warningsString: string, pet: { name: string; data: { allergens: string[] } }) => Promise<void>
+) {
+  const humanNames = groupMembers.filter(m => m.kind === 'human').map(m => m.name);
+  const petNames   = groupMembers.filter(m => m.kind === 'pet').map(m => m.name);
+
+  const humanProfiles = allHumanProfiles.filter(p => humanNames.includes(p.name));
+  const petProfiles   = allPetProfiles.filter(p => petNames.includes(p.name));
+
+  // 1) Humans: single combined compare (your existing multi-member logic)
+  if (humanProfiles.length > 0) {
+    await runHuman(displayName, product, warningsString, humanProfiles, null);
+  }
+
+  // 2) Pets: run per pet profile and append their summaries/history
+  for (const pet of petProfiles) {
+    await runPetOne(displayName, product, warningsString, pet);
+  }
+}
+
+
   const ensureProfileThenCompare = async (displayName: string, product: ProductDoc, warningsString: string) => {
     if (selectedProfile) {
       if (selectedProfile.type === 'profile') {
@@ -265,20 +341,57 @@ export default function ScanScreen() {
         await runCompareAndHistory(displayName, product, warningsString, profile.data, profile.name);
       } else if (selectedProfile.type === 'pet') {
         const pet = selectedProfile.data as ProfileChoice;
-        await runCompareAndHistory(displayName, product, warningsString, pet.data, pet.name);
+        await runCompareAndHistoryPet(displayName, product, warningsString, { name: pet.name, data: { allergens: pet.data.allergens ?? [] } });
       } else {
+        // GROUP: mixed members
         const group = selectedProfile.data as GroupChoice;
-        const memberProfiles = group.members
-          .map(name => profiles.find(profile => profile.name === name))
-          .filter(Boolean) as { name: string; data: any }[];
-        await runCompareAndHistory(displayName, product, warningsString, memberProfiles, null);
+        const membersTyped = (group.members as any[]).map((m) =>
+          typeof m === 'string' ? ({ name: m, kind: 'human' }) : m
+        ) as { name: string; kind: 'human'|'pet' }[];
+
+        // Build lookups from current in-memory lists
+        const humanList = profiles.map(p => ({ name: p.name, data: p.data }));
+        const petList   = pets.map(p => ({ name: p.name, data: { allergens: p.data.allergens ?? [] } }));
+
+        await runCompareGroupMixed(
+          displayName,
+          product,
+          warningsString,
+          membersTyped,
+          humanList,
+          petList,
+          // human
+          async (dn, prod, warn, memberProfiles, groupName) => {
+            await runCompareAndHistory(dn, prod, warn, memberProfiles, group.name);
+          },
+          // pet one-by-one
+          async (dn, prod, warn, pet) => {
+            await runCompareAndHistoryPet(dn, prod, warn, pet);
+          }
+        );
       }
+
       return;
     }
     
     if (profiles.length + pets.length <= 1) {
       const chosen = profiles[0] ?? pets[0] ?? null;
-      await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
+      //await runCompareAndHistory(displayName, product, warningsString, chosen?.data ?? null, chosen?.name ?? null);
+      if (!chosen) {
+       setPendingProduct(null);
+       setPickerVisible(true);
+      return;
+     }
+     if ((chosen as ProfileChoice) && pets.find(p => p.id === chosen!.id)) {
+       await runCompareAndHistoryPet(
+         displayName,
+         product,
+         warningsString,
+         { name: chosen!.name, data: { allergens: (chosen as ProfileChoice).data.allergens ?? [] } }
+       );
+     } else {
+       await runCompareAndHistory(displayName, product, warningsString, (chosen as ProfileChoice).data, chosen!.name);
+     }
     } else {
       setPendingProduct({ displayName, product, warningsString });
       setPickerVisible(true);
@@ -500,7 +613,7 @@ export default function ScanScreen() {
                       if (pendingProduct) {
                         const { displayName, product, warningsString } = pendingProduct;
                         setPendingProduct(null);
-                        await runCompareAndHistory(displayName, product, warningsString, pet.data, pet.name);
+                        await runCompareAndHistoryPet(displayName, product, warningsString, { name: pet.name, data: { allergens: pet.data.allergens ?? [] } });
                       }
                     }}
                   >

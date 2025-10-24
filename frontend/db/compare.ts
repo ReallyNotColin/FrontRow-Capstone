@@ -214,3 +214,141 @@ export function compareProductToProfile(product: ProductDoc, profile: ProfileDat
     },
   };
 }
+
+// ---------------------------------------------------------
+// PET-ONLY COMPARISON (allergens only)
+// ---------------------------------------------------------
+
+export type PetProfileInput = {
+  name: string;              // pet profile name
+  petType: string;           // "Dog" | "Cat" | ...
+  allergens: string[];       // e.g., ["Beef","Dairy"]
+};
+
+// Minimal product shape you already store in /Products
+export type ComparedProduct = {
+  barcode?: string | null;
+  brand_name?: string | null;
+  food_name?: string | null;
+  ingredients?: string | null;  // raw string
+  warning?: string | null;      // e.g. "Wheat, Egg, Soy, Milk"
+};
+
+// Result for UI
+export type PetCompareHit = {
+  allergen: string;           // canonical allergen selected in profile
+  matchedBy: "ingredients" | "warning";
+  evidence: string;           // the exact token we found that triggered the match
+  index: number;              // index of match in the string (for optional highlighting)
+};
+
+export type PetCompareResult = {
+  profileName: string;
+  productName: string;
+  productBarcode?: string;
+  isUnsafe: boolean;          // true if any allergen matched
+  matches: PetCompareHit[];
+  scannedAt: number;          // Date.now()
+};
+
+// Canonical allergens & aliases (lowercased). Feel free to extend.
+const petAllergenLexicon: Record<string, string[]> = {
+  beef: ["beef", "bovine"],
+  chicken: ["chicken", "poultry"],
+  lamb: ["lamb", "mutton", "ovine"],
+  dairy: [
+    "milk", "butter", "cheese", "cream", "whey", "casein", "caseinate", "ghee",
+    "lactose", // include common dairy terms
+    "yogurt", "curd"
+  ],
+  eggs: ["egg", "albumen", "ovalbumin", "ovomucoid", "lysozyme"],
+  wheat: [
+    "wheat", "wheat flour", "semolina", "durum", "spelt", "einkorn", "emmer",
+    "farina", "farro", "graham"
+  ],
+  corn: ["corn", "maize", "masa", "cornmeal", "corn starch", "cornstarch"],
+  soy: ["soy", "soya", "soybean", "soy lecithin", "edamame", "tofu", "tempeh"],
+  fish: [
+    "fish", "cod", "salmon", "tuna", "haddock", "pollock", "tilapia", "sardine",
+    "anchovy", "trout", "mackerel", "catfish"
+  ],
+};
+
+// normalize → lowercase, collapse spaces
+function norm(s?: string | null): string {
+  return (s ?? "").toString().toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function findAllIndices(haystack: string, needle: string): number[] {
+  const out: number[] = [];
+  if (!needle) return out;
+  let idx = haystack.indexOf(needle);
+  while (idx !== -1) {
+    out.push(idx);
+    idx = haystack.indexOf(needle, idx + needle.length);
+  }
+  return out;
+}
+
+/**
+ * Compare a product against a pet profile (allergens only).
+ * - Looks in both ingredients and warning fields.
+ * - Uses an alias lexicon so “milk/whey/casein” satisfy “Dairy”, “poultry” satisfies “Chicken”, etc.
+ */
+export function compareProductAgainstPetProfile(
+  product: ComparedProduct,
+  pet: PetProfileInput
+): PetCompareResult {
+  const ingredients = norm(product.ingredients);
+  const warning = norm(product.warning);
+  const productName = product.food_name ?? product.brand_name ?? "(unknown)";
+
+  const matches: PetCompareHit[] = [];
+
+  // Build a quick set of canonical allergens from the profile, normalized
+  const selected = new Set(
+    (pet.allergens ?? []).map(a => a.toString().trim().toLowerCase())
+  );
+
+  // For each selected allergen, test all its aliases against both strings
+  for (const canonical of selected) {
+    const aliases = petAllergenLexicon[canonical] ?? [canonical];
+
+    for (const alias of aliases) {
+      // ingredients
+      if (ingredients) {
+        const idxs = findAllIndices(ingredients, alias);
+        for (const i of idxs) {
+          matches.push({ allergen: canonical, matchedBy: "ingredients", evidence: alias, index: i });
+        }
+      }
+      // warning
+      if (warning) {
+        const idxs = findAllIndices(warning, alias);
+        for (const i of idxs) {
+          matches.push({ allergen: canonical, matchedBy: "warning", evidence: alias, index: i });
+        }
+      }
+    }
+  }
+
+  // Deduplicate identical hits (same allergen + matchedBy + evidence + index)
+  const unique: PetCompareHit[] = [];
+  const seen = new Set<string>();
+  for (const m of matches) {
+    const key = `${m.allergen}|${m.matchedBy}|${m.evidence}|${m.index}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(m);
+    }
+  }
+
+  return {
+    profileName: pet.name,
+    productName,
+    productBarcode: product.barcode ?? undefined,
+    isUnsafe: unique.length > 0,
+    matches: unique,
+    scannedAt: Date.now(),
+  };
+}
