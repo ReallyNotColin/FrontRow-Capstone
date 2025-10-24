@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, Pressable, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, TextInput, Pressable, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SectionedMultiSelect from 'react-native-sectioned-multi-select';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -30,6 +30,7 @@ const allergenOptions = [
   { id: 'MSG', name: 'MSG' },
 ];
 
+// ---------- barcode helpers ----------
 // ---------- barcode helpers ----------
 const onlyDigits = (s: string) => (s || '').replace(/\D+/g, '');
 
@@ -137,7 +138,7 @@ function normalizeToEan13(input: string): { ean13: string, variant: 'EAN-13'|'UP
 export default function CreateCustomEntryScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const editingEntry: any = (route as any).params?.entry;
+  const editingEntry: any = ((route as any) as any).params?.entry;
 
   const { isDarkMode, colors } = useThemedColor();
   const activeColors = isDarkMode ? colors.dark : colors.light;
@@ -223,8 +224,13 @@ export default function CreateCustomEntryScreen() {
   };
 
   return (
-<<<<<<< Updated upstream
-  <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+  <LinearGradient
+    colors={activeColors.gradientBackground}
+    style={styles.gradient}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    locations={[0, 0.4, 0.6, 1]}
+  >
     <ThemedView style={[styles.container]}>
       <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -236,21 +242,25 @@ export default function CreateCustomEntryScreen() {
           </ThemedText>
         </View>
       </ThemedView>
+
       <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-      
+
       <ThemedView style={styles.innerContainer}>
         <TextInput
           placeholder="Food name"
           placeholderTextColor={activeColors.secondaryText}
           value={foodName}
           onChangeText={setFoodName}
-          style={[styles.input, { 
-            color: activeColors.text, 
-            borderColor: activeColors.divider, 
-            backgroundColor: activeColors.backgroundTitle,
-            fontSize: 19,
-            padding: 12,
-          }]}
+          style={[
+            styles.input,
+            {
+              color: activeColors.text,
+              borderColor: activeColors.divider,
+              backgroundColor: activeColors.backgroundTitle,
+              fontSize: 19,
+              padding: 12,
+            },
+          ]}
         />
 
         <TextInput
@@ -259,13 +269,16 @@ export default function CreateCustomEntryScreen() {
           value={barcode}
           onChangeText={setBarcode}
           keyboardType="number-pad"
-          style={[styles.input, { 
-            color: activeColors.text, 
-            borderColor: activeColors.divider, 
-            backgroundColor: activeColors.backgroundTitle,
-            fontSize: 19,
-            padding: 12,
-          }]}
+          style={[
+            styles.input,
+            {
+              color: activeColors.text,
+              borderColor: activeColors.divider,
+              backgroundColor: activeColors.backgroundTitle,
+              fontSize: 19,
+              padding: 12,
+            },
+          ]}
         />
 
         <SectionedMultiSelect
@@ -277,64 +290,36 @@ export default function CreateCustomEntryScreen() {
           confirmText="Confirm"
           showDropDowns={false}
           IconRenderer={Icon}
-          type = "default"
-          styles={{ 
+          type="default"
+          styles={{
             chipContainer: { backgroundColor: '#ff8080' },
-            chipText: { color: activeColors.text }, 
+            chipText: { color: activeColors.text },
             selectToggleText: { color: activeColors.text },
             itemText: { color: activeColors.text },
             subItemText: { color: activeColors.text },
             confirmText: { color: activeColors.text },
             searchTextInput: { color: activeColors.text },
-            selectedItemText: { color: activeColors.text }, 
+            selectedItemText: { color: activeColors.text },
           }}
         />
-=======
-    <View style={styles.container}>
-      {/* NEW: Back to Search */}
-      <Pressable onPress={goBackToSearch} style={[styles.backButton, { alignSelf: 'flex-start', marginTop: 40 }]}>
-        <Text style={styles.backButtonText}>{'\u2039'} Back </Text>
-      </Pressable>
 
-      <Text style={styles.title}>{editingEntry ? 'Edit' : 'Create'} Custom Entry</Text>
+        {/* Actions */}
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+          <Pressable onPress={goBackToSearch} style={[styles.backButton, { alignSelf: 'flex-start' }]}>
+            <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
+          </Pressable>
 
-      <TextInput
-        placeholder="Food name"
-        value={foodName}
-        onChangeText={setFoodName}
-        style={styles.input}
-      />
-
-      <TextInput
-        placeholder="Barcode (EAN-13 / UPC-A / UPC-E)"
-        value={barcode}
-        onChangeText={setBarcode}
-        keyboardType="number-pad"
-        style={styles.input}
-      />
-
-      <SectionedMultiSelect
-        items={allergenOptions}
-        uniqueKey="id"
-        selectText="Select Harmful Ingredients"
-        onSelectedItemsChange={(items) => setSelectedAllergens(items as string[])}
-        selectedItems={selectedAllergens}
-        confirmText="Confirm"
-        showDropDowns={false}
-        IconRenderer={Icon}
-        styles={{ chipContainer: { backgroundColor: '#ff8080' } }}
-      />
->>>>>>> Stashed changes
-
-        <Pressable style={styles.saveButton} onPress={handleSave}>
-          <ThemedText style={styles.buttonText}>
-            {editingEntry ? 'Update Entry' : 'Save Entry'}
-          </ThemedText>
-        </Pressable>
+          <Pressable style={styles.saveButton} onPress={handleSave}>
+            <ThemedText style={styles.buttonText}>
+              {editingEntry ? 'Update Entry' : 'Save Entry'}
+            </ThemedText>
+          </Pressable>
+        </View>
       </ThemedView>
     </ThemedView>
   </LinearGradient>
 );
+
 }
 
 const styles = StyleSheet.create({
@@ -345,7 +330,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-<<<<<<< Updated upstream
   titleContainer: {
     paddingTop: 70,
     paddingBottom: 10,
@@ -358,8 +342,8 @@ const styles = StyleSheet.create({
   innerContainer: {
     padding: 24,
     backgroundColor: 'transparent',
-=======
   // NEW: back button
+  },
   backButton: {
     marginTop: 20,
     padding: 6,
@@ -377,7 +361,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 20,
     paddingTop: 20,
->>>>>>> Stashed changes
   },
   input: {
     borderWidth: 1,

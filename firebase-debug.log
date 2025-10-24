@@ -1,0 +1,143 @@
+[debug] [2025-10-24T06:04:20.678Z] ----------------------------------------------------------------------
+[debug] [2025-10-24T06:04:20.681Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\kylet\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js emulators:start --project nibblewise-78537 --config .\firebase.json
+[debug] [2025-10-24T06:04:20.681Z] CLI Version:   14.22.0
+[debug] [2025-10-24T06:04:20.681Z] Platform:      win32
+[debug] [2025-10-24T06:04:20.681Z] Node Version:  v24.8.0
+[debug] [2025-10-24T06:04:20.681Z] Time:          Fri Oct 24 2025 01:04:20 GMT-0500 (Central Daylight Time)
+[debug] [2025-10-24T06:04:20.682Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-10-24T06:04:20.684Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2025-10-24T06:04:20.904Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-10-24T06:04:20.905Z] > authorizing via signed-in user (kyletmaxx@gmail.com)
+[debug] [2025-10-24T06:04:20.978Z] java version "18.0.2.1" 2022-08-18
+
+[debug] [2025-10-24T06:04:20.982Z] Java(TM) SE Runtime Environment (build 18.0.2.1+1-1)
+Java HotSpot(TM) 64-Bit Server VM (build 18.0.2.1+1-1, mixed mode, sharing)
+
+[debug] [2025-10-24T06:04:20.994Z] Parsed Java major version: 18
+[warn] !!  emulators: firebase-tools will drop support for Java version < 21 soon in firebase-tools@15. Please install a JDK at version 21 or above to get a compatible runtime. 
+[info] i  emulators: Starting emulators: functions, firestore, extensions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions, firestore, extensions"}}
+[debug] [2025-10-24T06:04:20.997Z] Checked if tokens are valid: false, expires at: 1760738672893
+[debug] [2025-10-24T06:04:20.997Z] Checked if tokens are valid: false, expires at: 1760738672893
+[debug] [2025-10-24T06:04:20.997Z] > refreshing access token with scopes: []
+[debug] [2025-10-24T06:04:20.998Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-10-24T06:04:20.998Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-10-24T06:04:21.043Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2025-10-24T06:04:21.043Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2025-10-24T06:04:21.169Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-10-24T06:04:21.169Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-10-24T06:04:21.178Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/nibblewise-78537 [none]
+[debug] [2025-10-24T06:04:21.422Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/nibblewise-78537 200
+[debug] [2025-10-24T06:04:21.422Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/nibblewise-78537 {"projectNumber":"645345181836","projectId":"nibblewise-78537","lifecycleState":"ACTIVE","name":"NibbleWise","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-08-12T15:02:48.562544Z"}
+[debug] [2025-10-24T06:04:21.434Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-24T06:04:21.434Z] [firestore] Firestore Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-24T06:04:21.434Z] [firestore.websocket] websocket server for firestore only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-24T06:04:21.434Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-10-24T06:04:21.439Z] Emulator locator file path: C:\Users\kylet\AppData\Local\Temp\hub-nibblewise-78537.json
+[debug] [2025-10-24T06:04:21.439Z] [hub] writing locator at C:\Users\kylet\AppData\Local\Temp\hub-nibblewise-78537.json
+[debug] [2025-10-24T06:04:21.445Z] [Extensions] Started Extensions emulator, this is a noop.
+[debug] [2025-10-24T06:04:21.450Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-24T06:04:21.451Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-24T06:04:21.451Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-10-24T06:04:21.451Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"firestore":[{"address":"127.0.0.1","family":"IPv4","port":8080}],"firestore.websocket":[{"address":"127.0.0.1","family":"IPv4","port":9150}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] !  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, database, hosting, pubsub, storage, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, database, hosting, pubsub, storage, dataconnect\u001b[22m"}}
+[debug] [2025-10-24T06:04:21.468Z] defaultcredentials: writing to file C:\Users\kylet\AppData\Roaming\firebase\kyletmaxx_gmail_com_application_default_credentials.json
+[debug] [2025-10-24T06:04:21.469Z] Setting GAC to C:\Users\kylet\AppData\Roaming\firebase\kyletmaxx_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\kylet\\AppData\\Roaming\\firebase\\kyletmaxx_gmail_com_application_default_credentials.json"}}
+[debug] [2025-10-24T06:04:21.470Z] Checked if tokens are valid: true, expires at: 1761289459169
+[debug] [2025-10-24T06:04:21.470Z] Checked if tokens are valid: true, expires at: 1761289459169
+[debug] [2025-10-24T06:04:21.470Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/nibblewise-78537/adminSdkConfig [none]
+[debug] [2025-10-24T06:04:21.852Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/nibblewise-78537/adminSdkConfig 200
+[debug] [2025-10-24T06:04:21.852Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/nibblewise-78537/adminSdkConfig {"projectId":"nibblewise-78537","storageBucket":"nibblewise-78537.firebasestorage.app"}
+[warn] !  firestore: Cloud Firestore Emulator does not support multiple databases yet. {"metadata":{"emulator":{"name":"firestore"},"message":"Cloud Firestore Emulator does not support multiple databases yet."}}
+[warn] !  firestore: Did not find a Cloud Firestore rules file specified in a firebase.json config file. {"metadata":{"emulator":{"name":"firestore"},"message":"Did not find a Cloud Firestore rules file specified in a firebase.json config file."}}
+[warn] !  firestore: The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration. {"metadata":{"emulator":{"name":"firestore"},"message":"The emulator will default to allowing all reads and writes. Learn more about this option: https://firebase.google.com/docs/emulator-suite/install_and_configure#security_rules_configuration."}}
+[debug] [2025-10-24T06:04:21.867Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2025-10-24T06:04:21.867Z] Ignoring unsupported arg: single_project_mode_error {"metadata":{"emulator":{"name":"firestore"},"message":"Ignoring unsupported arg: single_project_mode_error"}}
+[debug] [2025-10-24T06:04:21.867Z] Starting Firestore Emulator with command {"binary":"java","args":["-Dgoogle.cloud_firestore.debug_log_level=FINE","-Duser.language=en","-jar","C:\\Users\\kylet\\.cache\\firebase\\emulators\\cloud-firestore-emulator-v1.19.8.jar","--host","127.0.0.1","--port",8080,"--websocket_port",9150,"--project_id","nibblewise-78537","--single_project_mode",true,"--functions_emulator","127.0.0.1:5001"],"optionalArgs":["port","webchannel_port","host","rules","websocket_port","functions_emulator","seed_from_export","project_id","single_project_mode"],"joinArgs":false,"shell":false,"port":8080} {"metadata":{"emulator":{"name":"firestore"},"message":"Starting Firestore Emulator with command {\"binary\":\"java\",\"args\":[\"-Dgoogle.cloud_firestore.debug_log_level=FINE\",\"-Duser.language=en\",\"-jar\",\"C:\\\\Users\\\\kylet\\\\.cache\\\\firebase\\\\emulators\\\\cloud-firestore-emulator-v1.19.8.jar\",\"--host\",\"127.0.0.1\",\"--port\",8080,\"--websocket_port\",9150,\"--project_id\",\"nibblewise-78537\",\"--single_project_mode\",true,\"--functions_emulator\",\"127.0.0.1:5001\"],\"optionalArgs\":[\"port\",\"webchannel_port\",\"host\",\"rules\",\"websocket_port\",\"functions_emulator\",\"seed_from_export\",\"project_id\",\"single_project_mode\"],\"joinArgs\":false,\"shell\":false,\"port\":8080}"}}
+[info] i  firestore: Firestore Emulator logging to firestore-debug.log {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator logging to \u001b[1mfirestore-debug.log\u001b[22m"}}
+[debug] [2025-10-24T06:04:23.644Z] Oct 24, 2025 1:04:23 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start
+INFO: Started WebSocket server on ws://127.0.0.1:9150
+ {"metadata":{"emulator":{"name":"firestore"},"message":"Oct 24, 2025 1:04:23 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start\r\nINFO: Started WebSocket server on ws://127.0.0.1:9150\r\n"}}
+[debug] [2025-10-24T06:04:23.682Z] API endpoint: http://127.0.0.1:8080
+ {"metadata":{"emulator":{"name":"firestore"},"message":"API endpoint: http://127.0.0.1:8080\n"}}
+[debug] [2025-10-24T06:04:23.683Z] If you are using a library that supports the FIRESTORE_EMULATOR_HOST environment variable, run:
+
+   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
+
+If you are running a Firestore in Datastore Mode project, run:
+
+   export DATASTORE_EMULATOR_HOST=127.0.0.1:8080
+
+Note: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.
+Dev App Server is now running.
+
+ {"metadata":{"emulator":{"name":"firestore"},"message":"If you are using a library that supports the FIRESTORE_EMULATOR_HOST environment variable, run:\r\n\n   export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080\n\nIf you are running a Firestore in Datastore Mode project, run:\r\n\n   export DATASTORE_EMULATOR_HOST=127.0.0.1:8080\n\nNote: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.\r\nDev App Server is now running.\n\r\n"}}
+[info] +  firestore: Firestore Emulator UI websocket is running on 9150. {"metadata":{"emulator":{"name":"firestore"},"message":"Firestore Emulator UI websocket is running on 9150."}}
+[debug] [2025-10-24T06:04:23.717Z] [Extensions] Connecting Extensions emulator, this is a noop.
+[info] i  functions: Watching "C:\Users\kylet\Documents\GitHub\FrontRow-Capstone\backend\functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"C:\\Users\\kylet\\Documents\\GitHub\\FrontRow-Capstone\\backend\\functions\" for Cloud Functions..."}}
+[debug] [2025-10-24T06:04:23.722Z] Validating nodejs source
+[warn] !  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[debug] [2025-10-24T06:04:24.624Z] > [functions] package.json contents: {
+  "name": "functions",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf lib",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "npm run build && firebase deploy --only functions",
+    "lint": "eslint \"src/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^4.3.0",
+    "expo-image-manipulator": "^14.0.7",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "eslint": "^9.6.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.4.0"
+  }
+}
+[debug] [2025-10-24T06:04:24.624Z] Building nodejs source
+[debug] [2025-10-24T06:04:24.624Z] Failed to find version of module node: reached end of search path C:\Users\kylet\Documents\GitHub\FrontRow-Capstone\backend\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "24". Using node@24 from host. 
+[debug] [2025-10-24T06:04:24.627Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-10-24T06:04:24.635Z] Found firebase-functions binary at 'C:\Users\kylet\Documents\GitHub\FrontRow-Capstone\backend\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8658
+
+[debug] [2025-10-24T06:04:25.390Z] Got response from /__/functions.yaml {"endpoints":{"reviewTicket":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"reviewTicket"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2025-10-24T06:04:29.414Z] defaultcredentials: writing to file C:\Users\kylet\AppData\Roaming\firebase\kyletmaxx_gmail_com_application_default_credentials.json
+[debug] [2025-10-24T06:04:29.415Z] Setting GAC to C:\Users\kylet\AppData\Roaming\firebase\kyletmaxx_gmail_com_application_default_credentials.json {"metadata":{"emulator":{"name":"functions"},"message":"Setting GAC to C:\\Users\\kylet\\AppData\\Roaming\\firebase\\kyletmaxx_gmail_com_application_default_credentials.json"}}
+[info] +  functions: Loaded functions definitions from source: reviewTicket. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: reviewTicket."}}
+[info] +  functions[us-central1-reviewTicket]: http function initialized (http://127.0.0.1:5001/nibblewise-78537/us-central1/reviewTicket). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/nibblewise-78537/us-central1/reviewTicket)."}}
+[debug] [2025-10-24T06:04:29.421Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────┬────────────────┬──────────────────────────────────┐
+│ Emulator   │ Host:Port      │ View in Emulator UI              │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Functions  │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions  │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Firestore  │ 127.0.0.1:8080 │ http://127.0.0.1:4000/firestore  │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Extensions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/extensions │
+└────────────┴────────────────┴──────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500, 9150
+┌─────────────────────────┬───────────────┬─────────────────────┐
+│ Extension Instance Name │ Extension Ref │ View in Emulator UI │
+└─────────────────────────┴───────────────┴─────────────────────┘
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[warn] !  emulators: firebase-tools will drop support for Java version < 21 soon in firebase-tools@15. Please install a JDK at version 21 or above to get a compatible runtime. 

@@ -131,6 +131,11 @@ export default function CreateTicketScreen() {
   const openScanMenu = () => setScanMenuVisible(true);
   const closeScanMenu = () => setScanMenuVisible(false);
 
+  // Debug/inspection state
+  const [debugModalOpen, setDebugModalOpen] = useState(false);
+  const [lastScan, setLastScan] = useState<{ fields?: any; rawText?: string } | null>(null);
+
+
   // Derived
   const name_lower = useMemo(() => food_name.trim().toLowerCase(), [food_name]);
   const brand_lower = useMemo(() => brand_name.trim().toLowerCase(), [brand_name]);
@@ -139,23 +144,25 @@ export default function CreateTicketScreen() {
   // Replace the body of this function with your actual OCR + parsing pipeline.
   // Given an image URI, extract text and set the appropriate state fields.
   async function scanImageAndAutofill(uri: string) {
-    try {
-      // TODO: pipe to your OCR → parse → setState flow.
-      // For now, just log and tell the user it ran.
-      console.log("[scanImageAndAutofill] URI:", uri);
+  try {
+    console.log("[scanImageAndAutofill] URI:", uri);
 
-      // Example: after parsing `extracted` string, set fields:
-      // const parsed = parseNutritionFromText(extracted);
-      // if (parsed.ingredients) setIngredients(parsed.ingredients);
-      // if (parsed.calories) setCalories(parsed.calories);
-      // ...etc
+    // TODO: replace with real OCR. For now, stash dummy data so the modal can render safely.
+    setLastScan({
+      fields: {
+        // put parsed key/values here once you wire OCR
+        example: "value",
+      },
+      rawText: "(raw OCR text goes here)",
+    });
+    setDebugModalOpen(true);
 
-      Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
-    } catch (e: any) {
-      console.error("scanImageAndAutofill failed:", e);
-      Alert.alert("Scan failed", e?.message ?? String(e));
-    }
+    Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
+  } catch (e: any) {
+    console.error("scanImageAndAutofill failed:", e);
+    Alert.alert("Scan failed", e?.message ?? String(e));
   }
+}
 
   async function onScanFromCamera() {
     try {

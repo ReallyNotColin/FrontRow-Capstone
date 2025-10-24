@@ -81,7 +81,6 @@ export default function CustomEntriesListScreen() {
   );
 
   return (
-<<<<<<< Updated upstream
     <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <ThemedView style={styles.container}>
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
@@ -105,23 +104,6 @@ export default function CustomEntriesListScreen() {
         />
       </ThemedView>
     </LinearGradient>
-=======
-    <View style={styles.container}>
-      {/* NEW: Back to Search */}
-      <Pressable onPress={goBackToSearch} style={[styles.backButton, { alignSelf: 'flex-start', marginTop: 40 }]}>
-        <Text style={styles.backButtonText}>{'\u2039'} Back </Text>
-      </Pressable>
-
-      <Text style={styles.title}>Your Custom Entries</Text>
-
-      <FlatList
-        data={entries}
-        keyExtractor={(item) => `${item.id}`}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-      />
-    </View>
->>>>>>> Stashed changes
   );
 }
 
@@ -130,7 +112,6 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
-<<<<<<< Updated upstream
   container: {
     flex: 1,
     backgroundColor: 'transparent',
@@ -144,13 +125,12 @@ const styles = StyleSheet.create({
     height: 2,
     width: '100%',
     marginBottom: 16,
-=======
+  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 20,
     marginTop: 12,
->>>>>>> Stashed changes
   },
   list: {
     paddingHorizontal: 24,
@@ -188,10 +168,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
   },
-<<<<<<< Updated upstream
-});
-=======
-
   // already in your file, reused:
   backButton: {
     marginTop: 20,
@@ -205,4 +181,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
->>>>>>> Stashed changes

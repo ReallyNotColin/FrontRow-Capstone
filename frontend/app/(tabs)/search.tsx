@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, TextInput, StyleSheet, Pressable, FlatList, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet, Pressable, FlatList, ScrollView, Modal, TouchableOpacity, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';

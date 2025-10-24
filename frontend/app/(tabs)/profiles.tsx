@@ -253,20 +253,11 @@ const handleSaveGroup = async () => {
     <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <View style={[styles.container]}>
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-<<<<<<< Updated upstream
             <ThemedText type="title" style={{ color: activeColors.text }}>
                 Profiles
             </ThemedText>
           </ThemedView>
           <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-=======
-          <ThemedText type="title" style={{ color: activeColors.text }}>
-            Profiles
-          </ThemedText>
-        </ThemedView>
-        <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-
->>>>>>> Stashed changes
         <View style={styles.container}>
           <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
             {/* Individual Profiles */}
