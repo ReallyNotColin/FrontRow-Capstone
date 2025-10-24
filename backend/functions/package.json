@@ -2,7 +2,9 @@
   "name": "functions",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "20"
+  },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
@@ -13,6 +15,7 @@
   },
   "dependencies": {
     "@google-cloud/vision": "^4.3.0",
+    "expo-image-manipulator": "^14.0.7",
     "firebase-admin": "^12.6.0",
     "firebase-functions": "^6.4.0"
   },
