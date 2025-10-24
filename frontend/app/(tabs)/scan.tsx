@@ -113,6 +113,7 @@ export default function ScanScreen() {
   const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
   const [pets, setPets] = useState<ProfileChoice[]>([]);
   const [groups, setGroups] = useState<GroupChoice[]>([]);
+  const { isDarkMode } = useThemedColor();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<{
     displayName: string;
@@ -509,7 +510,10 @@ async function runCompareGroupMixed(
     <View style={styles.container}>
       <View style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
         <Image 
-          source={require('@/assets/images/banner.png')} 
+          source={isDarkMode
+            ? require('@/assets/images/banner-dark.png')
+            : require('@/assets/images/banner-light.png')
+          }        
           style={styles.bannerImage}
           resizeMode="contain"
         />
