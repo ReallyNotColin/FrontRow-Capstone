@@ -50,7 +50,14 @@
       "router": {},
       "eas": {
         "projectId": "f28cce3f-2ecc-4350-bcca-20112757317b"
-      }
+      },
+      "EXPO_PUBLIC_USE_FIREBASE_EMULATORS": "1",
+      "EXPO_PUBLIC_EMULATOR_HOST": "138.47.151.45",
+      "EXPO_PUBLIC_FIRESTORE_EMULATOR_PORT": "8080",
+      "EXPO_PUBLIC_FUNCTIONS_EMULATOR_PORT": "5001",
+      "EXPO_PUBLIC_REGION": "us-central1"
+
+      
     },
     "owner": "reallynotcolin"
   }

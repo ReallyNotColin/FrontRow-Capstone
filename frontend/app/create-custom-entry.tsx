@@ -23,7 +23,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 // Local DB helpers
-import { initCustomDb, getCustomDb } from "@/db/customFoods";
+import { initCustomDb, upsertCustomEntry } from '@/db/customFoods';
 
 type EntryPayload = {
   // Product-ish fields (strings)
@@ -311,6 +311,7 @@ export default function CreateCustomEntryScreen() {
   };
 
   const onSave = async () => {
+    // same validation you already have...
     const error = validate();
     if (error) {
       Alert.alert("Missing / invalid input", error);
@@ -320,19 +321,44 @@ export default function CreateCustomEntryScreen() {
     try {
       setSaving(true);
 
-      // Save minimal subset to SQLite (keeping existing schema: food_name, barcode, allergens)
-      const db = getCustomDb();
-      if (!db) {
-        Alert.alert("Storage error", "Local database not initialized.");
-        setSaving(false);
-        return;
-      }
+      // Build the record exactly as CustomEntryRecord expects
+      await upsertCustomEntry({
+        // identity
+        food_name: food_name.trim(),
+        brand_name: brand_name.trim(),
+        barcode: barcode.trim(),
 
-      const allergenString = warning.trim(); // use the “Allergen warnings” field
-      await db.runAsync(
-        "INSERT INTO custom_entries (food_name, barcode, allergens, created_at) VALUES (?, ?, ?, ?)",
-        [food_name.trim(), barcode.trim(), allergenString, Date.now()]
-      );
+        // text
+        ingredients: ingredients.trim(),
+        warning: warning.trim(), // <-- THIS replaces the old "allergens" idea
+
+        // serving
+        serving: serving.trim(),
+        serving_amount: serving_amount.trim(),
+
+        // nutrition (strings are fine)
+        calories: calories.trim(),
+        fat: fat.trim(),
+        saturated_fat: saturated_fat.trim(),
+        trans_fat: trans_fat.trim(),
+        monounsaturated_fat: monounsaturated_fat.trim(),
+        polyunsaturated_fat: polyunsaturated_fat.trim(),
+        cholesterol: cholesterol.trim(),
+        sodium: sodium.trim(),
+        carbohydrate: carbohydrate.trim(),
+        sugar: sugar.trim(),
+        added_sugars: added_sugars.trim(),
+        fiber: fiber.trim(),
+        protein: protein.trim(),
+        potassium: potassium.trim(),
+        calcium: calcium.trim(),
+        iron: iron.trim(),
+        vitamin_d: vitamin_d.trim(),
+
+        // derived
+        name_lower: food_name.trim().toLowerCase(),
+        brand_lower: brand_name.trim().toLowerCase(),
+      });
 
       Alert.alert("Saved", "Custom entry saved locally!", [
         { text: "OK", onPress: () => router.back() },
