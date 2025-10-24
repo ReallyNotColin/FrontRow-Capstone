@@ -51,6 +51,9 @@ export default function Profile() {
   const [groupName, setgroupName] = useState('');
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [groupPetMembers, setGroupPetMembers] = useState<string[]>([]);
+  const [isEditingGroup, setIsEditingGroup] = useState(false);
+  const [editingGroupOriginalName, setEditingGroupOriginalName] = useState<string | null>(null);
+
 
   // Pet form
   const [petName, setPetName] = useState('');
@@ -146,14 +149,24 @@ export default function Profile() {
   /* ------------------ CRUD (groups) ------------------ */
 const handleSaveGroup = async () => {
   try {
-    // Convert to typed members
+    const newName = groupName.trim();
+
+    // Convert UI selections to typed members
     const typed = [
       ...groupMembers.map((name) => ({ name, kind: 'human' as const })),
       ...groupPetMembers.map((name) => ({ name, kind: 'pet' as const })),
     ];
-    await saveGroupProfile(groupName.trim(), typed);
+
+    // If editing and the name changed, remove the old doc then save the new one
+    if (isEditingGroup && editingGroupOriginalName && editingGroupOriginalName !== newName) {
+      await deleteGroupProfile(editingGroupOriginalName);
+    }
+
+    await saveGroupProfile(newName, typed);
 
     // reset
+    setIsEditingGroup(false);
+    setEditingGroupOriginalName(null);
     setgroupName('');
     setGroupMembers([]);
     setGroupPetMembers([]);
@@ -163,6 +176,32 @@ const handleSaveGroup = async () => {
   }
 };
 
+
+const handleEditGroup = (name: string, members: any[]) => {
+  setIsEditingGroup(true);
+  setEditingGroupOriginalName(name);
+
+  // Pre-fill the modal
+  setgroupName(name);
+
+  const humans = (members || [])
+    .filter((m: any) => (m?.kind ?? 'human') === 'human')
+    .map((m: any) => String(m?.name ?? ''));
+
+  const pets = (members || [])
+    .filter((m: any) => m?.kind === 'pet')
+    .map((m: any) => String(m?.name ?? ''));
+
+  setGroupMembers(humans);
+  setGroupPetMembers(pets);
+
+  setgProfileModalVisible(true);
+};
+
+
+const handleDeleteGroup = async (name: string) => {
+    try { await deleteGroupProfile(name); } catch (e) { console.error(e); }
+  };
 
   /* ------------------ CRUD (pets) ------------------ */
   const handleSavePet = async () => {
@@ -356,10 +395,14 @@ const handleSaveGroup = async () => {
                     ]}
                   >
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <ThemedText style={[styles.cardTitle, { color: activeColors.text }]}>{gName}</ThemedText>
-                      <TouchableOpacity onPress={() => handleDeleteGroup(gName)}>
-                        <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
-                      </TouchableOpacity>
+                        <ThemedText style={[styles.cardTitle, { color: activeColors.text, flex: 1 }]}>{gName}                        
+                        </ThemedText>
+                        <TouchableOpacity onPress={() => handleDeleteGroup(gName)} style={{marginRight : 10}}>
+                          <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleEditGroup(gName, members)}>
+                          <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
+                        </TouchableOpacity>
                     </View>
 
                     {Array.isArray(members) && members.length > 0 ? (
@@ -424,10 +467,10 @@ const handleSaveGroup = async () => {
         </Modal>
 
         {/* Create Group */}
-        <Modal visible={gProfileModalVisible} transparent animationType="slide" onRequestClose={() => setgProfileModalVisible(false)}>
+        <Modal visible={gProfileModalVisible} transparent animationType="slide" onRequestClose={() => {setgProfileModalVisible(false); setIsEditingGroup(false); setEditingGroupOriginalName(null);} }>
           <View style={styles.overlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.title}>Create Group Profile</Text>
+              <Text style={styles.title}>{isEditingGroup ? 'Edit Group Profile' : 'Create Group Profile'}</Text>
               <TextInput style={styles.input} placeholder="Group Name" value={groupName} onChangeText={setgroupName} />
               <Text style={styles.modalSubtitle}>Select Profiles to Include</Text>
               <ScrollView style={{ maxHeight: 200 }}>
@@ -472,9 +515,9 @@ const handleSaveGroup = async () => {
 
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.saveButton} onPress={handleSaveGroup}>
-                  <Text style={{ color: 'white' }}>Save Group</Text>
+                   <Text style={{ color: 'white' }}>{isEditingGroup ? 'Save Changes' : 'Save Group'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.cancelButton} onPress={() => setgProfileModalVisible(false)}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => {setgProfileModalVisible(false); setIsEditingGroup(false); setEditingGroupOriginalName(null); }}>
                   <Text style={{ color: 'black' }}>Cancel</Text>
                 </TouchableOpacity>
               </View>
