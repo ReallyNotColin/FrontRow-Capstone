@@ -1,7 +1,7 @@
 // app/(tabs)/scan.tsx
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useEffect, useState, useCallback } from 'react';
-import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Pressable } from 'react-native';
+import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Pressable, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from "@react-navigation/native";
 import { useThemedColor } from '@/components/ThemedColor';
 import { LinearGradient } from "expo-linear-gradient";
+import LottieView from 'lottie-react-native';
 
 import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/db/firebaseConfig';
@@ -113,6 +114,7 @@ export default function ScanScreen() {
   const [profiles, setProfiles] = useState<ProfileChoice[]>([]);
   const [pets, setPets] = useState<ProfileChoice[]>([]);
   const [groups, setGroups] = useState<GroupChoice[]>([]);
+  const { isDarkMode } = useThemedColor();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<{
     displayName: string;
@@ -507,8 +509,19 @@ async function runCompareGroupMixed(
 
   return (
     <View style={styles.container}>
+      <View style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+        <Image 
+          source={isDarkMode
+            ? require('@/assets/images/banner-dark.png')
+            : require('@/assets/images/banner-light.png')
+          }        
+          style={styles.bannerImage}
+          resizeMode="contain"
+        />
+    </View>
+    <View style={[styles.divider, { backgroundColor: activeColors.divider }]} />
       <CameraView
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { top: 78 }]}
         facing={facing}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{ barcodeTypes: ['upc_a', 'upc_e', 'ean13', 'ean8'] }}
@@ -520,7 +533,20 @@ async function runCompareGroupMixed(
           <ThemedText style={styles.hintText}>Place barcode here</ThemedText>
         </View>
 
-        {loadingDetails && <Text style={[styles.text, { marginTop: 20 }]}>Loading details...</Text>}
+        {loadingDetails && (
+          <View style={styles.loadingOverlay}>
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={styles.lottieContainer}>
+              <LottieView
+                source={require('@/assets/images/loading.json')}
+                autoPlay
+                loop
+                style={{ width: 150, height: 150 }}
+              />
+            </View>
+          </View>
+        )}
+
       </View>
 
       {/* Results modal */}
@@ -678,11 +704,18 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 10,
     paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  bannerImage: {
+    width: 300,
+    height: 50,
   },
   divider: {
     height: 2,
-    marginBottom: 16,
     width: '100%',
+    zIndex: 10,
   },
   textContainer: {
     backgroundColor: 'transparent', 
@@ -881,6 +914,24 @@ hintText: {
   color: 'white',
   fontWeight: 'bold',
   textAlign: 'center',
-}
+},
+
+loadingOverlay: {
+  ...StyleSheet.absoluteFillObject,
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 9999, 
+},
+
+lottieContainer: {
+    width: 160,
+    height: 160,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+  },
+
 
 });

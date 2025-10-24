@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useThemedColor } from '@/components/ThemedColor';
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from 'expo-blur';
 
 import {
   onProfiles, onGroups,
@@ -322,7 +323,7 @@ const handleDeleteGroup = async (name: string) => {
                         <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => handleEditProfile(profile)}>
-                        <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
+                        <ThemedText style={{ color: '#27778E' }}>Edit</ThemedText>
                       </TouchableOpacity>
                     </View>
 
@@ -364,7 +365,7 @@ const handleDeleteGroup = async (name: string) => {
                         <ThemedText style={{ color: 'red' }}>Delete</ThemedText>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => handleEditPet(pet)}>
-                        <ThemedText style={{ color: '#007AFF' }}>Edit</ThemedText>
+                        <ThemedText style={{ color: '#27778E' }}>Edit</ThemedText>
                       </TouchableOpacity>
                     </View>
 
@@ -429,71 +430,87 @@ const handleDeleteGroup = async (name: string) => {
               onPress={() => setprofileTypeModalVisible(true)}
               style={[styles.button, { backgroundColor: '#27778E' }]}
             >
-              <Text style={styles.continueButtonText}>+</Text>
+              <Text style={[styles.continueButtonText,{fontSize:45}]}>+</Text>
             </Pressable>
           </View>
         </View>
 
         {/* Choose create type */}
         <Modal transparent animationType="fade" visible={profileTypeModalVisible} onRequestClose={() => setprofileTypeModalVisible(false)}>
-          <View style={styles.modalOverlay}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <View style={styles.headerBackRow}>
                 <Pressable onPress={() => setprofileTypeModalVisible(false)}>
-                  <Text style={styles.headerBackText}>&lt; Back</Text>
+                  <ThemedText style={styles.headerBackText}>&lt; Back</ThemedText>
                 </Pressable>
               </View>
-              <Text style={styles.modalTitle}>Create New</Text>
+              <ThemedText type="subtitle" style={styles.modalTitle}>Create New</ThemedText>
               <Pressable
                 style={styles.optionButton}
                 onPress={() => { setprofileNameModalVisible(true); setprofileTypeModalVisible(false); }}
               >
-                <Text>Individual Profile</Text>
+              <ThemedText style={{color:"#212D39"}}>Individual Profile</ThemedText>
               </Pressable>
               <Pressable
                 style={styles.optionButton}
                 onPress={() => { setPetNameTypeModalVisible(true); setprofileTypeModalVisible(false); }}
               >
-                <Text>Pet Profile</Text>
+                <ThemedText style={{color:"#212D39"}}>Pet Profile</ThemedText>
               </Pressable>
               <Pressable
                 style={styles.optionButton}
                 onPress={() => { setgProfileModalVisible(true); setprofileTypeModalVisible(false); }}
               >
-                <Text>Group Profile</Text>
+                <ThemedText style={{color:"#212D39"}}>Group Profile</ThemedText>
               </Pressable>
             </View>
-          </View>
+          </BlurView>
         </Modal>
 
         {/* Create Group */}
-        <Modal visible={gProfileModalVisible} transparent animationType="slide" onRequestClose={() => {setgProfileModalVisible(false); setIsEditingGroup(false); setEditingGroupOriginalName(null);} }>
-          <View style={styles.overlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.title}>{isEditingGroup ? 'Edit Group Profile' : 'Create Group Profile'}</Text>
-              <TextInput style={styles.input} placeholder="Group Name" value={groupName} onChangeText={setgroupName} />
-              <Text style={styles.modalSubtitle}>Select Profiles to Include</Text>
-              <ScrollView style={{ maxHeight: 200 }}>
-                {individualProfiles.map((name) => {
-                  const isSelected = groupMembers.includes(name);
-                  return (
-                    <TouchableOpacity
-                      key={name}
-                      style={styles.checkboxRow}
-                      onPress={() => {
-                        setGroupMembers((prev) =>
-                          isSelected ? prev.filter((p) => p !== name) : [...prev, name]
-                        );
-                      }}
-                    >
-                      <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
-                      <Text style={styles.checkboxLabel}>{name}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                <Text style={[styles.modalSubtitle, { marginTop: 12 }]}>Add Pet Profiles</Text>
-                </ScrollView>
-                <ScrollView style={{ maxHeight: 200 }}>
+        <Modal visible={gProfileModalVisible} transparent animationType="fade" onRequestClose={() => setgProfileModalVisible(false)}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
+            <View style={[styles.modalContent]}>
+                <View style={styles.headerBackRow}>
+                  <Pressable onPress={() => setgProfileModalVisible(false)}>
+                    <ThemedText style={[styles.headerBackText, {color:'white'}]}>&lt; Back</ThemedText>
+                  </Pressable>
+              </View>
+              <ThemedText type="subtitle" style={styles.modalTitle}>Create Group Profile</ThemedText>
+              <TextInput style={[styles.input]} placeholder="Group Name" value={groupName} onChangeText={setgroupName} />
+                <ScrollView style={{ maxHeight: 275 }}>
+                  <ThemedText
+                    type="header"
+                    style={[styles.modalSubtitle, { marginTop: 12, color: '#212D39' }]}
+                  >
+                    Select Profiles to Include
+                  </ThemedText>
+
+                  {individualProfiles.map((name) => {
+                    const isSelected = groupMembers.includes(name);
+                    return (
+                      <TouchableOpacity
+                        key={name}
+                        style={styles.checkboxRow}
+                        onPress={() => {
+                          setGroupMembers((prev) =>
+                            isSelected ? prev.filter((p) => p !== name) : [...prev, name]
+                          );
+                        }}
+                      >
+                        <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
+                        <ThemedText style={styles.checkboxLabel}>{name}</ThemedText>
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  <ThemedText
+                    type="header"
+                    style={[styles.modalSubtitle, { marginTop: 12, color: '#212D39' }]}
+                  >
+                    Add Pet Profiles
+                  </ThemedText>
+
                   {petProfiles.map((pet) => {
                     const isSelected = groupPetMembers.includes(pet.name);
                     return (
@@ -507,74 +524,75 @@ const handleDeleteGroup = async (name: string) => {
                         }}
                       >
                         <View style={[styles.checkboxBox, isSelected && styles.checkboxChecked]} />
-                        <Text style={styles.checkboxLabel}>{pet.name} • {pet.petType}</Text>
+                        <ThemedText style={styles.checkboxLabel}>
+                          {pet.name} • {pet.petType}
+                        </ThemedText>
                       </TouchableOpacity>
                     );
                   })}
-              </ScrollView>
-
+                </ScrollView>
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.saveButton} onPress={handleSaveGroup}>
-                   <Text style={{ color: 'white' }}>{isEditingGroup ? 'Save Changes' : 'Save Group'}</Text>
+                  <ThemedText style={{ color: 'white' }}>Save Group</ThemedText>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.cancelButton} onPress={() => {setgProfileModalVisible(false); setIsEditingGroup(false); setEditingGroupOriginalName(null); }}>
-                  <Text style={{ color: 'black' }}>Cancel</Text>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setgProfileModalVisible(false)}>
+                  <ThemedText style={{ color: 'white' }}>Cancel</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </BlurView>
         </Modal>
 
         {/* Create Individual: ask for name */}
-        <Modal transparent visible={profileNameModalVisible} animationType="slide" onRequestClose={() => setprofileNameModalVisible(false)}>
-          <View style={styles.modalBackground}>
+        <Modal transparent visible={profileNameModalVisible} animationType="fade" onRequestClose={() => setprofileNameModalVisible(false)}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.headerBackRow}>
               <Pressable onPress={() => setprofileNameModalVisible(false)}>
-                <Text style={styles.headerBackText}>&lt; Back</Text>
+                <ThemedText style={styles.headerBackText}>&lt; Back</ThemedText>
               </Pressable>
             </View>
             <View style={styles.modalView}>
               <View style={styles.headerBackRow}>
                 <Pressable onPress={() => setprofileNameModalVisible(false)}>
-                  <Text style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</Text>
+                  <ThemedText style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</ThemedText>
                 </Pressable>
               </View>
 
-              <Text style={styles.nameText}>What is their name?</Text>
+              <ThemedText type="subtitle" style={styles.nameText}>What is their name?</ThemedText>
               <TextInput style={styles.input} value={profileName} onChangeText={setprofileName} placeholder="Name" />
               <Pressable
                 onPress={() => { setprofileprofileTypeModalVisible(true); setprofileNameModalVisible(false); }}
                 style={styles.secondaryButton}
               >
-                <Text style={styles.secondaryButtonText}>Continue</Text>
+                <ThemedText style={styles.secondaryButtonText}>Continue</ThemedText>
               </Pressable>
             </View>
-          </View>
+          </BlurView>
         </Modal>
 
         {/* Create/Edit Individual: pick tags */}
         <Modal transparent visible={profileprofileTypeModalVisible} animationType="fade" onRequestClose={() => setprofileprofileTypeModalVisible(false)}>
-          <View style={styles.modalBackground}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.modalView}>
               <View style={styles.headerBackRow}>
                 <Pressable onPress={() => setprofileprofileTypeModalVisible(false)}>
-                  <Text style={[styles.headerBackText, {color:'white'}]}>&lt; Back</Text>
+                  <ThemedText style={[styles.headerBackText, {color:'white'}]}>&lt; Back</ThemedText>
                 </Pressable>
               </View>
 
               <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
-                <Text style={styles.nameText}>What is {profileName}'s dietary profile?</Text>
+                <ThemedText style={styles.nameText}>What is {profileName}'s dietary profile?</ThemedText>
               </Animated.View>
 
               <Animated.View style={[styles.tagRow, { transform: [{ translateY: moveMenu }] }]}>
                 <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('allergens')}>
-                  <Text style={styles.tagText}>Allergens</Text>
+                  <ThemedText style={styles.tagText}>Allergens</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('intolerances')}>
-                  <Text style={styles.tagText}>Intolerances</Text>
+                  <ThemedText style={styles.tagText}>Intolerances</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tagButton} onPress={() => openTagMenu('dietary')}>
-                  <Text style={styles.tagText}>Dietary</Text>
+                  <ThemedText style={styles.tagText}>Dietary</ThemedText>
                 </TouchableOpacity>
               </Animated.View>
 
@@ -588,7 +606,7 @@ const handleDeleteGroup = async (name: string) => {
                       return (
                         <TouchableOpacity key={o} onPress={() => toggleOption(o)} style={styles.checkboxRow}>
                           <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                          <Text style={styles.checkboxLabel}>{o}</Text>
+                          <ThemedText style={styles.checkboxLabel}>{o}</ThemedText>
                         </TouchableOpacity>
                       );
                     })}
@@ -601,7 +619,7 @@ const handleDeleteGroup = async (name: string) => {
                       onChangeText={setCustomInput}
                       placeholder={`Add custom ${activeTag?.slice(0, -1) ?? 'item'}`}
                       placeholderTextColor="#8a8a8a"
-                      style={[styles.input, { flex: 1, marginBottom: 0, fontSize:18 }]}
+                      style={[styles.input, { flex: 1, marginBottom: 0, fontSize:19 }]}
                     />
                     <Pressable
                       onPress={() => {
@@ -619,35 +637,35 @@ const handleDeleteGroup = async (name: string) => {
                       }}
                       style={[styles.secondaryButton, { marginLeft: 8 }]}
                     >
-                      <Text style={styles.secondaryButtonText}>Add</Text>
+                      <ThemedText style={styles.secondaryButtonText}>Add</ThemedText>
                     </Pressable>
                   </View>
                 </Animated.View>
               )}
 
-              <Pressable onPress={handleSaveProfile} style={[styles.secondaryButton, { marginTop: 12 }]}>
-                <Text style={styles.secondaryButtonText}>Save</Text>
+              <Pressable onPress={handleSaveProfile} style={[styles.saveButton, { marginTop: 12 }]}>
+                <ThemedText style={styles.secondaryButtonText}>Save</ThemedText>
               </Pressable>
               <Pressable onPress={() => setprofileprofileTypeModalVisible(false)} style={[styles.cancelButton, { alignSelf: 'center' }]}>
-                <Text style={{ color: 'black' }}>Cancel</Text>
+                <ThemedText style={styles.secondaryButtonText}>Cancel</ThemedText>
               </Pressable>
             </View>
-          </View>
+          </BlurView>
         </Modal>
 
         {/* Create/Edit Pet: ask name & type */}
-        <Modal transparent visible={petNameTypeModalVisible} animationType="slide" onRequestClose={() => setPetNameTypeModalVisible(false)}>
-          <View style={styles.modalBackground}>
+        <Modal transparent visible={petNameTypeModalVisible} animationType="fade" onRequestClose={() => setPetNameTypeModalVisible(false)}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.modalView}>
               <View style={styles.headerBackRow}>
                 <Pressable onPress={() => setPetNameTypeModalVisible(false)}>
-                  <Text style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</Text>
+                  <ThemedText style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</ThemedText>
                 </Pressable>
               </View>
 
-              <Text style={styles.nameText}>Pet info</Text>
+              <ThemedText type="subtitle" style={styles.nameText}>Pet info</ThemedText>
               <TextInput style={styles.input} placeholder="Pet Name" value={petName} onChangeText={setPetName} />
-              <Text style={[styles.modalSubtitle, { color: 'white', alignSelf: 'center' }]}>Type</Text>
+              <ThemedText type="header" style={[styles.modalSubtitle, { color: 'white', alignSelf: 'center' }]}>Type</ThemedText>
               <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 10 }}>
                 {petTypeOptions.map((t) => {
                   const selected = petType === t;
@@ -660,7 +678,7 @@ const handleDeleteGroup = async (name: string) => {
                         { backgroundColor: selected ? '#FFD54F' : '#eee', marginHorizontal: 6 },
                       ]}
                     >
-                      <Text style={{ color: selected ? '#000' : '#333' }}>{t}</Text>
+                      <ThemedText style={{ color: selected ? '#000' : '#333' }}>{t}</ThemedText>
                     </TouchableOpacity>
                   );
                 })}
@@ -669,24 +687,24 @@ const handleDeleteGroup = async (name: string) => {
                 onPress={() => { setPetTagsModalVisible(true); setPetNameTypeModalVisible(false); petMenuOpacity.setValue(1)}}
                 style={styles.secondaryButton}
               >
-                <Text style={styles.secondaryButtonText}>Continue</Text>
+                <ThemedText style={styles.secondaryButtonText}>Continue</ThemedText>
               </Pressable>
             </View>
-          </View>
+          </BlurView>
         </Modal>
 
         {/* Create/Edit Pet: pick tags (ALLERGENS ONLY) */}
         <Modal transparent visible={petTagsModalVisible} animationType="fade" onRequestClose={() => setPetTagsModalVisible(false)}>
-          <View style={styles.modalBackground}>
+          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
             <View style={styles.modalView}>
               <View style={styles.headerBackRow}>
                 <Pressable onPress={() => setPetTagsModalVisible(false)}>
-                  <Text style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</Text>
+                  <ThemedText style={[styles.headerBackText, {color: 'white'}]}>&lt; Back</ThemedText>
                 </Pressable>
               </View>
 
               <Animated.View style={{ transform: [{ translateY: petMoveMenu }] }}>
-                <Text style={styles.nameText}>What is {petName}'s allergen profile?</Text>
+                <ThemedText style={styles.nameText}>What is {petName}'s allergen profile?</ThemedText>
               </Animated.View>
 
               {/* Allergens checklist (no tabs, no custom add) */}
@@ -702,20 +720,20 @@ const handleDeleteGroup = async (name: string) => {
                         setPetSelectedAllergens(next);
                       }} style={styles.checkboxRow}>
                         <View style={[styles.checkboxBox, isChecked && styles.checkboxChecked]} />
-                        <Text style={styles.checkboxLabel}>{o}</Text>
+                        <ThemedText style={styles.checkboxLabel}>{o}</ThemedText>
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               </Animated.View>
               <Pressable onPress={handleSavePet} style={[styles.secondaryButton, { marginTop: 12 }]}>
-                <Text style={styles.secondaryButtonText}>Save Pet</Text>
+                <ThemedText style={styles.secondaryButtonText}>Save Pet</ThemedText>
               </Pressable>
               <Pressable onPress={() => setPetTagsModalVisible(false)} style={[styles.cancelButton, { alignSelf: 'center' }]}>
-                <Text style={{ color: 'black' }}>Cancel</Text>
+                <ThemedText style={{ color: 'white' }}>Cancel</ThemedText>
               </Pressable>
             </View>
-          </View>
+          </BlurView>
         </Modal>
       </View>
     </LinearGradient>
@@ -730,7 +748,7 @@ const styles = StyleSheet.create({
 
   buttonContainer: { position: 'absolute', right: 16, alignItems: 'flex-end', bottom: Platform.OS === 'ios' ? 95 : 16, backgroundColor: 'transparent' },
   button: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
-  continueButtonText: { color: "#fff", fontSize: 50, fontWeight:800, marginBottom: 4.25 },
+  continueButtonText: { color: "#fff", fontWeight:800, marginBottom: 4.25 },
 
   section: {paddingHorizontal: 25, paddingVertical: 12},
   sectionTitle: { fontWeight: 'bold', marginBottom: 12},
@@ -744,12 +762,12 @@ const styles = StyleSheet.create({
   groupMemberText: { marginLeft: 10 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  modalContainer: { backgroundColor: '#fff', padding: 20, borderRadius: 12, width: 300, alignItems: 'center' },
-  modalTitle: { fontSize: 18, marginBottom: 20 },
+  modalContainer: { backgroundColor: '#fff', padding: 20, borderRadius: 12, width: 300, alignItems: 'center'},
+  modalTitle: { color:"#212D39", marginBottom: 20 },
   optionButton: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, width: '100%', marginTop: 10, alignItems: 'center' },
 
   overlay: { flex: 1, backgroundColor: '#00000099', justifyContent: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#fff', borderRadius: 10, padding: 20, maxHeight: '90%' },
+  modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20, maxHeight: '90%', marginHorizontal: 25, },
   modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
 
   modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)' },
@@ -757,13 +775,13 @@ const styles = StyleSheet.create({
 
   input: {
     borderBottomWidth: 1, backgroundColor: 'white', borderColor: '#ccc',
-    borderRadius: 20, paddingVertical: 6, paddingLeft: 12, fontSize: 20, marginBottom: 10,
+    borderRadius: 20, paddingVertical: 6, paddingLeft: 12, fontSize: 19, marginBottom: 10
   },
-  nameText: { textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: 'white', paddingVertical: 18, paddingHorizontal: 12 },
+  nameText: { textAlign: 'center', fontWeight: 'bold', color: 'white', paddingVertical: 18, paddingHorizontal: 12 },
 
   tagRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 },
   tagButton: { backgroundColor: '#767676ff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 4 },
-  tagText: { color: '#000', fontSize: 14, fontWeight: '500' },
+  tagText: { color: '#000', fontWeight: '500' },
 
   allergensMenuContainer: {
     marginTop: 12, padding: 10, backgroundColor: '#ffffff',
@@ -772,26 +790,25 @@ const styles = StyleSheet.create({
 
   checkboxRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
   checkboxBox: { width: 20, height: 20, borderWidth: 1, borderColor: '#555', borderRadius: 4, marginRight: 10, backgroundColor: '#fff' },
-  checkboxChecked: { backgroundColor: '#007AFF' },
-  checkboxLabel: { fontSize: 16, color: 'black' },
+  checkboxChecked: { backgroundColor: '#27778E' },
+  checkboxLabel: {color:"#212D39" },
 
-  secondaryButton: { backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center' },
-  secondaryButtonText: { color: '#000', fontWeight: '600' },
-  saveButton: { backgroundColor: '#4CAF50', padding: 10, borderRadius: 6 },
-  cancelButton: { padding: 10 },
+  secondaryButton: { backgroundColor: '#27778E', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center' },
+  secondaryButtonText: { color: '#fff', fontWeight: '600' },
+  saveButton: { backgroundColor: '#477629',paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center'  },
+  cancelButton: {paddingVertical: 10},
 
   // Pet UI
   pill: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20 },
-  modalSubtitle: { fontSize: 14, marginTop: 6, marginBottom: 8 },
+  modalSubtitle: { marginTop: 6, marginBottom: 8 },
 
   // Back buttons (absolute)
   headerBackRow: {
     position: "absolute",
-    left: 16,
-    top: -50,
+    left: 5,
+    top: -40,
   },
   headerBackText: {
-    fontSize: 18,
     fontWeight: '600',
   },
 });

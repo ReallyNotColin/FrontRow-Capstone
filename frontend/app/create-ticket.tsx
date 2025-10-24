@@ -1,4 +1,3 @@
-// app/create-ticket.tsx
 import React, { useMemo, useState } from "react";
 import {
   Alert,
@@ -6,22 +5,26 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
   Pressable,
   ActivityIndicator,
   Modal,
+  TouchableOpacity,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
 import { router } from "expo-router";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "@/db/firebaseConfig";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { useThemedColor } from "@/components/ThemedColor";
+import { Ionicons } from "@expo/vector-icons";
 
 type TicketPayload = {
-  // Product fields (strings to mirror Products)
   added_sugars: string;
   barcode: string;
   brand_lower: string;
@@ -41,15 +44,13 @@ type TicketPayload = {
   potassium: string;
   protein: string;
   saturated_fat: string;
-  serving: string;          // e.g. "141 g"
-  serving_amount: string;   // e.g. "3"
+  serving: string;
+  serving_amount: string;
   sodium: string;
   sugar: string;
   trans_fat: string;
   vitamin_d: string;
-  warning: string;          // "Wheat, Egg, Soy, Milk"
-
-  // Ticket meta
+  warning: string;
   status: "open" | "approved" | "rejected";
   createdBy: string | null;
   createdAt: any;
@@ -92,6 +93,9 @@ const Field = ({
 );
 
 export default function CreateTicketScreen() {
+  const { isDarkMode, colors } = useThemedColor();
+  const activeColors = isDarkMode ? colors.dark : colors.light;
+
   // Core fields
   const [food_name, setFoodName] = useState("");
   const [brand_name, setBrandName] = useState("");
@@ -99,13 +103,13 @@ export default function CreateTicketScreen() {
 
   // Ingredients + warnings
   const [ingredients, setIngredients] = useState("");
-  const [warning, setWarning] = useState(""); // "Wheat, Egg, Soy, Milk"
+  const [warning, setWarning] = useState("");
 
   // Serving
-  const [serving, setServing] = useState(""); // "141 g"
+  const [serving, setServing] = useState("");
   const [serving_amount, setServingAmount] = useState("");
 
-  // Nutrition (strings, numeric keypad where helpful)
+  // Nutrition (strings)
   const [calories, setCalories] = useState("");
   const [fat, setFat] = useState("");
   const [saturated_fat, setSaturatedFat] = useState("");
@@ -131,51 +135,127 @@ export default function CreateTicketScreen() {
   const openScanMenu = () => setScanMenuVisible(true);
   const closeScanMenu = () => setScanMenuVisible(false);
 
-  // Debug/inspection state
   const [debugModalOpen, setDebugModalOpen] = useState(false);
-  const [lastScan, setLastScan] = useState<{ fields?: any; rawText?: string } | null>(null);
-
+  const [lastScan, setLastScan] = useState<{ rawText: string; fields: any } | null>(null);
 
   // Derived
   const name_lower = useMemo(() => food_name.trim().toLowerCase(), [food_name]);
   const brand_lower = useMemo(() => brand_name.trim().toLowerCase(), [brand_name]);
 
-  // ---- OCR hook-in -------------------------------------------------------
-  // Replace the body of this function with your actual OCR + parsing pipeline.
-  // Given an image URI, extract text and set the appropriate state fields.
-  async function scanImageAndAutofill(uri: string) {
-  try {
-    console.log("[scanImageAndAutofill] URI:", uri);
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.push("/(tabs)/search");
+  };
 
-    // TODO: replace with real OCR. For now, stash dummy data so the modal can render safely.
-    setLastScan({
-      fields: {
-        // put parsed key/values here once you wire OCR
-        example: "value",
-      },
-      rawText: "(raw OCR text goes here)",
-    });
-    setDebugModalOpen(true);
-
-    Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
-  } catch (e: any) {
-    console.error("scanImageAndAutofill failed:", e);
-    Alert.alert("Scan failed", e?.message ?? String(e));
+  function safePickerOptions() {
+    if ((ImagePicker as any)?.MediaType?.Images) {
+      return { mediaTypes: ImagePicker.MediaType.Images, quality: 1 };
+    }
+    if ((ImagePicker as any)?.MediaTypeOptions?.Images) {
+      return { mediaTypes: (ImagePicker as any).MediaTypeOptions.Images, quality: 1 };
+    }
+    return { quality: 1 } as const;
   }
-}
+
+  async function toBase64(uri: string): Promise<string> {
+    const manip = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1200 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    if (manip.base64) return manip.base64;
+    return await FileSystem.readAsStringAsync(uri, { encoding: "base64" as any });
+  }
+
+  // ---- OCR hook-in -------------------------------------------------------
+  async function scanImageAndAutofill(uri: string) {
+    try {
+      const base64 = await toBase64(uri);
+
+      Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
+
+      const functions = getFunctions(undefined, "us-central1");
+      const scanFn = httpsCallable(functions, "scanNutritionFromImage");
+      const result: any = await scanFn({ imageBase64: base64 });
+
+      if (!result?.data) {
+        Alert.alert("Scan failed", "No data returned from OCR service.");
+        return;
+      }
+
+      const { rawText, fields } = result.data as {
+        rawText: string;
+        fields: Partial<Record<keyof TicketPayload, string>>;
+      };
+
+      console.log("[OCR rawText]", rawText);
+      console.log("[OCR fields]", fields);
+
+      try {
+        const path = `${FileSystem.documentDirectory}last-ocr.json`;
+        await FileSystem.writeAsStringAsync(
+          path,
+          JSON.stringify({ at: new Date().toISOString(), rawText, fields }, null, 2)
+        );
+      } catch (e) {
+        console.warn("Failed to write last-ocr.json:", e);
+      }
+
+      try {
+        await addDoc(collection(db, "ScanResults"), {
+          uid: auth.currentUser?.uid ?? null,
+          at: serverTimestamp(),
+          fields,
+          rawText,
+          source: "mobile",
+        });
+        console.log("[OCR] Saved debug doc in ScanResults");
+      } catch (e) {
+        console.warn("Failed to save ScanResults:", e);
+      }
+
+      if (fields.food_name) setFoodName(fields.food_name);
+      if (fields.brand_name) setBrandName(fields.brand_name);
+      if (fields.barcode) setBarcode(fields.barcode);
+      if (fields.serving) setServing(fields.serving);
+      if (fields.serving_amount) setServingAmount(fields.serving_amount);
+      if (fields.ingredients) setIngredients(fields.ingredients);
+      if (fields.warning) setWarning(fields.warning);
+
+      if (fields.calories) setCalories(fields.calories);
+      if (fields.fat) setFat(fields.fat);
+      if (fields.saturated_fat) setSaturatedFat(fields.saturated_fat);
+      if (fields.trans_fat) setTransFat(fields.trans_fat);
+      if (fields.monounsaturated_fat) setMonoFat(fields.monounsaturated_fat);
+      if (fields.polyunsaturated_fat) setPolyFat(fields.polyunsaturated_fat);
+      if (fields.cholesterol) setCholesterol(fields.cholesterol);
+      if (fields.sodium) setSodium(fields.sodium);
+      if (fields.carbohydrate) setCarb(fields.carbohydrate);
+      if (fields.sugar) setSugar(fields.sugar);
+      if (fields.added_sugars) setAddedSugars(fields.added_sugars);
+      if (fields.fiber) setFiber(fields.fiber);
+      if (fields.protein) setProtein(fields.protein);
+      if (fields.potassium) setPotassium(fields.potassium);
+      if (fields.calcium) setCalcium(fields.calcium);
+      if (fields.iron) setIron(fields.iron);
+      if (fields.vitamin_d) setVitaminD(fields.vitamin_d);
+
+      setLastScan({ rawText, fields });
+      setDebugModalOpen(true);
+    } catch (e: any) {
+      console.error("scanImageAndAutofill failed:", e);
+      Alert.alert("Scan failed", e?.message ?? String(e));
+    }
+  }
 
   async function onScanFromCamera() {
     try {
-      // Ask for camera permission
       const camPerm = await ImagePicker.requestCameraPermissionsAsync();
       if (camPerm.status !== "granted") {
         Alert.alert("Permission needed", "Please allow camera access to scan.");
         return;
       }
-      const res = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 1,
-      });
+      const res = await ImagePicker.launchCameraAsync(safePickerOptions() as any);
       if (res.canceled || !res.assets?.length) return;
       const uri = res.assets[0].uri;
       closeScanMenu();
@@ -188,17 +268,12 @@ export default function CreateTicketScreen() {
 
   async function onScanFromPhotos() {
     try {
-      // Ask for library permission
       const libPerm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (libPerm.status !== "granted") {
         Alert.alert("Permission needed", "Please allow photo library access.");
         return;
       }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // don’t open the editor; we want a straight pick → OCR
-        quality: 1,
-      });
+      const res = await ImagePicker.launchImageLibraryAsync(safePickerOptions() as any);
       if (res.canceled || !res.assets?.length) return;
       const uri = res.assets[0].uri;
       closeScanMenu();
@@ -216,7 +291,6 @@ export default function CreateTicketScreen() {
     if (!barcode.trim()) return "Please enter the barcode (GTIN/EAN/UPC).";
     if (!ingredients.trim()) return "Please enter the full ingredients list (as printed).";
 
-    // Optional numeric sanity checks
     const maybeNums = [
       { label: "Calories", v: calories },
       { label: "Fat", v: fat },
@@ -271,15 +345,13 @@ export default function CreateTicketScreen() {
       potassium: potassium.trim(),
       protein: protein.trim(),
       saturated_fat: saturated_fat.trim(),
-      serving: serving.trim(),            // e.g. "141 g"
+      serving: serving.trim(),
       serving_amount: serving_amount.trim(),
       sodium: sodium.trim(),
       sugar: sugar.trim(),
       trans_fat: trans_fat.trim(),
       vitamin_d: vitamin_d.trim(),
       warning: warning.trim(),
-
-      // meta
       status: "open",
       createdBy: auth.currentUser?.uid ?? null,
       createdAt: serverTimestamp(),
@@ -304,49 +376,52 @@ export default function CreateTicketScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1, backgroundColor: "#fafafaff" }} 
+      style={{ flex: 1, backgroundColor: "#fafafaff" }}
     >
       <View style={{ flex: 1 }}>
+        {/* Top header with Back */}
+        <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TouchableOpacity onPress={goBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="arrow-back" size={28} color={activeColors.text} />
+            </TouchableOpacity>
+            <ThemedText type="subtitle" style={{ color: activeColors.text }}>
+              Create Product Ticket
+            </ThemedText>
+          </View>
+        </ThemedView>
+        <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+
         {/* Scan anchor button (top-right) */}
         <View style={styles.scanAnchor}>
-          <Pressable style={styles.scanBtn} onPress={openScanMenu}>
-            <ThemedText style={styles.scanBtnText}>Scan</ThemedText>
+          <Pressable style={styles.scanBtn} onPress={() => setScanMenuVisible(true)}>
+            <ThemedText style={styles.scanBtnText}>Autofill</ThemedText>
           </Pressable>
         </View>
 
-        {/* The menu as a Modal so it overlays above everything */}
+        {/* The menu as a Modal */}
         <Modal
           visible={scanMenuVisible}
           transparent
           animationType="fade"
-          onRequestClose={closeScanMenu}
+          onRequestClose={() => setScanMenuVisible(false)}
         >
-          <Pressable style={styles.menuOverlay} onPress={closeScanMenu}>
+          <Pressable style={styles.menuOverlay} onPress={() => setScanMenuVisible(false)}>
             <View pointerEvents="box-none" style={{ flex: 1 }}>
               <View style={styles.menuCard}>
-                <Pressable
-                  style={styles.menuItem}
-                  onPress={() => {
-                    onScanFromCamera();
-                  }}
-                >
-                  <Text style={styles.menuItemText}>Use Camera</Text>
+                <Pressable style={styles.menuItem} onPress={onScanFromCamera}>
+                  <ThemedText style={styles.menuItemText}>Use Camera</ThemedText>
                 </Pressable>
                 <View style={styles.menuDivider} />
-                <Pressable
-                  style={styles.menuItem}
-                  onPress={() => {
-                    onScanFromPhotos();
-                  }}
-                >
-                  <Text style={styles.menuItemText}>Use from Photos</Text>
+                <Pressable style={styles.menuItem} onPress={onScanFromPhotos}>
+                  <ThemedText style={styles.menuItemText}>Use from Photos</ThemedText>
                 </Pressable>
               </View>
             </View>
           </Pressable>
         </Modal>
 
-        {/* DEBUG MODAL: inspect OCR output */}
+        {/* DEBUG MODAL */}
         <Modal
           visible={debugModalOpen}
           animationType="slide"
@@ -356,8 +431,8 @@ export default function CreateTicketScreen() {
             style={{
               flex: 1,
               backgroundColor: "#fff",
-              paddingTop: Platform.OS === "ios" ? 60 : 40, // <-- Safe-area top
-              paddingBottom: 40,                            // <-- So Close button isn’t hidden
+              paddingTop: Platform.OS === "ios" ? 60 : 40,
+              paddingBottom: 40,
             }}
           >
             <View
@@ -369,7 +444,7 @@ export default function CreateTicketScreen() {
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</Text>
+              <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</ThemedText>
               <Pressable
                 onPress={() => setDebugModalOpen(false)}
                 style={{
@@ -379,45 +454,46 @@ export default function CreateTicketScreen() {
                   paddingVertical: 6,
                 }}
               >
-                <Text style={{ color: "#fff", fontWeight: "600" }}>Close</Text>
+                <ThemedText style={{ color: "#fff", fontWeight: "600" }}>Close</ThemedText>
               </Pressable>
             </View>
 
             <ScrollView
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                paddingBottom: 60, // <-- lets you scroll past bottom content
-              }}
-              showsVerticalScrollIndicator={true}
+              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }}
+              showsVerticalScrollIndicator
             >
-              <Text style={{ fontWeight: "700", marginBottom: 6 }}>Fields</Text>
-              <Text
+              <ThemedText style={{ fontWeight: "700", marginBottom: 6 }}>Fields</ThemedText>
+              <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
                   fontSize: 13,
                 }}
               >
                 {JSON.stringify(lastScan?.fields ?? {}, null, 2)}
-              </Text>
+              </ThemedText>
 
               <View style={{ height: 20 }} />
 
-              <Text style={{ fontWeight: "700", marginBottom: 6 }}>Raw Text</Text>
-              <Text
+              <ThemedText style={{ fontWeight: "700", marginBottom: 6 }}>Raw Text</ThemedText>
+              <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
                   fontSize: 13,
                 }}
               >
                 {lastScan?.rawText || ""}
-              </Text>
+              </ThemedText>
             </ScrollView>
           </View>
         </Modal>
 
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <ThemedText type = 'subtitle' style={styles.title}>Create Product Ticket</ThemedText>
-          <ThemedText type = 'default' style={styles.subtitle}>Please provide as much information as you can.</ThemedText>
+          <ThemedText type="subtitle" style={styles.title}>
+            Create Product Ticket
+          </ThemedText>
+          <ThemedText type="default" style={styles.subtitle}>
+            Please provide as much information as you can.
+          </ThemedText>
 
           {/* Core identity */}
           <Field
@@ -460,7 +536,7 @@ export default function CreateTicketScreen() {
             label="Serving (with unit)"
             value={serving}
             onChangeText={setServing}
-            placeholder='e.g., "141 g"'
+            placeholder='e.g., "28 g"'
           />
           <Field
             label="Servings per container"
@@ -472,24 +548,26 @@ export default function CreateTicketScreen() {
 
           {/* Nutrition (per serving) */}
           <View style={styles.sectionHeader}>
-            <ThemedText type = "header" style={styles.sectionHeaderText}>Nutrition (per serving)</ThemedText>
+            <ThemedText type="header" style={styles.sectionHeaderText}>
+              Nutrition (per serving)
+            </ThemedText>
           </View>
-          <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 340" keyboardType="numeric" />
-          <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 19" keyboardType="numeric" />
-          <Field label="Saturated fat (g)" value={saturated_fat} onChangeText={setSaturatedFat} placeholder="e.g., 10" keyboardType="numeric" />
-          <Field label="Trans fat (g)" value={trans_fat} onChangeText={setTransFat} placeholder="e.g., 0.5" keyboardType="numeric" />
+          <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 110" keyboardType="numeric" />
+          <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 0.5" keyboardType="numeric" />
+          <Field label="Saturated fat (g)" value={saturated_fat} onChangeText={setSaturatedFat} placeholder="e.g., 0" keyboardType="numeric" />
+          <Field label="Trans fat (g)" value={trans_fat} onChangeText={setTransFat} placeholder="e.g., 0" keyboardType="numeric" />
           <Field label="Monounsaturated fat (g)" value={monounsaturated_fat} onChangeText={setMonoFat} placeholder="e.g., 0" keyboardType="numeric" />
           <Field label="Polyunsaturated fat (g)" value={polyunsaturated_fat} onChangeText={setPolyFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Cholesterol (mg)" value={cholesterol} onChangeText={setCholesterol} placeholder="e.g., 65" keyboardType="numeric" />
-          <Field label="Sodium (mg)" value={sodium} onChangeText={setSodium} placeholder="e.g., 150" keyboardType="numeric" />
-          <Field label="Carbohydrate (g)" value={carbohydrate} onChangeText={setCarb} placeholder="e.g., 38" keyboardType="numeric" />
-          <Field label="Sugar (g)" value={sugar} onChangeText={setSugar} placeholder="e.g., 32" keyboardType="numeric" />
-          <Field label="Added sugars (g)" value={added_sugars} onChangeText={setAddedSugars} placeholder="e.g., 26" keyboardType="numeric" />
-          <Field label="Fiber (g)" value={fiber} onChangeText={setFiber} placeholder="e.g., 1" keyboardType="numeric" />
-          <Field label="Protein (g)" value={protein} onChangeText={setProtein} placeholder="e.g., 5" keyboardType="numeric" />
-          <Field label="Potassium (mg)" value={potassium} onChangeText={setPotassium} placeholder="e.g., 210" keyboardType="numeric" />
-          <Field label="Calcium (mg)" value={calcium} onChangeText={setCalcium} placeholder="e.g., 150" keyboardType="numeric" />
-          <Field label="Iron (mg)" value={iron} onChangeText={setIron} placeholder="e.g., 0.4" keyboardType="numeric" />
+          <Field label="Cholesterol (mg)" value={cholesterol} onChangeText={setCholesterol} placeholder="e.g., 0" keyboardType="numeric" />
+          <Field label="Sodium (mg)" value={sodium} onChangeText={setSodium} placeholder="e.g., 400" keyboardType="numeric" />
+          <Field label="Carbohydrate (g)" value={carbohydrate} onChangeText={setCarb} placeholder="e.g., 23" keyboardType="numeric" />
+          <Field label="Sugar (g)" value={sugar} onChangeText={setSugar} placeholder="e.g., <1" />
+          <Field label="Added sugars (g)" value={added_sugars} onChangeText={setAddedSugars} placeholder="e.g., 0" keyboardType="numeric" />
+          <Field label="Fiber (g)" value={fiber} onChangeText={setFiber} placeholder="e.g., 2" keyboardType="numeric" />
+          <Field label="Protein (g)" value={protein} onChangeText={setProtein} placeholder="e.g., 3" keyboardType="numeric" />
+          <Field label="Potassium (mg)" value={potassium} onChangeText={setPotassium} placeholder="e.g., 90" keyboardType="numeric" />
+          <Field label="Calcium (mg)" value={calcium} onChangeText={setCalcium} placeholder="e.g., 10" keyboardType="numeric" />
+          <Field label="Iron (mg)" value={iron} onChangeText={setIron} placeholder="e.g., 1.2" keyboardType="numeric" />
           <Field label="Vitamin D (mcg or IU as on label)" value={vitamin_d} onChangeText={setVitaminD} placeholder="e.g., 0" keyboardType="numeric" />
 
           {/* Derived preview */}
@@ -499,15 +577,11 @@ export default function CreateTicketScreen() {
             <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
           </View>
 
-          <Pressable
-            style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-            onPress={onSubmit}
-            disabled={submitting}
-          >
+          <Pressable style={[styles.submitBtn, submitting && { opacity: 0.7 }]} onPress={onSubmit} disabled={submitting}>
             {submitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Submit Ticket</ThemedText>}
           </Pressable>
 
-          <Pressable style={styles.cancelBtn} onPress={() => router.back()}>
+          <Pressable style={styles.cancelBtn} onPress={goBack}>
             <ThemedText style={styles.cancelText}>Cancel</ThemedText>
           </Pressable>
 
@@ -519,13 +593,15 @@ export default function CreateTicketScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24, marginTop:16 },
-  title: { fontWeight: "700", marginBottom: 6, color: '#212D39' },
+  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24, marginTop: 16 },
+  titleContainer: { paddingTop: 70, paddingBottom: 10, paddingHorizontal: 24 },
+  divider: { height: 2, width: "100%" },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 6, color: "#212D39" },
   subtitle: { color: "#555", marginBottom: 16 },
   label: { color: "#364452ff", fontWeight: "600", marginBottom: 6 },
   input: {
     borderWidth: 1,
-    fontSize:17.5,
+    fontSize: 17.5,
     borderColor: "#ddd",
     borderRadius: 8,
     paddingHorizontal: 12,
@@ -534,7 +610,7 @@ const styles = StyleSheet.create({
   },
   inputMultiline: { minHeight: 80, textAlignVertical: "top" },
   sectionHeader: { marginTop: 8, marginBottom: 8 },
-  sectionHeaderText: { color: "#364452ff", fontWeight: "700" },
+  sectionHeaderText: { color: "#364452ff", fontWeight: "700", fontSize: 16 },
   readonlyLabel: { fontWeight: "600", marginBottom: 4, color: "#555" },
   readonlyText: { color: "#777" },
   submitBtn: {
@@ -549,32 +625,18 @@ const styles = StyleSheet.create({
   cancelText: { color: "#444", fontWeight: "600" },
 
   // Scan menu / overlay
-  scanAnchor: {
-    position: "absolute",
-    right: 16,
-    top: 40,
-    zIndex: 1,
-  },
-  scanBtn: {
-    backgroundColor: "#1f2937",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-  },
+  scanAnchor: { position: "absolute", right: 16, top: 76, zIndex: 1 }, // bumped below header
+  scanBtn: { backgroundColor: "#1f2937", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12 },
   scanBtnText: { color: "#fff", fontWeight: "700" },
-
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.12)",
-  },
+  menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.12)" },
   menuCard: {
     position: "absolute",
     right: 16,
-    top: 60,
+    top: 96,
     backgroundColor: "#fff",
     borderRadius: 12,
     overflow: "hidden",
-    elevation: 12, // Android stacking
+    elevation: 12,
     shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 10,
