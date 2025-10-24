@@ -305,10 +305,6 @@ export default function CreateCustomEntryScreen() {
 
         {/* Actions */}
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
-          <Pressable onPress={goBackToSearch} style={[styles.backButton, { alignSelf: 'flex-start' }]}>
-            <Text style={styles.backButtonText}>{'\u2039'} Back</Text>
-          </Pressable>
-
           <Pressable style={styles.saveButton} onPress={handleSave}>
             <ThemedText style={styles.buttonText}>
               {editingEntry ? 'Update Entry' : 'Save Entry'}
