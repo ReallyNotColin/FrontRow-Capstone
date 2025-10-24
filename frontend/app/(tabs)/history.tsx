@@ -224,18 +224,13 @@ export default function Screen() {
           <ScrollView style={styles.modalScroll}>
             {selectedFoodDetails ? (
               <View style={{ gap: 12 }}>
-                <View style={styles.detailsRow}>
                   {/* Product Title */}
-                  <View style={styles.imagePlaceholder}></View>
-                  <View style={styles.detailsColumn}>
-                    <ModalProductName style={{ fontWeight: "700", maxWidth: 200, color: "#333" }}>
+                    <ModalProductName style={{ fontWeight: "700", maxWidth: 300, color: "#333" }}>
                       {selectedFoodDetails.name}
                     </ModalProductName>
                     <ModalBrandName style={{ fontStyle: "italic", fontWeight: "500"}}>
                       by {selectedFoodDetails.brand_name}
                     </ModalBrandName>
-                  </View>
-                </View>
 
                 {/* Barcode */}
                 {selectedFoodDetails.barcode && (

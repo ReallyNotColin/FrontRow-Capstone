@@ -674,23 +674,14 @@ const ensureProfileThenCompare = async (
         </ThemedText>
 
         <Pressable style={styles.viewButton} onPress={() => handleViewPress(item, index)}>
-          <ThemedText style={styles.buttonText}>View</ThemedText>
+          <ThemedText style={styles.buttonText}>View Details</ThemedText>
         </Pressable>
 
         {expandedIndex === index && selectedFoodDetails && (
           <View style={[styles.detailsBox, { backgroundColor: activeColors.backgroundTitle, borderColor: 'transparent' }]}>
             <View style={styles.detailsRow}>
-              <View style={styles.imagePlaceholder}><ThemedText style={styles.imagePlaceholderText}>Put image here</ThemedText></View>
 
               <View style={styles.detailsCol}>
-                <ThemedText style={[styles.prodTitle, { color: activeColors.text }]}>
-                  {item.brand_name ? `${item.brand_name} — ${item.name}` : item.name}
-                </ThemedText>
-
-                <View style={styles.metaRow}>
-                  <ThemedText style={[styles.metaLabel, { color: activeColors.secondaryText }]}>Barcode:</ThemedText>
-                  <ThemedText style={[styles.metaValue, { color: activeColors.text }]}>{item.barcode ?? '—'}</ThemedText>
-                </View>
 
                 {!!item.ingredients && (
                   <View>
@@ -992,8 +983,6 @@ const styles = StyleSheet.create({
 
   detailsBox: { marginTop: 10, backgroundColor: '#f4f4f4', borderRadius: 6, padding: 10, borderColor: '#ddd', borderWidth: 1, position: 'relative' },
   detailsRow: { flexDirection: 'row', gap: 12 },
-  imagePlaceholder: { width: 96, height: 96, borderRadius: 10, borderWidth: 1, borderColor: '#ddd', backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' },
-  imagePlaceholderText: { fontSize: 12, color: '#777', textAlign: 'center', paddingHorizontal: 6 },
   detailsCol: { flex: 1, minWidth: 0 },
   prodTitle: { fontWeight: '600', marginBottom: 6 },
   metaRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 6, flexWrap: 'wrap' },
