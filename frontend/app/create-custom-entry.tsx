@@ -305,7 +305,7 @@ export default function CreateCustomEntryScreen() {
 
         {/* Actions */}
         <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
-          <Pressable style={styles.saveButton} onPress={handleSave}>
+          <Pressable style={[styles.saveButton, {width: '100%', alignSelf:'stretch'}]} onPress={handleSave}>
             <ThemedText style={styles.buttonText}>
               {editingEntry ? 'Update Entry' : 'Save Entry'}
             </ThemedText>
