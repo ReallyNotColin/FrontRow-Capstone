@@ -1,7 +1,7 @@
 // app/(tabs)/scan.tsx
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useEffect, useState, useCallback } from 'react';
-import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Pressable } from 'react-native';
+import { Platform, Button, StyleSheet, Text, TouchableOpacity, View, ScrollView, Modal, Pressable, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { BlurView } from 'expo-blur';
@@ -507,8 +507,16 @@ async function runCompareGroupMixed(
 
   return (
     <View style={styles.container}>
+      <View style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+        <Image 
+          source={require('@/assets/images/banner.png')} 
+          style={styles.bannerImage}
+          resizeMode="contain"
+        />
+    </View>
+    <View style={[styles.divider, { backgroundColor: activeColors.divider }]} />
       <CameraView
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { top: 78 }]}
         facing={facing}
         onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
         barcodeScannerSettings={{ barcodeTypes: ['upc_a', 'upc_e', 'ean13', 'ean8'] }}
@@ -678,11 +686,18 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 10,
     paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  bannerImage: {
+    width: 300,
+    height: 50,
   },
   divider: {
     height: 2,
-    marginBottom: 16,
     width: '100%',
+    zIndex: 10,
   },
   textContainer: {
     backgroundColor: 'transparent', 
@@ -882,5 +897,6 @@ hintText: {
   fontWeight: 'bold',
   textAlign: 'center',
 }
+
 
 });
