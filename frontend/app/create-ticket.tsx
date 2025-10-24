@@ -448,7 +448,7 @@ export default function CreateTicketScreen() {
               <Pressable
                 onPress={() => setDebugModalOpen(false)}
                 style={{
-                  backgroundColor: "#007AFF",
+                  backgroundColor: "#27778E",
                   borderRadius: 8,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
@@ -593,7 +593,7 @@ export default function CreateTicketScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingTop: 56, paddingHorizontal: 20, paddingBottom: 24, marginTop: 16 },
+  container: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 24 },
   titleContainer: { paddingTop: 70, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, width: "100%" },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 6, color: "#212D39" },
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   cancelText: { color: "#444", fontWeight: "600" },
 
   // Scan menu / overlay
-  scanAnchor: { position: "absolute", right: 16, top: 76, zIndex: 1 }, // bumped below header
+  scanAnchor: { position: "absolute", right: 16, top: 60, zIndex: 1 }, // bumped below header
   scanBtn: { backgroundColor: "#1f2937", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12 },
   scanBtnText: { color: "#fff", fontWeight: "700" },
   menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.12)" },
