@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { db } from '@/db/firebaseConfig';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Row = {
   id: string;
@@ -140,13 +141,13 @@ export default function ResultsScreen() {
         { backgroundColor: activeColors.backgroundTitle, borderColor: activeColors.divider },
       ]}
     >
-      <ThemedText style={[styles.foodName, { color: activeColors.text }]}>
+      <ThemedText type="default" style={[styles.foodName, { color: activeColors.text }]}>
         {item.foodName}
       </ThemedText>
-      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
+      <ThemedText type="default" style={[styles.details, { color: activeColors.secondaryText }]}>
         Allergens: {item.warnings?.trim() ? item.warnings : 'None'}
       </ThemedText>
-      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
+      <ThemedText type="default" style={[styles.details, { color: activeColors.secondaryText }]}>
         Matched: {item.matched?.trim() ? item.matched : 'None'}
       </ThemedText>
         <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -163,27 +164,34 @@ export default function ResultsScreen() {
     </View>
   );
 
-  return (
-    <ScrollView style={[styles.container, { backgroundColor: activeColors.background }]}>
-      <ThemedView style={[styles.header, { backgroundColor: activeColors.backgroundTitle }]}>
-        <ThemedText type="title" style={{ color: activeColors.text }}>Results</ThemedText>
-        <TouchableOpacity onPress={handleClose}>
-            <Ionicons name = "close-circle" size={28} color={activeColors.text} />
-        </TouchableOpacity>
-      </ThemedView>
-      <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]}/>
-
+return (
+  <LinearGradient colors={activeColors.gradientBackground} style={styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
+    <ThemedView style={[styles.header, { backgroundColor: activeColors.backgroundTitle }]}>
+      <ThemedText type="title" style={{ color: activeColors.text }}>Results</ThemedText>
+      <TouchableOpacity onPress={handleClose}>
+          <Ionicons name="close-circle" size={24} color={activeColors.text} />
+      </TouchableOpacity>
+    </ThemedView>
+    <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+    
+    <ScrollView style={[styles.container]}>
       <ThemedView style={styles.text}>
-        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>Harmful</ThemedText>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <ThemedText type="subtitle" style={[styles.sectionHeader, { color: activeColors.text }]}>Harmful</ThemedText>
+        </View>
         {harmful.length === 0 ? (
-          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>No harmful foods found.</ThemedText>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
+            No harmful foods found.
+          </ThemedText>
         ) : (
           harmful.map(renderEntry)
         )}
 
-        <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>Not Harmful</ThemedText>
+        <ThemedText type="subtitle" style={[styles.sectionHeader, { color: activeColors.text }]}>Not Harmful</ThemedText>
         {notHarmful.length === 0 ? (
-          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>No safe foods logged yet.</ThemedText>
+          <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText }]}>
+            No safe foods logged yet.
+          </ThemedText>
         ) : (
           notHarmful.map(renderEntry)
         )}
@@ -212,21 +220,13 @@ export default function ResultsScreen() {
             <ScrollView style={styles.modalScroll}>
               {selectedFoodDetails ? (
                 <View style={{ gap: 12 }}>
-                  <View style={styles.detailsRow}>
                     {/* Product Title */}
-                    <View style={styles.imagePlaceholder}></View>
-                    <View style={styles.detailsColumn}>
-                      <ThemedText style={{ color: activeColors.text, fontWeight: "700", fontSize: 18, maxWidth: 200}}>
-                        { selectedFoodDetails.name}
+                      <ThemedText style={{ color: activeColors.text, fontWeight: "700", maxWidth: 300}}>
+                        {selectedFoodDetails.name}
                       </ThemedText>
-                      <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
-                        <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
-                          by{" "}
-                        </ThemedText>
-                      { selectedFoodDetails.brand_name}
-                    </ThemedText>
-                    </View>
-                  </View>
+                      <ThemedText style={{ color: '#666', fontStyle: "italic", fontWeight: "500" }}>
+                        by {selectedFoodDetails.brand_name}
+                      </ThemedText>
 
                   {/* Barcode */}
                   {selectedFoodDetails.barcode && (
@@ -273,10 +273,14 @@ export default function ResultsScreen() {
         </BlurView>
       </Modal>
     </ScrollView>
-  );
+  </LinearGradient>
+);
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {},
   header: {
     paddingTop: 60,
@@ -288,7 +292,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 2,
-    marginBottom: 16,
     width: '100%',
   },
   text: {
@@ -296,7 +299,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   sectionHeader: {
-    fontSize: 18,
     fontWeight: 'bold',
     marginTop: 20,
     marginBottom: 10,
@@ -309,11 +311,9 @@ const styles = StyleSheet.create({
   },
   foodName: {
     fontWeight: 'bold',
-    fontSize: 16,
     marginBottom: 4,
   },
   details: {
-    fontSize: 14,
   },
   emptyText: {
     fontStyle: 'italic',
