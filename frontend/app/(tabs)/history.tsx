@@ -1,11 +1,11 @@
 // app/(tabs)/history.tsx
 import React, { useState, useCallback } from "react";
 
-import { ScrollView, StyleSheet, View, TouchableOpacity, Modal } from "react-native";
-import { BlurView } from 'expo-blur';
+import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemedColor } from "@/components/ThemedColor";
+import { ThemedModal, ModalTitle, ModalProductName, ModalSectionText, ModalBrandName } from "@/components/ThemedModal";
 
 import { useFocusEffect } from "@react-navigation/native";
 import { onHistory, deleteHistory } from "@/db/history"; // ⬅️ live subscription API
@@ -143,18 +143,18 @@ export default function Screen() {
       ]}
     >
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <ThemedText style={[styles.foodName, { color: activeColors.text, flex: 1, flexWrap: "wrap" }]}>
+        <ThemedText type="default" style={[styles.foodName, { color: activeColors.text, flex: 1, flexWrap: "wrap" }]}>
           {item.foodName}
         </ThemedText>
         <TouchableOpacity onPress={() => item.id && deleteHistory(item.id)} style={{ marginLeft: 8 }}>
-          <Ionicons name="close-circle" size={20} color={activeColors.text} />
+          <Ionicons name="close-circle" size={25} color={activeColors.text} />
         </TouchableOpacity>
       </View>
 
-      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
+      <ThemedText type="default" style={[styles.details, { color: activeColors.secondaryText }]}>
         Warning: {item.warnings?.trim() ? item.warnings : "None"}
       </ThemedText>
-      <ThemedText style={[styles.details, { color: activeColors.secondaryText }]}>
+      <ThemedText type="default" style={[styles.details, { color: activeColors.secondaryText }]}>
         Matched: {item.matched?.trim() ? item.matched : "None"}
       </ThemedText>
       <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -182,9 +182,9 @@ export default function Screen() {
         </ThemedText>
       </ThemedView>
       <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-      <ScrollView style={[styles.container]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <ThemedView style={styles.text}>
-          <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
+          <ThemedText type="subtitle" style={[styles.sectionHeader, { color: activeColors.text }]}>
             Harmful
           </ThemedText>
           {harmful.length === 0 ? (
@@ -195,7 +195,7 @@ export default function Screen() {
             harmful.map(renderEntry)
           )}
 
-          <ThemedText style={[styles.sectionHeader, { color: activeColors.text }]}>
+          <ThemedText type="subtitle" style={[styles.sectionHeader, { color: activeColors.text }]}>
             Not Harmful
           </ThemedText>
           {notHarmful.length === 0 ? (
@@ -208,88 +208,77 @@ export default function Screen() {
         </ThemedView>
         
         {/* Product Details Modal */}
-        <Modal 
-          animationType="slide" 
-          transparent 
+        <ThemedModal 
           visible={modalVisible} 
           onRequestClose={() => setModalVisible(false)}
         >
-          <BlurView intensity={50} tint="dark" style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <ThemedText type="title" style={{ color: activeColors.text }}>
-                  Product Details
-                </ThemedText>
-                <TouchableOpacity 
-                  onPress={() => setModalVisible(false)} 
-                  style={{ marginLeft: 8 }}
-                >
-                  <Ionicons name="close-circle" size={24} color={activeColors.text} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.modalScroll}>
-                {selectedFoodDetails ? (
-                  <View style={{ gap: 12 }}>
-                    <View style={styles.detailsRow}>
-                      {/* Product Title */}
-                      <View style={styles.imagePlaceholder}></View>
-                      <View style={styles.detailsColumn}>
-                        <ThemedText style={{ color: activeColors.text, fontWeight: "700", fontSize: 18, maxWidth: 200}}>
-                          { selectedFoodDetails.name}
-                        </ThemedText>
-                        <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
-                          <ThemedText style={{ color: '#666',fontStyle: "italic", fontWeight: "500", fontSize: 16 }}>
-                            by{" "}
-                          </ThemedText>
-                        { selectedFoodDetails.brand_name}
-                      </ThemedText>
-                      </View>
-                    </View>
-
-                    {/* Barcode */}
-                    {selectedFoodDetails.barcode && (
-                      <ThemedText style={{ color: activeColors.text }}>
-                        <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
-                          Barcode:{" "}
-                        </ThemedText>
-                        {selectedFoodDetails.barcode}
-                      </ThemedText>
-                    )}
-
-                    {/* Ingredients */}
-                    {selectedFoodDetails.ingredients && (
-                      <ThemedText style={{ color: activeColors.text }}>
-                        <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
-                          Ingredients:{" "}
-                        </ThemedText>
-                        {selectedFoodDetails.ingredients}
-                      </ThemedText>
-                    )}
-
-                    {/* Allergens/Warnings */}
-                    <ThemedText style={{ color: activeColors.text }}>
-                      <ThemedText style={{ color: activeColors.secondaryText, fontWeight: "500" }}>
-                        Warnings:{" "}
-                      </ThemedText>
-                      {selectedFoodDetails.food?.food_attributes?.allergens?.allergen?.filter(
-                        (a: any) => a.value !== "0"
-                      ).length 
-                        ? selectedFoodDetails.food.food_attributes.allergens.allergen
-                            .filter((a: any) => a.value !== "0")
-                            .map((a: any) => a.name)
-                            .join(", ")
-                        : "None"}
-                    </ThemedText>
+          <View style={styles.modalHeader}>
+            <ModalTitle>Product Details</ModalTitle>
+            <TouchableOpacity 
+              onPress={() => setModalVisible(false)} 
+              style={{ marginLeft: 8 }}
+            >
+              <Ionicons name="close-circle" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalScroll}>
+            {selectedFoodDetails ? (
+              <View style={{ gap: 12 }}>
+                <View style={styles.detailsRow}>
+                  {/* Product Title */}
+                  <View style={styles.imagePlaceholder}></View>
+                  <View style={styles.detailsColumn}>
+                    <ModalProductName style={{ fontWeight: "700", maxWidth: 200, color: "#333" }}>
+                      {selectedFoodDetails.name}
+                    </ModalProductName>
+                    <ModalBrandName style={{ fontStyle: "italic", fontWeight: "500"}}>
+                      by {selectedFoodDetails.brand_name}
+                    </ModalBrandName>
                   </View>
-                ) : (
-                  <ThemedText style={{ color: activeColors.secondaryText }}>
-                    Loading product details...
-                  </ThemedText>
+                </View>
+
+                {/* Barcode */}
+                {selectedFoodDetails.barcode && (
+                  <ModalSectionText>
+                    <ModalSectionText style={{ fontWeight: "500" }}>
+                      Barcode:{" "}
+                    </ModalSectionText>
+                    {selectedFoodDetails.barcode}
+                  </ModalSectionText>
                 )}
-              </ScrollView>
-            </View>
-          </BlurView>
-        </Modal>
+
+                {/* Ingredients */}
+                {selectedFoodDetails.ingredients && (
+                  <ModalSectionText>
+                    <ModalSectionText style={{ fontWeight: "500" }}>
+                      Ingredients:{" "}
+                    </ModalSectionText>
+                    {selectedFoodDetails.ingredients}
+                  </ModalSectionText>
+                )}
+
+                {/* Allergens/Warnings */}
+                <ModalSectionText>
+                  <ModalSectionText style={{ fontWeight: "500" }}>
+                    Warnings:{" "}
+                  </ModalSectionText>
+                  {selectedFoodDetails.food?.food_attributes?.allergens?.allergen?.filter(
+                    (a: any) => a.value !== "0"
+                  ).length 
+                    ? selectedFoodDetails.food.food_attributes.allergens.allergen
+                        .filter((a: any) => a.value !== "0")
+                        .map((a: any) => a.name)
+                        .join(", ")
+                    : "None"}
+                </ModalSectionText>
+              </View>
+            ) : (
+              <ModalSectionText>
+                Loading product details...
+              </ModalSectionText>
+            )}
+          </ScrollView>
+        </ThemedModal>
       </ScrollView>
     </LinearGradient>
   );
@@ -314,10 +303,9 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   sectionHeader: {
-    fontSize: 18,
     fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 14,
+    marginBottom: 12,
   },
   entry: {
     marginBottom: 12,
@@ -327,11 +315,10 @@ const styles = StyleSheet.create({
   },
   foodName: {
     fontWeight: "bold",
-    fontSize: 16,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   details: {
-    fontSize: 14,
+    marginTop: 2
   },
   emptyText: {
     fontStyle: "italic",
@@ -343,22 +330,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 10,
     alignItems: 'center',
-  },
-  modalOverlay: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  modalContent: { 
-    backgroundColor: 'white', 
-    borderRadius: 20, 
-    width: '90%', 
-    maxHeight: '80%', 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.25, 
-    shadowRadius: 4, 
-    elevation: 5 
   },
   modalHeader: { 
     flexDirection: 'row', 

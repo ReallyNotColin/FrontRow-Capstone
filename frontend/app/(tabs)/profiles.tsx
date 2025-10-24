@@ -273,16 +273,16 @@ const petCurrentOptions = useMemo(() => {
     <LinearGradient colors = {activeColors.gradientBackground} style = {styles.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.4, 0.6, 1]}>
       <View style={[styles.container]}>
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-          <ThemedText type="title" style={{ color: activeColors.text }}>
-              Profiles
+            <ThemedText type="title" style={{ color: activeColors.text }}>
+                Profiles
             </ThemedText>
           </ThemedView>
           <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
         <View style={styles.container}>
-          <ScrollView>
+          <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
             {/* Individual Profiles */}
             <View style={styles.section}>
-              <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Profiles</ThemedText>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: activeColors.text }]}>Profiles</ThemedText>
 
               {savedProfiles.length === 0 ? (
                 <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
@@ -323,7 +323,7 @@ const petCurrentOptions = useMemo(() => {
 
             {/* Pet Profiles */}
             <View style={styles.section}>
-              <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Pet Profiles</ThemedText>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: activeColors.text }]}>Pet Profiles</ThemedText>
               {petProfiles.length === 0 ? (
                 <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
                   No pet profiles saved.
@@ -365,7 +365,7 @@ const petCurrentOptions = useMemo(() => {
 
             {/* Group Profiles */}
             <View style={styles.section}>
-              <ThemedText style={[styles.sectionTitle, { color: activeColors.text }]}>Group Profiles</ThemedText>
+              <ThemedText type="subtitle" style={[styles.sectionTitle, { color: activeColors.text }]}>Group Profiles</ThemedText>
 
               {Object.keys(groupProfiles).length === 0 ? (
                 <ThemedText style={[styles.emptyText, { color: activeColors.secondaryText, marginLeft: 12 }]}>
@@ -698,14 +698,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   gradient: {flex: 1,},
   titleContainer: { paddingTop: 60, paddingBottom: 10, paddingHorizontal: 24 },
-  divider: { height: 2, marginBottom: 16, width: '100%' },
+  divider: { height: 2, width: '100%' },
 
   buttonContainer: { position: 'absolute', right: 16, alignItems: 'flex-end', bottom: Platform.OS === 'ios' ? 95 : 16, backgroundColor: 'transparent' },
   button: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
   continueButtonText: { fontSize: 28 },
 
-  section: { marginBottom: 24 },
-  sectionTitle: { fontWeight: 'bold', marginBottom: 12, marginLeft: 10 },
+  section: {paddingHorizontal: 25, paddingVertical: 12},
+  sectionTitle: { fontWeight: 'bold', marginBottom: 12},
 
   card: { padding: 12, borderRadius: 8, marginBottom: 8 },
   cardTitle: { fontWeight: 'bold' },
