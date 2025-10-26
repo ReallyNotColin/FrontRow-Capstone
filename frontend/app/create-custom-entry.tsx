@@ -438,11 +438,11 @@ export default function CreateCustomEntryScreen() {
                 marginBottom: 12,
               }}
             >
-              <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</ThemedText>
+              <ThemedText style={{ color: "#212D39",fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</ThemedText>
               <Pressable
                 onPress={() => setDebugModalOpen(false)}
                 style={{
-                  backgroundColor: "#007AFF",
+                  backgroundColor: "#27778E",
                   borderRadius: 8,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
@@ -456,9 +456,10 @@ export default function CreateCustomEntryScreen() {
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }}
               showsVerticalScrollIndicator
             >
-              <ThemedText style={{ fontWeight: "700", marginBottom: 6 }}>Fields</ThemedText>
+              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>Fields</ThemedText>
               <ThemedText
                 style={{
+                  color: "#212D39",
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
                   fontSize: 13,
                 }}
@@ -468,11 +469,12 @@ export default function CreateCustomEntryScreen() {
 
               <View style={{ height: 20 }} />
 
-              <ThemedText style={{ fontWeight: "700", marginBottom: 6 }}>Raw Text</ThemedText>
+              <ThemedText style={{color: "#212D39", fontWeight: "700", marginBottom: 6 }}>Raw Text</ThemedText>
               <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
                   fontSize: 13,
+                  color: "#212D39",
                 }}
               >
                 {lastScan?.rawText || ""}

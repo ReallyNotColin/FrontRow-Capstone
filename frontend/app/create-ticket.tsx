@@ -145,7 +145,7 @@ export default function CreateTicketScreen() {
   const goBack = () => {
     if (router.canGoBack()) router.push("/(tabs)/search");
   };
-  
+
   function safePickerOptions() {
     if ((ImagePicker as any)?.MediaType?.Images) {
       return { mediaTypes: ImagePicker.MediaType.Images, quality: 1 };
@@ -440,7 +440,7 @@ export default function CreateTicketScreen() {
                 marginBottom: 12,
               }}
             >
-              <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</ThemedText>
+              <ThemedText style={{ color:"#212D39",fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</ThemedText>
               <Pressable
                 onPress={() => setDebugModalOpen(false)}
                 style={{
@@ -458,11 +458,12 @@ export default function CreateTicketScreen() {
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }}
               showsVerticalScrollIndicator
             >
-              <ThemedText style={{ fontWeight: "700", marginBottom: 6 }}>Fields</ThemedText>
+              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>Fields</ThemedText>
               <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
                   fontSize: 13,
+                  color: "#212D39",
                 }}
               >
                 {JSON.stringify(lastScan?.fields ?? {}, null, 2)}
@@ -470,11 +471,12 @@ export default function CreateTicketScreen() {
 
               <View style={{ height: 20 }} />
 
-              <ThemedText style={{ fontWeight: "700", marginBottom: 6 }}>Raw Text</ThemedText>
+              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>Raw Text</ThemedText>
               <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
                   fontSize: 13,
+                  color: "#212D39",
                 }}
               >
                 {lastScan?.rawText || ""}
