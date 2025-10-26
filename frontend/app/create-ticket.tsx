@@ -143,10 +143,9 @@ export default function CreateTicketScreen() {
   const brand_lower = useMemo(() => brand_name.trim().toLowerCase(), [brand_name]);
 
   const goBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.push("/(tabs)/search");
+    if (router.canGoBack()) router.push("/(tabs)/search");
   };
-
+  
   function safePickerOptions() {
     if ((ImagePicker as any)?.MediaType?.Images) {
       return { mediaTypes: ImagePicker.MediaType.Images, quality: 1 };
@@ -382,9 +381,6 @@ export default function CreateTicketScreen() {
         {/* Top header with Back */}
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity onPress={goBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="arrow-back" size={28} color={activeColors.text} />
-            </TouchableOpacity>
             <ThemedText type="subtitle" style={{ color: activeColors.text }}>
               Create Product Ticket
             </ThemedText>

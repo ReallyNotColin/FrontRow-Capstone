@@ -29,6 +29,15 @@ export default function TabLayout() {
         tabBarInactiveTintColor: inactiveTintColor,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarLabelPosition: 'below-icon',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
+        },
         tabBarStyle: Platform.select({
           ios: {
             position: 'absolute',
@@ -86,4 +95,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-

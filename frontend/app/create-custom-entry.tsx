@@ -145,8 +145,7 @@ export default function CreateCustomEntryScreen() {
   const brand_lower = useMemo(() => brand_name.trim().toLowerCase(), [brand_name]);
 
   const goBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.push("/(tabs)/search");
+    if (router.canGoBack()) router.push("/(tabs)/search");
   };
 
   // Safely build picker options across old/new Expo SDKs.
@@ -380,9 +379,6 @@ export default function CreateCustomEntryScreen() {
         {/* Top header with Back */}
         <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <TouchableOpacity onPress={goBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="arrow-back" size={28} color={activeColors.text} />
-            </TouchableOpacity>
             <ThemedText type="subtitle" style={{ color: activeColors.text }}>
               Create Custom Entry
             </ThemedText>
