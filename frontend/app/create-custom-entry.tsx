@@ -174,7 +174,7 @@ export default function CreateCustomEntryScreen() {
     try {
       const base64 = await toBase64(uri);
 
-      Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
+      //Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
 
       const functions = getFunctions(undefined, "us-central1");
       const scanFn = httpsCallable(functions, "scanNutritionFromImage");
@@ -194,15 +194,55 @@ export default function CreateCustomEntryScreen() {
       console.log("[OCR rawText]", rawText);
       console.log("[OCR fields]", fields);
 
-      try {
-        const path = `${FileSystem.documentDirectory}last-ocr.json`;
-        await FileSystem.writeAsStringAsync(
-          path,
-          JSON.stringify({ at: new Date().toISOString(), rawText, fields }, null, 2)
-        );
-      } catch (e) {
-        console.warn("Failed to write last-ocr.json:", e);
-      }
+      // try {
+      //   const path = `${FileSystem.documentDirectory}last-ocr.json`;
+      //   await FileSystem.writeAsStringAsync(
+      //     path,
+      //     JSON.stringify({ at: new Date().toISOString(), rawText, fields }, null, 2)
+      //   );
+      // } catch (e) {
+      //   console.warn("Failed to write last-ocr.json:", e);
+      // }
+
+      // try {
+      //   await addDoc(collection(db, "ScanResults"), {
+      //     uid: auth.currentUser?.uid ?? null,
+      //     at: serverTimestamp(),
+      //     fields,
+      //     rawText,
+      //     source: "mobile",
+      //   });
+      //   console.log("[OCR] Saved debug doc in ScanResults");
+      // } catch (e) {
+      //   console.warn("Failed to save ScanResults:", e);
+      // }
+
+      setFoodName("");
+      setBrandName("");
+      setBarcode("");
+      setServing("");
+      setServingAmount("");
+      setIngredients("");
+      setWarning("");
+
+      setCalories("");
+      setFat("");
+      setSaturatedFat("");
+      setTransFat("");
+      setMonoFat("");
+      setPolyFat("");
+      setCholesterol("");
+      setSodium("");
+      setCarb("");
+      setSugar("");
+      setAddedSugars("");
+      setFiber("");
+      setProtein("");
+      setPotassium("");
+      setCalcium("");
+      setIron("");
+      setVitaminD("");
+      //-----------
 
       // Hydrate fields onto the form
       if (fields.food_name) setFoodName(fields.food_name);
@@ -232,7 +272,7 @@ export default function CreateCustomEntryScreen() {
       if (fields.vitamin_d) setVitaminD(fields.vitamin_d);
 
       setLastScan({ rawText, fields });
-      setDebugModalOpen(true);
+      setDebugModalOpen(false);
     } catch (e: any) {
       console.error("scanImageAndAutofill failed:", e);
       Alert.alert("Scan failed", e?.message ?? String(e));
