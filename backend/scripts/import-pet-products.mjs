@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import admin from "firebase-admin";
+import { getFirestore, serverTimestamp } from "firebase-admin/firestore";
 
 /**
  * USAGE:
@@ -25,7 +26,7 @@ const serviceApp = admin.initializeApp({
   credential: admin.credential.applicationDefault(),
   projectId: process.env.FIREBASE_PROJECT_ID, // optional
 });
-const db = admin.firestore();
+const db = getFirestore();
 
 // minor helpers
 const norm = (s) => (s ?? "").toString().trim();
@@ -68,7 +69,7 @@ function prepareDoc(raw) {
     brand_lower: normLower(raw.brand_lower || raw.brand_name),
     pack_lower: normLower(raw.pack_lower || raw.pack_name),
 
-    _importedAt: admin.firestore.FieldValue.serverTimestamp(),
+    _importedAt: serverTimestamp(),
     _source: "bulk-import",
   };
 

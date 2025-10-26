@@ -3,8 +3,17 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 // 🔽 NEW: Google Cloud Vision client for OCR
 import { ImageAnnotatorClient } from "@google-cloud/vision";
+import {
+  getFirestore,
+  FieldValue,
+  Timestamp,
+} from "firebase-admin/firestore";
+
+
+
 admin.initializeApp();
-const db = admin.firestore();
+const db = getFirestore();
+
 // Initialize a single Vision client instance (uses default service account)
 const vision = new ImageAnnotatorClient();
 type ReviewAction = "approve" | "deny" | "saveEdits";
@@ -39,8 +48,8 @@ type TicketDoc = {
 
   status: "open" | "approved" | "rejected";
   createdBy: string | null;
-  createdAt: admin.firestore.Timestamp | admin.firestore.FieldValue;
-  updatedAt: admin.firestore.Timestamp | admin.firestore.FieldValue;
+  createdAt: Timestamp | admin.firestore.FieldValue;
+  updatedAt: Timestamp | admin.firestore.FieldValue;
   reviewerNotes?: string;
 };
 
@@ -118,13 +127,17 @@ function ticketToProductFields(t: TicketDoc | (TicketDoc & { id?: string })) {
     warning: normalizeString(t.warning),
     _source: "ticket",
     _sourceTicketId: (t as any).id ?? "",
-    _publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+    _publishedAt: FieldValue.serverTimestamp(),
   };
 }
 
 export const reviewTicket = onCall(
+  
   { region: "us-central1" },
   async (request) => {
+    const isEmu = process.env.FUNCTIONS_EMULATOR === "true";
+    if (!isEmu) assertAdmin(request.auth);
+
     assertAdmin(request.auth);
 
     const data = (request.data || {}) as ReviewTicketInput;
@@ -147,7 +160,7 @@ export const reviewTicket = onCall(
       throw new HttpsError("failed-precondition", "Ticket is not open.");
     }
 
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     const batch = db.batch();
 
     const safeEdits = sanitizeEdits(data.edits);
@@ -167,7 +180,7 @@ export const reviewTicket = onCall(
       batch.update(ticketRef, {
         ...safeEdits,
         updatedAt: now,
-        reviewerNotes: reviewerNotes || admin.firestore.FieldValue.delete(),
+        reviewerNotes: reviewerNotes || FieldValue.delete(),
       });
       await batch.commit();
       return { ok: true, action, ticketId };

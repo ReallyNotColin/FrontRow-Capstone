@@ -39,8 +39,9 @@ const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
 // 🔽 NEW: Google Cloud Vision client for OCR
 const vision_1 = require("@google-cloud/vision");
+const firestore_1 = require("firebase-admin/firestore");
 admin.initializeApp();
-const db = admin.firestore();
+const db = (0, firestore_1.getFirestore)();
 // Initialize a single Vision client instance (uses default service account)
 const vision = new vision_1.ImageAnnotatorClient();
 function assertAdmin(auth) {
@@ -109,10 +110,13 @@ function ticketToProductFields(t) {
         warning: normalizeString(t.warning),
         _source: "ticket",
         _sourceTicketId: t.id ?? "",
-        _publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+        _publishedAt: firestore_1.FieldValue.serverTimestamp(),
     };
 }
 exports.reviewTicket = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
+    const isEmu = process.env.FUNCTIONS_EMULATOR === "true";
+    if (!isEmu)
+        assertAdmin(request.auth);
     assertAdmin(request.auth);
     const data = (request.data || {});
     const { ticketId, action } = data;
@@ -131,7 +135,7 @@ exports.reviewTicket = (0, https_1.onCall)({ region: "us-central1" }, async (req
     if (ticket.status !== "open") {
         throw new https_1.HttpsError("failed-precondition", "Ticket is not open.");
     }
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = firestore_1.FieldValue.serverTimestamp();
     const batch = db.batch();
     const safeEdits = sanitizeEdits(data.edits);
     const reviewerNotes = normalizeString(data.notes);
@@ -148,7 +152,7 @@ exports.reviewTicket = (0, https_1.onCall)({ region: "us-central1" }, async (req
         batch.update(ticketRef, {
             ...safeEdits,
             updatedAt: now,
-            reviewerNotes: reviewerNotes || admin.firestore.FieldValue.delete(),
+            reviewerNotes: reviewerNotes || firestore_1.FieldValue.delete(),
         });
         await batch.commit();
         return { ok: true, action, ticketId };

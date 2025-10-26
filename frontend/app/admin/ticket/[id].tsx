@@ -3,9 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TextInput, ScrollView, StyleSheet, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { doc, onSnapshot, Timestamp } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { db, app } from "@/db/firebaseConfig";
-
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "@/db/firebaseConfig";
 type TicketDoc = {
   food_name: string;
   brand_name: string;
@@ -82,9 +81,7 @@ export default function TicketDetail() {
       if (!id) return;
 
       // Always get a valid Functions instance in the correct region
-      const fns = getFunctions(app, "us-central1");
-      const callable = httpsCallable(fns, "reviewTicket");
-
+      const callable = httpsCallable(functions, "reviewTicket");
       const payload: any = { ticketId: id, action };
       if (Object.keys(edits).length > 0) payload.edits = edits;
 
