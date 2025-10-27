@@ -10,7 +10,6 @@ import {
   Pressable,
   ActivityIndicator,
   Modal,
-  TouchableOpacity,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
@@ -22,7 +21,10 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemedColor } from "@/components/ThemedColor";
-import { Ionicons } from "@expo/vector-icons";
+
+// NEW: Blur + Lottie overlay
+import { BlurView } from "expo-blur";
+import LottieView from "lottie-react-native";
 
 type TicketPayload = {
   added_sugars: string;
@@ -69,6 +71,7 @@ const Field = ({
   placeholder,
   multiline = false,
   keyboardType = "default" as "default" | "numeric",
+  bold = false,
 }: {
   label: string;
   value: string;
@@ -76,9 +79,10 @@ const Field = ({
   placeholder?: string;
   multiline?: boolean;
   keyboardType?: "default" | "numeric";
+  bold?: boolean;
 }) => (
   <View style={{ marginBottom: 14 }}>
-    <Label>{label}</Label>
+    <ThemedText style={[styles.label, bold && { fontWeight: "900" }]}>{label}</ThemedText>
     <TextInput
       value={value}
       onChangeText={onChangeText}
@@ -138,6 +142,9 @@ export default function CreateTicketScreen() {
   const [debugModalOpen, setDebugModalOpen] = useState(false);
   const [lastScan, setLastScan] = useState<{ rawText: string; fields: any } | null>(null);
 
+  // NEW: processing overlay while OCR runs
+  const [processingScan, setProcessingScan] = useState(false);
+
   // Derived
   const name_lower = useMemo(() => food_name.trim().toLowerCase(), [food_name]);
   const brand_lower = useMemo(() => brand_name.trim().toLowerCase(), [brand_name]);
@@ -169,10 +176,9 @@ export default function CreateTicketScreen() {
   // ---- OCR hook-in -------------------------------------------------------
   async function scanImageAndAutofill(uri: string) {
     try {
+      setProcessingScan(true);
+
       const base64 = await toBase64(uri);
-
-      //Alert.alert("Scanning started", "We’re processing the image. This may take a moment.");
-
       const functions = getFunctions(undefined, "us-central1");
       const scanFn = httpsCallable(functions, "scanNutritionFromImage");
       const result: any = await scanFn({ imageBase64: base64 });
@@ -187,32 +193,7 @@ export default function CreateTicketScreen() {
         fields: Partial<Record<keyof TicketPayload, string>>;
       };
 
-      console.log("[OCR rawText]", rawText);
-      console.log("[OCR fields]", fields);
-
-      // try {
-      //   const path = `${FileSystem.documentDirectory}last-ocr.json`;
-      //   await FileSystem.writeAsStringAsync(
-      //     path,
-      //     JSON.stringify({ at: new Date().toISOString(), rawText, fields }, null, 2)
-      //   );
-      // } catch (e) {
-      //   console.warn("Failed to write last-ocr.json:", e);
-      // }
-
-      // try {
-      //   await addDoc(collection(db, "ScanResults"), {
-      //     uid: auth.currentUser?.uid ?? null,
-      //     at: serverTimestamp(),
-      //     fields,
-      //     rawText,
-      //     source: "mobile",
-      //   });
-      //   console.log("[OCR] Saved debug doc in ScanResults");
-      // } catch (e) {
-      //   console.warn("Failed to save ScanResults:", e);
-      // }
-
+      // Reset then hydrate
       setFoodName("");
       setBrandName("");
       setBarcode("");
@@ -238,7 +219,7 @@ export default function CreateTicketScreen() {
       setCalcium("");
       setIron("");
       setVitaminD("");
-//-----------
+
       if (fields.food_name) setFoodName(fields.food_name);
       if (fields.brand_name) setBrandName(fields.brand_name);
       if (fields.barcode) setBarcode(fields.barcode);
@@ -270,6 +251,8 @@ export default function CreateTicketScreen() {
     } catch (e: any) {
       console.error("scanImageAndAutofill failed:", e);
       Alert.alert("Scan failed", e?.message ?? String(e));
+    } finally {
+      setProcessingScan(false);
     }
   }
 
@@ -387,9 +370,19 @@ export default function CreateTicketScreen() {
     try {
       setSubmitting(true);
       await addDoc(collection(db, "ProductTickets"), payload);
-      Alert.alert("Ticket submitted", "Thanks! Your product ticket was submitted for review.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      Alert.alert(
+        "Ticket submitted",
+        "Thanks! Your product ticket was submitted for review.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Go to Search tab explicitly
+              router.replace("/(tabs)/search");
+            },
+          },
+        ]
+      );
     } catch (e: any) {
       console.error("Ticket submit failed:", e);
       Alert.alert("Submit failed", e?.message ?? String(e));
@@ -466,7 +459,9 @@ export default function CreateTicketScreen() {
                 marginBottom: 12,
               }}
             >
-              <ThemedText style={{ color:"#212D39",fontSize: 16, fontWeight: "700" }}>OCR Result (debug)</ThemedText>
+              <ThemedText style={{ color: "#212D39", fontSize: 16, fontWeight: "700" }}>
+                OCR Result (debug)
+              </ThemedText>
               <Pressable
                 onPress={() => setDebugModalOpen(false)}
                 style={{
@@ -484,7 +479,9 @@ export default function CreateTicketScreen() {
               contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }}
               showsVerticalScrollIndicator
             >
-              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>Fields</ThemedText>
+              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>
+                Fields
+              </ThemedText>
               <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
@@ -497,7 +494,9 @@ export default function CreateTicketScreen() {
 
               <View style={{ height: 20 }} />
 
-              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>Raw Text</ThemedText>
+              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>
+                Raw Text
+              </ThemedText>
               <ThemedText
                 style={{
                   fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
@@ -511,12 +510,32 @@ export default function CreateTicketScreen() {
           </View>
         </Modal>
 
+        {/* LOTTIE PROCESSING OVERLAY */}
+        <View
+          pointerEvents={processingScan ? "auto" : "none"}
+          style={[styles.loadingOverlay, { opacity: processingScan ? 1 : 0 }]}
+        >
+          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={styles.lottieContainer}>
+            <LottieView
+              source={require("@/assets/images/loading.json")}
+              autoPlay
+              loop
+              style={{ width: 150, height: 150 }}
+            />
+            <ThemedText style={{ marginTop: 10, color: "#111", fontWeight: "700" }}>
+              Scanning nutrition label…
+            </ThemedText>
+          </View>
+        </View>
+
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <ThemedText type="subtitle" style={styles.title}>
             Create Product Ticket
           </ThemedText>
           <ThemedText type="default" style={styles.subtitle}>
-            Please provide as much information as you can.
+            Please provide as much information as you can! We will review your ticket and add the
+            product to the database!
           </ThemedText>
 
           {/* Core identity */}
@@ -525,12 +544,14 @@ export default function CreateTicketScreen() {
             value={food_name}
             onChangeText={setFoodName}
             placeholder='e.g., "Strawberry Cheesecake Ice Cream - 16oz"'
+            bold
           />
           <Field
             label="Brand name"
             value={brand_name}
             onChangeText={setBrandName}
             placeholder={"e.g., Ben & Jerry's"}
+            bold
           />
           <Field
             label="Barcode (GTIN/EAN/UPC)"
@@ -539,6 +560,27 @@ export default function CreateTicketScreen() {
             placeholder="e.g., 0076840400218"
             keyboardType="numeric"
           />
+
+          {/* Serving (moved above Ingredients) */}
+          <Field
+            label="Serving (with unit)"
+            value={serving}
+            onChangeText={setServing}
+            placeholder='e.g., "28 g"'
+            bold
+          />
+          <Field
+            label="Servings per container"
+            value={serving_amount}
+            onChangeText={setServingAmount}
+            placeholder="e.g., 3"
+            keyboardType="numeric"
+            bold
+          />
+
+          <ThemedText style={styles.autofillNote}>
+            ⬆️These fields do not autofill — please enter them manually.
+          </ThemedText>
 
           {/* Ingredients & warnings */}
           <Field
@@ -553,21 +595,6 @@ export default function CreateTicketScreen() {
             value={warning}
             onChangeText={setWarning}
             placeholder='e.g., "Wheat, Egg, Soy, Milk"'
-          />
-
-          {/* Serving */}
-          <Field
-            label="Serving (with unit)"
-            value={serving}
-            onChangeText={setServing}
-            placeholder='e.g., "28 g"'
-          />
-          <Field
-            label="Servings per container"
-            value={serving_amount}
-            onChangeText={setServingAmount}
-            placeholder="e.g., 3"
-            keyboardType="numeric"
           />
 
           {/* Nutrition (per serving) */}
@@ -649,7 +676,7 @@ const styles = StyleSheet.create({
   cancelText: { color: "#444", fontWeight: "600" },
 
   // Scan menu / overlay
-  scanAnchor: { position: "absolute", right: 16, top: 60, zIndex: 1 }, // bumped below header
+  scanAnchor: { position: "absolute", right: 16, top: 60, zIndex: 1 },
   scanBtn: { backgroundColor: "#1f2937", paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12 },
   scanBtnText: { color: "#fff", fontWeight: "700" },
   menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.12)" },
@@ -669,4 +696,28 @@ const styles = StyleSheet.create({
   menuItem: { paddingVertical: 10, paddingHorizontal: 14 },
   menuItemText: { fontWeight: "600", color: "#111" },
   menuDivider: { height: 1, backgroundColor: "#eee" },
+
+  // NEW: Lottie processing overlay (full screen)
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  lottieContainer: {
+    width: 180,
+    height: 200,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
+  },
+
+  autofillNote: {
+    fontSize: 13,
+    color: "#666",
+    fontStyle: "italic",
+    marginBottom: 18,
+  },
 });
