@@ -10,7 +10,6 @@ import {
   Pressable,
   ActivityIndicator,
   Modal,
-  StyleSheet as RNStyleSheet,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
@@ -20,10 +19,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemedColor } from "@/components/ThemedColor";
 import { router } from "expo-router";
-
-// NEW: match scan.tsx overlay
-import { BlurView } from "expo-blur";
-import LottieView from "lottie-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 // Local DB helpers
 import { initCustomDb, upsertCustomEntry } from "@/db/customFoods";
@@ -198,9 +194,6 @@ export default function CreateCustomEntryScreen() {
         fields: Partial<Record<keyof EntryPayload, string>>;
       };
 
-      console.log("[OCR rawText]", rawText);
-      console.log("[OCR fields]", fields);
-
       // Reset then hydrate
       setFoodName("");
       setBrandName("");
@@ -285,10 +278,7 @@ export default function CreateCustomEntryScreen() {
   }
 
   function showCameraInstructionAlert() {
-    // Close the scan menu so it can't block touches after the alert
     closeScanMenu();
-
-    // Let the menu fully close before showing the alert
     setTimeout(() => {
       Alert.alert(
         "Before you snap",
@@ -417,188 +407,186 @@ export default function CreateCustomEntryScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1, backgroundColor: "#fafafaff" }}
+    <LinearGradient
+      colors={activeColors.gradientBackground}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      locations={[0, 0.4, 0.6, 1]}
     >
-      <View style={{ flex: 1 }}>
-        {/* Top header */}
-        <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <ThemedText type="subtitle" style={{ color: activeColors.text }}>
+      <KeyboardAvoidingView
+        behavior={Platform.select({ ios: "padding", android: undefined })}
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1 }}>
+          {/* Top header */}
+          <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <ThemedText type="subtitle" style={{ color: activeColors.text }}>
+                Create Custom Entry
+              </ThemedText>
+            </View>
+          </ThemedView>
+          <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
+
+          {/* Floating scan button */}
+          <View style={styles.scanAnchor}>
+            <Pressable style={styles.scanBtn} onPress={openScanMenu}>
+              <ThemedText style={styles.scanBtnText}>Autofill</ThemedText>
+            </Pressable>
+          </View>
+
+          {/* Scan menu */}
+          <Modal visible={scanMenuVisible} transparent animationType="fade" onRequestClose={closeScanMenu}>
+            <Pressable style={styles.menuOverlay} onPress={closeScanMenu}>
+              <View pointerEvents="box-none" style={{ flex: 1 }}>
+                <View style={styles.menuCard}>
+                  <Pressable style={styles.menuItem} onPress={showCameraInstructionAlert}>
+                    <ThemedText style={styles.menuItemText}>Use Camera</ThemedText>
+                  </Pressable>
+                  <View style={styles.menuDivider} />
+                  <Pressable style={styles.menuItem} onPress={onScanFromPhotos}>
+                    <ThemedText style={styles.menuItemText}>Use from Photos</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            </Pressable>
+          </Modal>
+
+          {/* Processing overlay while OCR runs */}
+          <View
+            pointerEvents={processingScan ? "auto" : "none"}
+            style={[styles.processingOverlay, { opacity: processingScan ? 1 : 0 }]}
+          >
+            <ActivityIndicator size="large" color="#fff" />
+            <ThemedText style={styles.processingText}>Scanning nutrition label…</ThemedText>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+          >
+            <ThemedText type="subtitle" style={styles.title}>
               Create Custom Entry
             </ThemedText>
-          </View>
-        </ThemedView>
-        <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-
-        {/* Floating scan button */}
-        <View style={styles.scanAnchor}>
-          <Pressable style={styles.scanBtn} onPress={openScanMenu}>
-            <ThemedText style={styles.scanBtnText}>Autofill</ThemedText>
-          </Pressable>
-        </View>
-
-        {/* Scan menu */}
-        <Modal
-          visible={scanMenuVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={closeScanMenu}
-        >
-          <Pressable style={styles.menuOverlay} onPress={closeScanMenu}>
-            <View pointerEvents="box-none" style={{ flex: 1 }}>
-              <View style={styles.menuCard}>
-                <Pressable
-                  style={styles.menuItem}
-                  onPress={showCameraInstructionAlert}
-                >
-                  <ThemedText style={styles.menuItemText}>Use Camera</ThemedText>
-                </Pressable>
-                <View style={styles.menuDivider} />
-                <Pressable style={styles.menuItem} onPress={onScanFromPhotos}>
-                  <ThemedText style={styles.menuItemText}>Use from Photos</ThemedText>
-                </Pressable>
-              </View>
-            </View>
-          </Pressable>
-        </Modal>
-
-        {/* Processing overlay (Lottie like scan.tsx) */}
-        {processingScan && (
-          <View style={styles.loadingOverlay}>
-            <BlurView intensity={50} tint="dark" style={RNStyleSheet.absoluteFill} />
-            <View style={styles.lottieContainer}>
-              <LottieView
-                source={require("@/assets/images/loading.json")}
-                autoPlay
-                loop
-                style={{ width: 150, height: 150 }}
-              />
-            </View>
-          </View>
-        )}
-
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle" style={styles.title}>
-            Create Custom Entry
-          </ThemedText>
-          <ThemedText type="default" style={styles.subtitle}>
-            Take a picture of a nutrition label to autofill the nutrition fields, then save this entry locally on your device!
-          </ThemedText>
-
-          {/* Core identity */}
-          <Field
-            label="Product name (as sold)"
-            value={food_name}
-            onChangeText={setFoodName}
-            placeholder='e.g., "Strawberry Pretzels"'
-            bold
-          />
-          <Field
-            label="Brand name"
-            value={brand_name}
-            onChangeText={setBrandName}
-            placeholder="e.g., Brand Co."
-            bold
-          />
-          <Field
-            label="Barcode (GTIN/EAN/UPC)"
-            value={barcode}
-            onChangeText={setBarcode}
-            placeholder="e.g., 0076840400218"
-            keyboardType="numeric"
-          />
-
-          {/* Serving */}
-          <Field
-            label="Serving (with unit)"
-            value={serving}
-            onChangeText={setServing}
-            placeholder='e.g., "28 g"'
-            bold
-          />
-          <Field
-            label="Servings per container"
-            value={serving_amount}
-            onChangeText={setServingAmount}
-            placeholder="e.g., 3"
-            keyboardType="numeric"
-            bold
-          />
-
-          <ThemedText style={styles.autofillNote}>
-            ⬆️ These fields do not autofill — please enter them manually!
-          </ThemedText>
-
-          {/* Ingredients & warnings */}
-          <Field
-            label="Ingredients (full list)"
-            value={ingredients}
-            onChangeText={setIngredients}
-            placeholder="Comma separated as printed on label"
-            multiline
-          />
-          <Field
-            label="Allergen warnings (comma-separated)"
-            value={warning}
-            onChangeText={setWarning}
-            placeholder='e.g., "Wheat, Egg, Soy, Milk"'
-          />
-
-          {/* Nutrition (per serving) */}
-          <View style={styles.sectionHeader}>
-            <ThemedText type="header" style={styles.sectionHeaderText}>
-              Nutrition (per serving)
+            <ThemedText type="default" style={styles.subtitle}>
+              You can scan a nutrition label to autofill the nutrition fields, then save this entry locally on your device!
             </ThemedText>
-          </View>
-          <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 110" keyboardType="numeric" />
-          <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 0.5" keyboardType="numeric" />
-          <Field label="Saturated fat (g)" value={saturated_fat} onChangeText={setSaturatedFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Trans fat (g)" value={trans_fat} onChangeText={setTransFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Monounsaturated fat (g)" value={monounsaturated_fat} onChangeText={setMonoFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Polyunsaturated fat (g)" value={polyunsaturated_fat} onChangeText={setPolyFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Cholesterol (mg)" value={cholesterol} onChangeText={setCholesterol} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Sodium (mg)" value={sodium} onChangeText={setSodium} placeholder="e.g., 400" keyboardType="numeric" />
-          <Field label="Carbohydrate (g)" value={carbohydrate} onChangeText={setCarb} placeholder="e.g., 23" keyboardType="numeric" />
-          <Field label="Sugar (g)" value={sugar} onChangeText={setSugar} placeholder="e.g., <1" />
-          <Field label="Added sugars (g)" value={added_sugars} onChangeText={setAddedSugars} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Fiber (g)" value={fiber} onChangeText={setFiber} placeholder="e.g., 2" keyboardType="numeric" />
-          <Field label="Protein (g)" value={protein} onChangeText={setProtein} placeholder="e.g., 3" keyboardType="numeric" />
-          <Field label="Potassium (mg)" value={potassium} onChangeText={setPotassium} placeholder="e.g., 90" keyboardType="numeric" />
-          <Field label="Calcium (mg)" value={calcium} onChangeText={setCalcium} placeholder="e.g., 10" keyboardType="numeric" />
-          <Field label="Iron (mg)" value={iron} onChangeText={setIron} placeholder="e.g., 1.2" keyboardType="numeric" />
-          <Field
-            label="Vitamin D (mcg or IU as on label)"
-            value={vitamin_d}
-            onChangeText={setVitaminD}
-            placeholder="e.g., 0"
-            keyboardType="numeric"
-          />
 
-          {/* Derived preview */}
-          <View style={{ marginTop: 10, marginBottom: 18 }}>
-            <ThemedText style={styles.readonlyLabel}>Derived fields (auto):</ThemedText>
-            <ThemedText style={styles.readonlyText}>name_lower: {name_lower || "—"}</ThemedText>
-            <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
-          </View>
+            {/* Core identity */}
+            <Field
+              label="Product name (as sold)"
+              value={food_name}
+              onChangeText={setFoodName}
+              placeholder='e.g., "Strawberry Pretzels"'
+              bold
+            />
+            <Field
+              label="Brand name"
+              value={brand_name}
+              onChangeText={setBrandName}
+              placeholder="e.g., Brand Co."
+              bold
+            />
+            <Field
+              label="Barcode (GTIN/EAN/UPC)"
+              value={barcode}
+              onChangeText={setBarcode}
+              placeholder="e.g., 0076840400218"
+              keyboardType="numeric"
+            />
 
-          <Pressable style={[styles.submitBtn, saving && { opacity: 0.7 }]} onPress={onSave} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Save Entry</ThemedText>}
-          </Pressable>
+            {/* Serving */}
+            <Field
+              label="Serving (with unit)"
+              value={serving}
+              onChangeText={setServing}
+              placeholder='e.g., "28 g"'
+              bold
+            />
+            <Field
+              label="Servings per container"
+              value={serving_amount}
+              onChangeText={setServingAmount}
+              placeholder="e.g., 3"
+              keyboardType="numeric"
+              bold
+            />
 
-          <Pressable style={styles.cancelBtn} onPress={goBack}>
-            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
-          </Pressable>
+            <ThemedText style={styles.autofillNote}>
+              ⬆️ These fields do not autofill — please enter them manually!
+            </ThemedText>
 
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+            {/* Ingredients & warnings */}
+            <Field
+              label="Ingredients (full list)"
+              value={ingredients}
+              onChangeText={setIngredients}
+              placeholder="Comma separated as printed on label"
+              multiline
+            />
+            <Field
+              label="Allergen warnings (comma-separated)"
+              value={warning}
+              onChangeText={setWarning}
+              placeholder='e.g., "Wheat, Egg, Soy, Milk"'
+            />
+
+            {/* Nutrition (per serving) */}
+            <View style={styles.sectionHeader}>
+              <ThemedText type="header" style={styles.sectionHeaderText}>
+                Nutrition (per serving)
+              </ThemedText>
+            </View>
+            <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 110" keyboardType="numeric" />
+            <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 0.5" keyboardType="numeric" />
+            <Field label="Saturated fat (g)" value={saturated_fat} onChangeText={setSaturatedFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Trans fat (g)" value={trans_fat} onChangeText={setTransFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Monounsaturated fat (g)" value={monounsaturated_fat} onChangeText={setMonoFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Polyunsaturated fat (g)" value={polyunsaturated_fat} onChangeText={setPolyFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Cholesterol (mg)" value={cholesterol} onChangeText={setCholesterol} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Sodium (mg)" value={sodium} onChangeText={setSodium} placeholder="e.g., 400" keyboardType="numeric" />
+            <Field label="Carbohydrate (g)" value={carbohydrate} onChangeText={setCarb} placeholder="e.g., 23" keyboardType="numeric" />
+            <Field label="Sugar (g)" value={sugar} onChangeText={setSugar} placeholder="e.g., <1" />
+            <Field label="Added sugars (g)" value={added_sugars} onChangeText={setAddedSugars} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Fiber (g)" value={fiber} onChangeText={setFiber} placeholder="e.g., 2" keyboardType="numeric" />
+            <Field label="Protein (g)" value={protein} onChangeText={setProtein} placeholder="e.g., 3" keyboardType="numeric" />
+            <Field label="Potassium (mg)" value={potassium} onChangeText={setPotassium} placeholder="e.g., 90" keyboardType="numeric" />
+            <Field label="Calcium (mg)" value={calcium} onChangeText={setCalcium} placeholder="e.g., 10" keyboardType="numeric" />
+            <Field label="Iron (mg)" value={iron} onChangeText={setIron} placeholder="e.g., 1.2" keyboardType="numeric" />
+            <Field
+              label="Vitamin D (mcg or IU as on label)"
+              value={vitamin_d}
+              onChangeText={setVitaminD}
+              placeholder="e.g., 0"
+              keyboardType="numeric"
+            />
+
+            {/* Derived preview */}
+            <View style={{ marginTop: 10, marginBottom: 18 }}>
+              <ThemedText style={styles.readonlyLabel}>Derived fields (auto):</ThemedText>
+              <ThemedText style={styles.readonlyText}>name_lower: {name_lower || "—"}</ThemedText>
+              <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
+            </View>
+
+            <Pressable style={[styles.submitBtn, saving && { opacity: 0.7 }]} onPress={onSave} disabled={saving}>
+              {saving ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Save Entry</ThemedText>}
+            </Pressable>
+
+            <Pressable style={styles.cancelBtn} onPress={goBack}>
+              <ThemedText style={styles.cancelText}>Cancel</ThemedText>
+            </Pressable>
+
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 24 },
   titleContainer: { paddingTop: 70, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, width: "100%" },
@@ -652,22 +640,15 @@ const styles = StyleSheet.create({
   menuItemText: { fontWeight: "600", color: "#111" },
   menuDivider: { height: 1, backgroundColor: "#eee" },
 
-  // NEW: Lottie overlay (same look as scan.tsx)
-  loadingOverlay: {
+  // Processing overlay
+  processingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
-    zIndex: 9999,
-  },
-  lottieContainer: {
-    width: 160,
-    height: 160,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 16,
     justifyContent: "center",
-    alignItems: "center",
-    padding: 10,
+    zIndex: 10,
   },
+  processingText: { marginTop: 10, color: "#fff", fontWeight: "700" },
 
   autofillNote: {
     fontSize: 13,

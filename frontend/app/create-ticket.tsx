@@ -21,8 +21,9 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemedColor } from "@/components/ThemedColor";
+import { LinearGradient } from "expo-linear-gradient";
 
-// NEW: Blur + Lottie overlay
+// Blur + Lottie overlay
 import { BlurView } from "expo-blur";
 import LottieView from "lottie-react-native";
 
@@ -142,7 +143,7 @@ export default function CreateTicketScreen() {
   const [debugModalOpen, setDebugModalOpen] = useState(false);
   const [lastScan, setLastScan] = useState<{ rawText: string; fields: any } | null>(null);
 
-  // NEW: processing overlay while OCR runs
+  // processing overlay while OCR runs
   const [processingScan, setProcessingScan] = useState(false);
 
   // Derived
@@ -370,19 +371,9 @@ export default function CreateTicketScreen() {
     try {
       setSubmitting(true);
       await addDoc(collection(db, "ProductTickets"), payload);
-      Alert.alert(
-        "Ticket submitted",
-        "Thanks! Your product ticket was submitted for review.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // Go to Search tab explicitly
-              router.replace("/(tabs)/search");
-            },
-          },
-        ]
-      );
+      Alert.alert("Ticket submitted", "Thanks! Your product ticket was submitted for review.", [
+        { text: "OK", onPress: () => router.replace("/(tabs)/search") },
+      ]);
     } catch (e: any) {
       console.error("Ticket submit failed:", e);
       Alert.alert("Submit failed", e?.message ?? String(e));
@@ -392,258 +383,266 @@ export default function CreateTicketScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1, backgroundColor: "#fafafaff" }}
+    <LinearGradient
+      colors={activeColors.gradientBackground}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      locations={[0, 0.4, 0.6, 1]}
     >
-      <View style={{ flex: 1 }}>
-        {/* Top header with Back */}
-        <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <ThemedText type="subtitle" style={{ color: activeColors.text }}>
-              Create Product Ticket
-            </ThemedText>
-          </View>
-        </ThemedView>
-        <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
-
-        {/* Scan anchor button (top-right) */}
-        <View style={styles.scanAnchor}>
-          <Pressable style={styles.scanBtn} onPress={() => setScanMenuVisible(true)}>
-            <ThemedText style={styles.scanBtnText}>Autofill</ThemedText>
-          </Pressable>
-        </View>
-
-        {/* The menu as a Modal */}
-        <Modal
-          visible={scanMenuVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setScanMenuVisible(false)}
-        >
-          <Pressable style={styles.menuOverlay} onPress={() => setScanMenuVisible(false)}>
-            <View pointerEvents="box-none" style={{ flex: 1 }}>
-              <View style={styles.menuCard}>
-                <Pressable style={styles.menuItem} onPress={onScanFromCamera}>
-                  <ThemedText style={styles.menuItemText}>Use Camera</ThemedText>
-                </Pressable>
-                <View style={styles.menuDivider} />
-                <Pressable style={styles.menuItem} onPress={onScanFromPhotos}>
-                  <ThemedText style={styles.menuItemText}>Use from Photos</ThemedText>
-                </Pressable>
-              </View>
+      <KeyboardAvoidingView
+        behavior={Platform.select({ ios: "padding", android: undefined })}
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1 }}>
+          {/* Top header with Back */}
+          <ThemedView style={[styles.titleContainer, { backgroundColor: activeColors.backgroundTitle }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <ThemedText type="subtitle" style={{ color: activeColors.text }}>
+                Create Product Ticket
+              </ThemedText>
             </View>
-          </Pressable>
-        </Modal>
+          </ThemedView>
+          <ThemedView style={[styles.divider, { backgroundColor: activeColors.divider }]} />
 
-        {/* DEBUG MODAL */}
-        <Modal
-          visible={debugModalOpen}
-          animationType="slide"
-          onRequestClose={() => setDebugModalOpen(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "#fff",
-              paddingTop: Platform.OS === "ios" ? 60 : 40,
-              paddingBottom: 40,
-            }}
+          {/* Scan anchor button (top-right) */}
+          <View style={styles.scanAnchor}>
+            <Pressable style={styles.scanBtn} onPress={() => setScanMenuVisible(true)}>
+              <ThemedText style={styles.scanBtnText}>Autofill</ThemedText>
+            </Pressable>
+          </View>
+
+          {/* The menu as a Modal */}
+          <Modal
+            visible={scanMenuVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setScanMenuVisible(false)}
+          >
+            <Pressable style={styles.menuOverlay} onPress={() => setScanMenuVisible(false)}>
+              <View pointerEvents="box-none" style={{ flex: 1 }}>
+                <View style={styles.menuCard}>
+                  <Pressable style={styles.menuItem} onPress={onScanFromCamera}>
+                    <ThemedText style={styles.menuItemText}>Use Camera</ThemedText>
+                  </Pressable>
+                  <View style={styles.menuDivider} />
+                  <Pressable style={styles.menuItem} onPress={onScanFromPhotos}>
+                    <ThemedText style={styles.menuItemText}>Use from Photos</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            </Pressable>
+          </Modal>
+
+          {/* DEBUG MODAL */}
+          <Modal
+            visible={debugModalOpen}
+            animationType="slide"
+            onRequestClose={() => setDebugModalOpen(false)}
           >
             <View
               style={{
-                paddingHorizontal: 16,
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 12,
+                flex: 1,
+                backgroundColor: "#fff",
+                paddingTop: Platform.OS === "ios" ? 60 : 40,
+                paddingBottom: 40,
               }}
             >
-              <ThemedText style={{ color: "#212D39", fontSize: 16, fontWeight: "700" }}>
-                OCR Result (debug)
-              </ThemedText>
-              <Pressable
-                onPress={() => setDebugModalOpen(false)}
+              <View
                 style={{
-                  backgroundColor: "#27778E",
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
+                  paddingHorizontal: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
                 }}
               >
-                <ThemedText style={{ color: "#fff", fontWeight: "600" }}>Close</ThemedText>
-              </Pressable>
+                <ThemedText style={{ color: "#212D39", fontSize: 16, fontWeight: "700" }}>
+                  OCR Result (debug)
+                </ThemedText>
+                <Pressable
+                  onPress={() => setDebugModalOpen(false)}
+                  style={{
+                    backgroundColor: "#27778E",
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                  }}
+                >
+                  <ThemedText style={{ color: "#fff", fontWeight: "600" }}>Close</ThemedText>
+                </Pressable>
+              </View>
+
+              <ScrollView
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }}
+                showsVerticalScrollIndicator
+              >
+                <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>
+                  Fields
+                </ThemedText>
+                <ThemedText
+                  style={{
+                    fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+                    fontSize: 13,
+                    color: "#212D39",
+                  }}
+                >
+                  {JSON.stringify(lastScan?.fields ?? {}, null, 2)}
+                </ThemedText>
+
+                <View style={{ height: 20 }} />
+
+                <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>
+                  Raw Text
+                </ThemedText>
+                <ThemedText
+                  style={{
+                    fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+                    fontSize: 13,
+                    color: "#212D39",
+                  }}
+                >
+                  {lastScan?.rawText || ""}
+                </ThemedText>
+              </ScrollView>
+            </View>
+          </Modal>
+
+          {/* LOTTIE PROCESSING OVERLAY */}
+          <View
+            pointerEvents={processingScan ? "auto" : "none"}
+            style={[styles.loadingOverlay, { opacity: processingScan ? 1 : 0 }]}
+          >
+            <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={styles.lottieContainer}>
+              <LottieView
+                source={require("@/assets/images/loading.json")}
+                autoPlay
+                loop
+                style={{ width: 150, height: 150 }}
+              />
+              <ThemedText style={{ marginTop: 10, color: "#111", fontWeight: "700" }}>
+                Scanning nutrition label…
+              </ThemedText>
+            </View>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+            <ThemedText type="subtitle" style={styles.title}>
+              Create Product Ticket
+            </ThemedText>
+            <ThemedText type="default" style={styles.subtitle}>
+              Please provide as much information as you can! We will review your ticket and add the product to the database!
+            </ThemedText>
+
+            {/* Core identity */}
+            <Field
+              label="Product name (as sold)"
+              value={food_name}
+              onChangeText={setFoodName}
+              placeholder='e.g., "Strawberry Cheesecake Ice Cream - 16oz"'
+              bold
+            />
+            <Field
+              label="Brand name"
+              value={brand_name}
+              onChangeText={setBrandName}
+              placeholder={"e.g., Ben & Jerry's"}
+              bold
+            />
+            <Field
+              label="Barcode (GTIN/EAN/UPC)"
+              value={barcode}
+              onChangeText={setBarcode}
+              placeholder="e.g., 0076840400218"
+              keyboardType="numeric"
+            />
+
+            {/* Serving (moved above Ingredients) */}
+            <Field
+              label="Serving (with unit)"
+              value={serving}
+              onChangeText={setServing}
+              placeholder='e.g., "28 g"'
+              bold
+            />
+            <Field
+              label="Servings per container"
+              value={serving_amount}
+              onChangeText={setServingAmount}
+              placeholder="e.g., 3"
+              keyboardType="numeric"
+              bold
+            />
+
+            <ThemedText style={styles.autofillNote}>
+              ⬆️These fields do not autofill — please enter them manually.
+            </ThemedText>
+
+            {/* Ingredients & warnings */}
+            <Field
+              label="Ingredients (full list)"
+              value={ingredients}
+              onChangeText={setIngredients}
+              placeholder="Comma separated as printed on label"
+              multiline
+            />
+            <Field
+              label="Allergen warnings (comma-separated)"
+              value={warning}
+              onChangeText={setWarning}
+              placeholder='e.g., "Wheat, Egg, Soy, Milk"'
+            />
+
+            {/* Nutrition (per serving) */}
+            <View style={styles.sectionHeader}>
+              <ThemedText type="header" style={styles.sectionHeaderText}>
+                Nutrition (per serving)
+              </ThemedText>
+            </View>
+            <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 110" keyboardType="numeric" />
+            <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 0.5" keyboardType="numeric" />
+            <Field label="Saturated fat (g)" value={saturated_fat} onChangeText={setSaturatedFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Trans fat (g)" value={trans_fat} onChangeText={setTransFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Monounsaturated fat (g)" value={monounsaturated_fat} onChangeText={setMonoFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Polyunsaturated fat (g)" value={polyunsaturated_fat} onChangeText={setPolyFat} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Cholesterol (mg)" value={cholesterol} onChangeText={setCholesterol} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Sodium (mg)" value={sodium} onChangeText={setSodium} placeholder="e.g., 400" keyboardType="numeric" />
+            <Field label="Carbohydrate (g)" value={carbohydrate} onChangeText={setCarb} placeholder="e.g., 23" keyboardType="numeric" />
+            <Field label="Sugar (g)" value={sugar} onChangeText={setSugar} placeholder="e.g., <1" />
+            <Field label="Added sugars (g)" value={added_sugars} onChangeText={setAddedSugars} placeholder="e.g., 0" keyboardType="numeric" />
+            <Field label="Fiber (g)" value={fiber} onChangeText={setFiber} placeholder="e.g., 2" keyboardType="numeric" />
+            <Field label="Protein (g)" value={protein} onChangeText={setProtein} placeholder="e.g., 3" keyboardType="numeric" />
+            <Field label="Potassium (mg)" value={potassium} onChangeText={setPotassium} placeholder="e.g., 90" keyboardType="numeric" />
+            <Field label="Calcium (mg)" value={calcium} onChangeText={setCalcium} placeholder="e.g., 10" keyboardType="numeric" />
+            <Field label="Iron (mg)" value={iron} onChangeText={setIron} placeholder="e.g., 1.2" keyboardType="numeric" />
+            <Field label="Vitamin D (mcg or IU as on label)" value={vitamin_d} onChangeText={setVitaminD} placeholder="e.g., 0" keyboardType="numeric" />
+
+            {/* Derived preview */}
+            <View style={{ marginTop: 10, marginBottom: 18 }}>
+              <ThemedText style={styles.readonlyLabel}>Derived fields (auto):</ThemedText>
+              <ThemedText style={styles.readonlyText}>name_lower: {name_lower || "—"}</ThemedText>
+              <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
             </View>
 
-            <ScrollView
-              contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 60 }}
-              showsVerticalScrollIndicator
-            >
-              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>
-                Fields
-              </ThemedText>
-              <ThemedText
-                style={{
-                  fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
-                  fontSize: 13,
-                  color: "#212D39",
-                }}
-              >
-                {JSON.stringify(lastScan?.fields ?? {}, null, 2)}
-              </ThemedText>
+            <Pressable style={[styles.submitBtn, submitting && { opacity: 0.7 }]} onPress={onSubmit} disabled={submitting}>
+              {submitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Submit Ticket</ThemedText>}
+            </Pressable>
 
-              <View style={{ height: 20 }} />
+            <Pressable style={styles.cancelBtn} onPress={goBack}>
+              <ThemedText style={styles.cancelText}>Cancel</ThemedText>
+            </Pressable>
 
-              <ThemedText style={{ color: "#212D39", fontWeight: "700", marginBottom: 6 }}>
-                Raw Text
-              </ThemedText>
-              <ThemedText
-                style={{
-                  fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
-                  fontSize: 13,
-                  color: "#212D39",
-                }}
-              >
-                {lastScan?.rawText || ""}
-              </ThemedText>
-            </ScrollView>
-          </View>
-        </Modal>
-
-        {/* LOTTIE PROCESSING OVERLAY */}
-        <View
-          pointerEvents={processingScan ? "auto" : "none"}
-          style={[styles.loadingOverlay, { opacity: processingScan ? 1 : 0 }]}
-        >
-          <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-          <View style={styles.lottieContainer}>
-            <LottieView
-              source={require("@/assets/images/loading.json")}
-              autoPlay
-              loop
-              style={{ width: 150, height: 150 }}
-            />
-            <ThemedText style={{ marginTop: 10, color: "#111", fontWeight: "700" }}>
-              Scanning nutrition label…
-            </ThemedText>
-          </View>
+            <View style={{ height: 24 }} />
+          </ScrollView>
         </View>
-
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <ThemedText type="subtitle" style={styles.title}>
-            Create Product Ticket
-          </ThemedText>
-          <ThemedText type="default" style={styles.subtitle}>
-            Please provide as much information as you can! We will review your ticket and add the
-            product to the database!
-          </ThemedText>
-
-          {/* Core identity */}
-          <Field
-            label="Product name (as sold)"
-            value={food_name}
-            onChangeText={setFoodName}
-            placeholder='e.g., "Strawberry Cheesecake Ice Cream - 16oz"'
-            bold
-          />
-          <Field
-            label="Brand name"
-            value={brand_name}
-            onChangeText={setBrandName}
-            placeholder={"e.g., Ben & Jerry's"}
-            bold
-          />
-          <Field
-            label="Barcode (GTIN/EAN/UPC)"
-            value={barcode}
-            onChangeText={setBarcode}
-            placeholder="e.g., 0076840400218"
-            keyboardType="numeric"
-          />
-
-          {/* Serving (moved above Ingredients) */}
-          <Field
-            label="Serving (with unit)"
-            value={serving}
-            onChangeText={setServing}
-            placeholder='e.g., "28 g"'
-            bold
-          />
-          <Field
-            label="Servings per container"
-            value={serving_amount}
-            onChangeText={setServingAmount}
-            placeholder="e.g., 3"
-            keyboardType="numeric"
-            bold
-          />
-
-          <ThemedText style={styles.autofillNote}>
-            ⬆️These fields do not autofill — please enter them manually.
-          </ThemedText>
-
-          {/* Ingredients & warnings */}
-          <Field
-            label="Ingredients (full list)"
-            value={ingredients}
-            onChangeText={setIngredients}
-            placeholder="Comma separated as printed on label"
-            multiline
-          />
-          <Field
-            label="Allergen warnings (comma-separated)"
-            value={warning}
-            onChangeText={setWarning}
-            placeholder='e.g., "Wheat, Egg, Soy, Milk"'
-          />
-
-          {/* Nutrition (per serving) */}
-          <View style={styles.sectionHeader}>
-            <ThemedText type="header" style={styles.sectionHeaderText}>
-              Nutrition (per serving)
-            </ThemedText>
-          </View>
-          <Field label="Calories" value={calories} onChangeText={setCalories} placeholder="e.g., 110" keyboardType="numeric" />
-          <Field label="Fat (g)" value={fat} onChangeText={setFat} placeholder="e.g., 0.5" keyboardType="numeric" />
-          <Field label="Saturated fat (g)" value={saturated_fat} onChangeText={setSaturatedFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Trans fat (g)" value={trans_fat} onChangeText={setTransFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Monounsaturated fat (g)" value={monounsaturated_fat} onChangeText={setMonoFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Polyunsaturated fat (g)" value={polyunsaturated_fat} onChangeText={setPolyFat} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Cholesterol (mg)" value={cholesterol} onChangeText={setCholesterol} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Sodium (mg)" value={sodium} onChangeText={setSodium} placeholder="e.g., 400" keyboardType="numeric" />
-          <Field label="Carbohydrate (g)" value={carbohydrate} onChangeText={setCarb} placeholder="e.g., 23" keyboardType="numeric" />
-          <Field label="Sugar (g)" value={sugar} onChangeText={setSugar} placeholder="e.g., <1" />
-          <Field label="Added sugars (g)" value={added_sugars} onChangeText={setAddedSugars} placeholder="e.g., 0" keyboardType="numeric" />
-          <Field label="Fiber (g)" value={fiber} onChangeText={setFiber} placeholder="e.g., 2" keyboardType="numeric" />
-          <Field label="Protein (g)" value={protein} onChangeText={setProtein} placeholder="e.g., 3" keyboardType="numeric" />
-          <Field label="Potassium (mg)" value={potassium} onChangeText={setPotassium} placeholder="e.g., 90" keyboardType="numeric" />
-          <Field label="Calcium (mg)" value={calcium} onChangeText={setCalcium} placeholder="e.g., 10" keyboardType="numeric" />
-          <Field label="Iron (mg)" value={iron} onChangeText={setIron} placeholder="e.g., 1.2" keyboardType="numeric" />
-          <Field label="Vitamin D (mcg or IU as on label)" value={vitamin_d} onChangeText={setVitaminD} placeholder="e.g., 0" keyboardType="numeric" />
-
-          {/* Derived preview */}
-          <View style={{ marginTop: 10, marginBottom: 18 }}>
-            <ThemedText style={styles.readonlyLabel}>Derived fields (auto):</ThemedText>
-            <ThemedText style={styles.readonlyText}>name_lower: {name_lower || "—"}</ThemedText>
-            <ThemedText style={styles.readonlyText}>brand_lower: {brand_lower || "—"}</ThemedText>
-          </View>
-
-          <Pressable style={[styles.submitBtn, submitting && { opacity: 0.7 }]} onPress={onSubmit} disabled={submitting}>
-            {submitting ? <ActivityIndicator color="#fff" /> : <ThemedText style={styles.submitText}>Submit Ticket</ThemedText>}
-          </Pressable>
-
-          <Pressable style={styles.cancelBtn} onPress={goBack}>
-            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
-          </Pressable>
-
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 24 },
   titleContainer: { paddingTop: 70, paddingBottom: 10, paddingHorizontal: 24 },
   divider: { height: 2, width: "100%" },
@@ -697,7 +696,7 @@ const styles = StyleSheet.create({
   menuItemText: { fontWeight: "600", color: "#111" },
   menuDivider: { height: 1, backgroundColor: "#eee" },
 
-  // NEW: Lottie processing overlay (full screen)
+  // Lottie processing overlay (full screen)
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
