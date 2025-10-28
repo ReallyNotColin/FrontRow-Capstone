@@ -78,7 +78,7 @@ export default function MfaEnrollTotp() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 16 }}>
+    <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 16, marginTop:"36" }}>
       <Text style={{ fontSize: 22, fontWeight: "700" }}>Set up MFA (TOTP)</Text>
 
       {phase === "generating" && (
@@ -127,7 +127,7 @@ export default function MfaEnrollTotp() {
             disabled={phase === "verifying"}
             style={({ pressed }) => ({
               marginTop: 12,
-              backgroundColor: pressed ? "#0a84ffcc" : "#0a84ff",
+              backgroundColor: pressed ? "#27778E" : "#27778E",
               paddingVertical: 12,
               borderRadius: 10,
               alignItems: "center",
