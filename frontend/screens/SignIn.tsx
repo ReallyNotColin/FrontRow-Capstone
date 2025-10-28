@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { useAuth } from "@/auth/AuthProvider";
@@ -77,6 +78,11 @@ export default function SignIn() {
       behavior={Platform.select({ ios: "padding", android: undefined })}
     >
       <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
+        <Image source={
+          require('@/assets/images/banner-light.png')
+          } 
+          style={{width: 300, height: 65, alignSelf: "center", marginBottom:"50"}}
+          />
         <Text style={{ fontSize: 28, fontWeight: "700", marginBottom: 12, color: c.text }}>
           Sign In
         </Text>
