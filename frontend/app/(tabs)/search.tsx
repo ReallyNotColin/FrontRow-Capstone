@@ -3,7 +3,7 @@ import { View, TextInput, StyleSheet, Pressable, FlatList, ScrollView, Modal, To
 import { useNavigation } from '@react-navigation/native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { saveToHistory } from '@/db/history';
+import { saveToHistory, saveToResults } from '@/db/history';
 import { searchCustomEntries } from '@/db/customFoods';
 import { useThemedColor } from '@/components/ThemedColor';
 import { BlurView } from 'expo-blur';
@@ -99,10 +99,31 @@ const runCompareAndHistoryPet = async (
     pet
   );
 
-  const label = summarizePetCompare(displayName, result, petProfile.name);
+  // create the same label used on Scan
+  const label = (result.matches.length
+    ? result.matches
+        .map(m => `${m.allergen} via ${m.matchedBy}${m.evidence ? ` (“${m.evidence}”)` : ''}`)
+        .join('; ')
+    : ''
+  ) + (result.matches.length ? ` [Profile: ${petProfile.name}]` : '');
 
   try { await saveToHistory(displayName, warningsString, label); }
   catch (e) { console.error('[search] Error saving pet compare to history:', e); }
+
+  try { await saveToResults(displayName, warningsString, label); }
+  catch (e) { console.error('[search] Error saving pet compare to results:', e); }
+
+  // OPEN the results modal
+  const warningsArr = (warningsString || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  setResultModalData({
+    productName: displayName,
+    brandName: product.brand_name,
+    warnings: warningsArr,
+  });
+  setResultModalVisible(true);
 };
 
 
@@ -199,6 +220,14 @@ export default function AutocompleteScreen() {
     displayName: string;
     warningsString: string;
   } | null>(null);
+  // ADD (near other useState hooks)
+const [resultModalVisible, setResultModalVisible] = useState(false);
+const [resultModalData, setResultModalData] = useState<{
+  productName: string;
+  brandName?: string;
+  warnings: string[];
+} | null>(null);
+
 
   // Filters UI state (unchanged)
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -304,28 +333,53 @@ export default function AutocompleteScreen() {
   };
 
   /** Compare + save history (NEW, mirrors Scan screen) */
-  const runCompareAndHistory = async (
-    displayName: string,
-    product: ProductDoc,
-    warningsString: string,
-    profileData: { allergens: string[]; intolerances: string[]; dietary: string[] } | null,
-    profileName: string | null
-  ) => {
-    let matchedSummary = '';
-    if (profileData) {
-      const cmp = compareProductToProfile(product, profileData);
-      const lines = [...cmp.summary.allergens, ...cmp.summary.intolerances, ...cmp.summary.dietary];
-      matchedSummary = lines.join('; ');
-    }
+const runCompareAndHistory = async (
+  displayName: string,
+  product: ProductDoc,
+  warningsString: string,
+  profileData: { allergens: string[]; intolerances: string[]; dietary: string[] } | null,
+  profileName: string | null
+) => {
+  let matchedSummary = '';
+  if (profileData) {
+    const cmp = compareProductToProfile(product, profileData);
+    const lines = [
+      ...cmp.summary.allergens,
+      ...cmp.summary.intolerances,
+      ...cmp.summary.dietary,
+    ];
+    matchedSummary = lines.join('; ');
+  }
 
-    const label = profileName && matchedSummary ? `${matchedSummary} [Profile: ${profileName}]` : matchedSummary;
+  const label =
+    profileName && matchedSummary
+      ? `${matchedSummary} [Profile: ${profileName}]`
+      : matchedSummary;
 
-    try {
-      await saveToHistory(displayName, warningsString, label);
-    } catch (e) {
-      console.error('[search] Error saving to history:', e);
-    }
-  };
+  try {
+    await saveToHistory(displayName, warningsString, label);
+  } catch (e) {
+    console.error('[search] Error saving to history:', e);
+  }
+
+  try {
+    await saveToResults(displayName, warningsString, label);
+  } catch (e) {
+    console.error('[search] Error saving to results:', e);
+  }
+
+  // OPEN the results modal (like Scan)
+  const warningsArr = (warningsString || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  setResultModalData({
+    productName: displayName,
+    brandName: product.brand_name,
+    warnings: warningsArr,
+  });
+  setResultModalVisible(true);
+};
 
 const ensureProfileThenCompare = async (
   displayName: string,
@@ -750,6 +804,76 @@ const ensureProfileThenCompare = async (
                   keyboardType="default"
                   style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle, fontSize: 19}]}
                 />
+                {/* Results modal — mirrors Scan’s UX */}
+<Modal
+  animationType="fade"
+  transparent
+  visible={resultModalVisible}
+  onRequestClose={() => setResultModalVisible(false)}
+>
+  <BlurView intensity={50} tint="dark" style={{
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0,0,0,0.3)'
+  }}>
+    <View style={{
+      width: '100%',
+      maxWidth: 560,
+      borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: 'white'
+    }}>
+      <View style={{ paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' }}>
+        <Text style={{ fontSize: 18, fontWeight: '600' }}>Compared</Text>
+      </View>
+
+      <ScrollView style={{ maxHeight: 420, paddingHorizontal: 18, paddingTop: 12 }}>
+        {resultModalData ? (
+          <>
+            <Text style={{ fontSize: 16, fontWeight: '600' }}>{resultModalData.productName}</Text>
+            {!!resultModalData.brandName && (
+              <Text style={{ marginTop: 4, color: '#555' }}>by {resultModalData.brandName}</Text>
+            )}
+
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ fontWeight: '600', marginBottom: 8 }}>Warnings</Text>
+              {resultModalData.warnings.length > 0 ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {resultModalData.warnings.map((w, i) => (
+                    <View key={`${w}-${i}`} style={{ backgroundColor: '#efefef', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text>{w}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ color: '#666' }}>No warnings found</Text>
+              )}
+            </View>
+          </>
+        ) : (
+          <Text style={{ paddingVertical: 12 }}>No data.</Text>
+        )}
+      </ScrollView>
+
+      <View style={{ flexDirection: 'row', gap: 12, padding: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#ddd', justifyContent: 'flex-end' }}>
+
+        <TouchableOpacity
+          style={{ backgroundColor: '#222', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 }}
+          onPress={() => {
+            setResultModalVisible(false);
+            // match Scan's flow: after modal, go to Results
+            (navigation as any).navigate('results');
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: '600' }}>Done</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </BlurView>
+</Modal>
+
 
                 {/* Filters trigger + dropdown (unchanged) */}
                 <Pressable onPress={() => setFiltersOpen(v => !v)} style={[styles.filtersTrigger, { borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle }]}>

@@ -12,7 +12,7 @@ import { useThemedColor } from '@/components/ThemedColor';
 import { LinearGradient } from "expo-linear-gradient";
 import LottieView from 'lottie-react-native';
 
-import { collection, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '@/db/firebaseConfig';
 
 import { compareProductToProfile, buildProductFromFirestoreDoc, type ProductDoc, compareProductAgainstPetProfile, type PetProfileInput } from '@/db/compare';
@@ -189,6 +189,68 @@ export default function ScanScreen() {
     };
   }, [profiles]);
 
+ // -------- PET COMPARE HELPERS (NEW) --------
+const norm = (s?: string) => (s ?? "").toString().toLowerCase().trim();
+const splitCSV = (s?: string) =>
+  norm(s)
+    .split(/[,\n;]/g)
+    .map(t => t.trim())
+    .filter(Boolean);
+
+// Expand as needed
+const PET_SYNONYMS: Record<string, string[]> = {
+  dairy: ["milk", "cream", "cheese", "whey", "casein", "butter", "yogurt"],
+  eggs: ["egg", "egg yolk", "albumen"],
+  fish: ["fish", "salmon", "tuna", "cod", "anchovy", "sardine"],
+  beef: ["beef"],
+  chicken: ["chicken"],
+  lamb: ["lamb", "mutton"],
+  wheat: ["wheat", "graham", "semolina", "farina"],
+  corn: ["corn", "maize", "cornstarch"],
+  soy: ["soy", "soya", "soy lecithin", "soybean"],
+};
+
+/**
+ * Compare product ingredients/warnings against a pet allergen list.
+ * Returns { ok, matches[], summaryLabel }
+ */
+function comparePetProduct(
+  product: { ingredients?: string; warning?: string },
+  petAllergens: string[] = []
+) {
+  const ingredients = norm(product.ingredients);
+  const warningList = splitCSV(product.warning);
+
+  const wanted = new Set<string>();
+  for (const raw of petAllergens) {
+    const key = norm(raw);
+    if (!key) continue;
+    wanted.add(key);
+    (PET_SYNONYMS[key] ?? []).forEach(a => wanted.add(a));
+  }
+
+  const found = new Set<string>();
+
+  // Exact matches against warning CSV
+  for (const w of warningList) {
+    if (wanted.has(w)) found.add(w);
+  }
+
+  // Substring search in free-text ingredients
+  for (const t of wanted) {
+    if (t && ingredients.includes(t)) found.add(t);
+  }
+
+  const matches = Array.from(found);
+  const ok = matches.length === 0;
+  const summaryLabel = ok
+    ? "No pet allergen matches"
+    : `Pet allergen matches: ${matches.join(", ")}`;
+
+  return { ok, matches, summaryLabel };
+}
+
+
    // Try multiple barcode normalizations to improve hit rate
   const findByBarcode = async (barcode: string) => {
     // Primary: exact match (your CSV import likely used 13-digit strings)
@@ -270,41 +332,52 @@ export default function ScanScreen() {
     setModalVisible(true);
   };
 
-  const runCompareAndHistoryPet = async (
+// -------- PET COMPARE SAVE (REPLACE) --------
+async function runCompareAndHistoryPet(
   displayName: string,
   product: ProductDoc,
   warningsString: string,
-  petProfile: { name: string; data: { allergens: string[] } }
-) => {
-  // Build the shape expected by the pet compare
-  const pet: PetProfileInput = {
-    name: petProfile.name,
-    petType: 'Unknown', // optional, not used by compare
-    allergens: Array.isArray(petProfile.data?.allergens) ? petProfile.data.allergens : [],
-  };
-
-  const result = compareProductAgainstPetProfile(
-    {
-      barcode: product.barcode,
-      brand_name: product.brand_name,
-      food_name: product.food_name,
-      ingredients: product.ingredientsRaw, // buildProductFromFirestoreDoc already normalizes
-      warning: product.warningRaw,
-    },
-    pet
+  pet: { name: string; data: { allergens: string[] } }
+) {
+  const { matches, summaryLabel } = comparePetProduct(
+    { ingredients: product.ingredients, warning: warningsString },
+    pet.data?.allergens ?? []
   );
 
-  const label = summarizePetCompare(displayName, result, petProfile.name);
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
 
-  try { await saveToHistory(displayName, warningsString, label); }
-  catch (e) { console.error('[scan] Error saving pet compare to history:', e); }
+  // Build a normalized payload so History/Results can render matches
+  const payload = {
+    type: "pet",
+    profileType: "pet",
+    profileName: pet.name,
+    productId: product.barcode?.trim() || (product as any).id || null,
+    productName: displayName,
+    matches,                    // <-- critical for History/Results list
+    matchedAllergens: matches,  // <-- mirror key in case readers use this
+    summaryLabel,               // <-- optional but useful for UI
+    comparedAt: new Date().toISOString(),
+    createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : null,
+  };
 
-  try { await saveToResults(displayName, warningsString, label); }
-  catch (e) { console.error('[scan] Error saving pet compare to results:', e); }
+  // Use your existing helpers if present; otherwise fall back to direct writes
+  try {
+    // @ts-ignore optional helper
+    if (typeof addHistory === "function") await addHistory(uid, payload);
+    else await addDoc(collection(db, "users", uid, "history"), payload);
+  } catch {
+    await addDoc(collection(db, "users", uid, "history"), payload);
+  }
 
-  setCompareLines(label ? label.split('; ') : []);
-  setModalVisible(true);
-};
+  try {
+    // @ts-ignore optional helper
+    if (typeof addResult === "function") await addResult(uid, payload);
+    else await addDoc(collection(db, "users", uid, "results"), payload);
+  } catch {
+    await addDoc(collection(db, "users", uid, "results"), payload);
+  }
+}
 
 type GroupMemberTyped = { name: string; kind: 'human' | 'pet' };
 
