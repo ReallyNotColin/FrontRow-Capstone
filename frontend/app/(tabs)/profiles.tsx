@@ -581,7 +581,7 @@ const handleDeleteGroup = async (name: string) => {
               </View>
 
               <Animated.View style={{ transform: [{ translateY: moveMenu }] }}>
-                <ThemedText style={styles.nameText}>What is {profileName}'s dietary profile?</ThemedText>
+                <ThemedText type="subtitle" style={styles.nameText}>What is {profileName}'s dietary profile?</ThemedText>
               </Animated.View>
 
               <Animated.View style={[styles.tagRow, { transform: [{ translateY: moveMenu }] }]}>
@@ -595,6 +595,8 @@ const handleDeleteGroup = async (name: string) => {
                   <ThemedText style={styles.tagText}>Dietary</ThemedText>
                 </TouchableOpacity>
               </Animated.View>
+
+              <ThemedText style={styles.nameText2}> {profileName} would like to avoid: </ThemedText>
 
               {activeTag && (
                 <Animated.View style={[styles.allergensMenuContainer, { opacity: menuOpacity }]}>
@@ -778,10 +780,11 @@ const styles = StyleSheet.create({
     borderRadius: 20, paddingVertical: 6, paddingLeft: 12, fontSize: 19, marginBottom: 10
   },
   nameText: { textAlign: 'center', fontWeight: 'bold', color: 'white', paddingVertical: 18, paddingHorizontal: 12 },
+ nameText2: { textAlign: 'center', fontWeight: 'bold', color: 'white', paddingVertical: 5, paddingHorizontal: 12 },
 
   tagRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 },
-  tagButton: { backgroundColor: '#767676ff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 4 },
-  tagText: { color: '#000', fontWeight: '500' },
+  tagButton: { backgroundColor: '#2f8aa3ff', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, marginHorizontal: 4 },
+  tagText: { color: '#ffffffff', fontWeight: '500' },
 
   allergensMenuContainer: {
     marginTop: 12, padding: 10, backgroundColor: '#ffffff',
@@ -795,7 +798,7 @@ const styles = StyleSheet.create({
 
   secondaryButton: { backgroundColor: '#27778E', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center' },
   secondaryButtonText: { color: '#fff', fontWeight: '600' },
-  saveButton: { backgroundColor: '#477629',paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center'  },
+  saveButton: { backgroundColor: '#558e32ff',paddingVertical: 10, paddingHorizontal: 18, borderRadius: 40, alignItems: 'center'  },
   cancelButton: {paddingVertical: 10},
 
   // Pet UI

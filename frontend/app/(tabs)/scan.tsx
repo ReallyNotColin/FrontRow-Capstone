@@ -108,6 +108,7 @@ export default function ScanScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
   const { activeColors } = useThemedColor();
+  const capitalizeAllergen = (s: string) => s.replace(/\b[a-z]/g, ch => ch.toUpperCase());
 
   const [compareLines, setCompareLines] = useState<string[]>([]);
 
@@ -245,7 +246,7 @@ function comparePetProduct(
   const ok = matches.length === 0;
   const summaryLabel = ok
     ? "No pet allergen matches"
-    : `Pet allergen matches: ${matches.join(", ")}`;
+    :`${matches.join(", ")}`;
 
   return { ok, matches, summaryLabel };
 }
@@ -332,52 +333,41 @@ function comparePetProduct(
     setModalVisible(true);
   };
 
-// -------- PET COMPARE SAVE (REPLACE) --------
 async function runCompareAndHistoryPet(
   displayName: string,
   product: ProductDoc,
   warningsString: string,
   pet: { name: string; data: { allergens: string[] } }
 ) {
-  const { matches, summaryLabel } = comparePetProduct(
+  // compute pet matches (ingredients + warning synonyms)
+  const { matches } = comparePetProduct(
     { ingredients: product.ingredients, warning: warningsString },
     pet.data?.allergens ?? []
   );
 
-  const uid = auth.currentUser?.uid;
-  if (!uid) return;
+  const prettyMatches = matches.map(capitalizeAllergen);
+  // build the same single-line label your History/Results readers expect
+  const label =
+    matches.length > 0
+      ? ` ${prettyMatches.join(', ')} [Profile: ${pet.name}]`
+      : ''
 
-  // Build a normalized payload so History/Results can render matches
-  const payload = {
-    type: "pet",
-    profileType: "pet",
-    profileName: pet.name,
-    productId: product.barcode?.trim() || (product as any).id || null,
-    productName: displayName,
-    matches,                    // <-- critical for History/Results list
-    matchedAllergens: matches,  // <-- mirror key in case readers use this
-    summaryLabel,               // <-- optional but useful for UI
-    comparedAt: new Date().toISOString(),
-    createdAt: typeof serverTimestamp === "function" ? serverTimestamp() : null,
-  };
-
-  // Use your existing helpers if present; otherwise fall back to direct writes
+  // WRITE using the same helpers as the human path
   try {
-    // @ts-ignore optional helper
-    if (typeof addHistory === "function") await addHistory(uid, payload);
-    else await addDoc(collection(db, "users", uid, "history"), payload);
-  } catch {
-    await addDoc(collection(db, "users", uid, "history"), payload);
+    await saveToHistory(displayName, warningsString, label);
+  } catch (e) {
+    console.error('[scan:pet] Error saving to history:', e);
+  }
+  try {
+    await saveToResults(displayName, warningsString, label);
+  } catch (e) {
+    console.error('[scan:pet] Error saving to results:', e);
   }
 
-  try {
-    // @ts-ignore optional helper
-    if (typeof addResult === "function") await addResult(uid, payload);
-    else await addDoc(collection(db, "users", uid, "results"), payload);
-  } catch {
-    await addDoc(collection(db, "users", uid, "results"), payload);
-  }
+  // show the same modal as human path
+  setModalVisible(true);
 }
+
 
 type GroupMemberTyped = { name: string; kind: 'human' | 'pet' };
 
@@ -915,7 +905,7 @@ const styles = StyleSheet.create({
     marginTop: 8 },
 
   allergenTag: { 
-    backgroundColor: '#FF4D4D', 
+    backgroundColor: '#c23b22', 
     paddingHorizontal: 12, 
     paddingVertical: 6, 
     borderRadius: 15,
@@ -940,14 +930,14 @@ const styles = StyleSheet.create({
   },
   
   actionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#27778E',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
   },
 
     actionButton2: {
-    backgroundColor: '#74B72E',
+    backgroundColor: '#477629',
     padding: 15,
     marginTop:5,
     borderRadius: 10,

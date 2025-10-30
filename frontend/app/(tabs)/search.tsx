@@ -805,62 +805,44 @@ const ensureProfileThenCompare = async (
                   style={[styles.input, { color: activeColors.text, borderColor: activeColors.divider, backgroundColor: activeColors.backgroundTitle, fontSize: 19}]}
                 />
                 {/* Results modal — mirrors Scan’s UX */}
-<Modal
-  animationType="fade"
-  transparent
-  visible={resultModalVisible}
-  onRequestClose={() => setResultModalVisible(false)}
->
-  <BlurView intensity={50} tint="dark" style={{
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.3)'
-  }}>
-    <View style={{
-      width: '100%',
-      maxWidth: 560,
-      borderRadius: 12,
-      overflow: 'hidden',
-      backgroundColor: 'white'
-    }}>
-      <View style={{ paddingVertical: 14, paddingHorizontal: 18, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' }}>
-        <Text style={{ fontSize: 18, fontWeight: '600' }}>Compared</Text>
+<Modal animationType="fade" transparent visible={resultModalVisible} onRequestClose={() => setResultModalVisible(false)}>
+  <BlurView intensity={50} tint="dark" style={styles.modalOverlay2}>
+    <View style={styles.modalContent2}>
+      <View style={styles.modalHeader2}>
+        <Text style={styles.modalTitle2}>Searched</Text>
       </View>
 
-      <ScrollView style={{ maxHeight: 420, paddingHorizontal: 18, paddingTop: 12 }}>
+      <ScrollView style={styles.modalScroll2}>
         {resultModalData ? (
           <>
-            <Text style={{ fontSize: 16, fontWeight: '600' }}>{resultModalData.productName}</Text>
-            {!!resultModalData.brandName && (
-              <Text style={{ marginTop: 4, color: '#555' }}>by {resultModalData.brandName}</Text>
-            )}
+            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333', marginBottom:8 }}>{resultModalData.productName}</Text>
+            {!!resultModalData.brandName && <Text style={{ fontSize: 16, color:'#666', marginBottom: 20, fontStyle: 'italic' }}>by {resultModalData.brandName}</Text>
+            }
 
-            <View style={{ marginTop: 16 }}>
-              <Text style={{ fontWeight: '600', marginBottom: 8 }}>Warnings</Text>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ fontSize:16, fontWeight: 'bold', color: '#333', marginBottom: 8 }}>Warnings</Text>
               {resultModalData.warnings.length > 0 ? (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
                   {resultModalData.warnings.map((w, i) => (
-                    <View key={`${w}-${i}`} style={{ backgroundColor: '#efefef', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6 }}>
-                      <Text>{w}</Text>
+                    <View key={`${w}-${i}`} style={{backgroundColor: '#c23b22', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15, marginRight: 8, marginBottom: 8,}}>
+                      <Text style={{ color: 'white', fontSize:12, fontWeight:'600' }}>{w}</Text>
                     </View>
                   ))}
                 </View>
               ) : (
-                <Text style={{ color: '#666' }}>No warnings found</Text>
+                <Text style={{ fontSize: 14, color: '666', lineHeight: 20}}>No warnings found</Text>
               )}
             </View>
           </>
         ) : (
-          <Text style={{ paddingVertical: 12 }}>No data.</Text>
+          <Text style={{ fontSize: 16, color: '666', textAlign: 'center', margin:20 }}>No food data found for this search.</Text>
         )}
       </ScrollView>
 
-      <View style={{ flexDirection: 'row', gap: 12, padding: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#ddd', justifyContent: 'flex-end' }}>
+      <View style={{ padding:20, borderTopWidth:1, borderTopColor: '#e0e0e0' }}>
 
         <TouchableOpacity
-          style={{ backgroundColor: '#222', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8 }}
+          style={{ backgroundColor: '#477629', padding: 15, marginTop: 5, borderRadius: 10, alignItems: 'center' }}
           onPress={() => {
             setResultModalVisible(false);
             // match Scan's flow: after modal, go to Results
@@ -1139,4 +1121,41 @@ const styles = StyleSheet.create({
   ppItemText: {fontWeight: '500', color: "#212D39" },
 
   noResultsText: { textAlign: 'center', marginTop: 12},
+    // results modal
+  modalOverlay2: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center' },
+
+  modalContent2: { 
+    backgroundColor: 'white', 
+    borderRadius: 20, width: '90%', 
+    maxHeight: '80%', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.25, 
+    shadowRadius: 4, 
+    elevation: 5 },
+
+  modalHeader2: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#e0e0e0' },
+
+  modalTitle2: { 
+    fontSize: 30, 
+    fontWeight: 'bold', 
+    color: '#333' },
+
+    modalSubtitle2: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#333' },
+
+  modalScroll2: { padding: 20 },
+
 });
